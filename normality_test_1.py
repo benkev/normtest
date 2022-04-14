@@ -75,7 +75,7 @@ pl.ylabel('Frequency', fontsize=15)
 pl.figtext(0.14, 0.82, r'$\chi^2_{obs} =$ %6.2f' % chi2, fontsize=15)
 pl.figtext(0.14, 0.76, r'$\chi^2_{crit} =$ %6.2f' % chi2cr, fontsize=15)
 pl.figtext(0.14, 0.70, r'$\chi^2_{obs} %s \chi^2_{crit}:$' % cmps, fontsize=15)
-pl.figtext(0.14, 0.64, r'%s' % norm_or_not, color='red', fontsize=20)
+pl.figtext(0.14, 0.63, r'%s' % norm_or_not, color='red', fontsize=20)
 pl.figtext(0.14, 0.58, r'at significance %4.2f' % alpha, fontsize=15)
 
 # pl.show()
