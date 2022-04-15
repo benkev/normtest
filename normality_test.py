@@ -12,11 +12,14 @@ from numpy.random import normal
 pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
 
 N = int(1e4)
+dat_mean = 3.4
+dat_sig = 2.7
 alpha = 0.95
 
 # seed(12)
 #dat = normal(loc=0.0, scale=1.0, size=N)
-dat = normal(loc=2.4, scale=3.7, size=N)
+#dat = normal(loc=8.4, scale=6.7, size=N)
+dat = normal(loc=dat_mean, scale=dat_sig, size=N)
 
 # pl.figure(); pl.hist(dat, bins=20) 
 # pl.show()
@@ -76,7 +79,12 @@ pl.figtext(0.14, 0.82, r'$\chi^2_{obs} =$ %6.2f' % chi2, fontsize=15)
 pl.figtext(0.14, 0.76, r'$\chi^2_{crit} =$ %6.2f' % chi2cr, fontsize=15)
 pl.figtext(0.14, 0.70, r'$\chi^2_{obs} %s \chi^2_{crit}:$' % cmps, fontsize=15)
 pl.figtext(0.14, 0.63, r'%s' % norm_or_not, color='red', fontsize=20)
-pl.figtext(0.14, 0.58, r'at significance %4.2f' % alpha, fontsize=15)
+pl.figtext(0.14, 0.58, r'significance %4.2f' % alpha, fontsize=15)
+pl.figtext(0.14, 0.52, r'deg. of freedom %d' % k, fontsize=15)
+
+pl.figtext(0.7, 0.63, r'Mean = %5.2f' % dat_mean, fontsize=15)
+pl.figtext(0.7, 0.58, r'$\sigma=%5.2f$' % dat_sig, fontsize=15)
+pl.figtext(0.7, 0.52, r'$x \in [%d  ..  %d]$' % (lx, rx), fontsize=15)
 
 # pl.show()
 
