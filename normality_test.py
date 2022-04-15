@@ -13,7 +13,7 @@ pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
 
 N = int(1e4)
 dat_mean = 3.4
-dat_sig = 2.7
+dat_sig = 10.7
 alpha = 0.95
 
 # seed(12)
@@ -50,12 +50,42 @@ chi2 = np.sum((frq - tfrq)**2/tfrq)
 #
 # Group the leftmost and rightmost bins with frequencies less then or equal 5
 #
+iq1 = int(nfrq/4)    # First quartile
+iq4 = int(nfrq*3/4)  # Fourth quartile
 
+j = 0
+while j < iq1:
+    if frq[j] > 5:
+        il = j
+        break
+    j = j + 1
+    print(j, frq[j])
+
+il = il - 1
+    
+j = nfrq - 1
+while j > iq4:
+    if frq[j] > 5:
+        ir = j
+        break
+    j = j - 1
+    print(j, frq[j])
+
+ir = ir + 1
+
+frql = np.sum(frq[:il])
+frqr = np.sum(frq[ir:])
+
+# ncenter = int(nfrq/2)
+# ix = np.where(frq > 5)[0]
+# il = ix[0]
+# ir = ix[-1]
+# ixl = ixfrq[:ncenter] <= 5)[0]  # Left bins with freqs <= 5
+# ixr = np.where(frq[ncenter:] <= 5)[0]  # Right bins with freqs <= 5
 
 
 #
 # Critical value of chi2(k) with k degrees of freedom, for significance 0.95
-#
 # dat is normal (at significance alpha) if chi2 < chi2cr
 #
 k = nfrq - 2 - 1
@@ -65,7 +95,7 @@ cmps = ' < ' if chi2 < chi2cr else ' > '
 norm_or_not = ' Normal ' if chi2 < chi2cr else ' NOT Normal '
 
 pl.figure();
-pl.plot(x, frq, '.', color='blue', label='Empirical'); pl.grid(1)
+pl.plot(x, frq, '.', color='blue', label='Observed'); pl.grid(1)
 pl.hist(dat, bins=edges, alpha=0.2, color='green', histtype='stepfilled')
 # pl.plot(x, frq)
 pl.plot(x, tfrq, color='red', label='Theoretical')
