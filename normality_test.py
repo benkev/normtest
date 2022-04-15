@@ -74,14 +74,9 @@ while j > iq4:
 ir = ir + 1
 
 frql = np.sum(frq[:il])
+tfrql = np.sum(tfrq[:il])
 frqr = np.sum(frq[ir:])
-
-# ncenter = int(nfrq/2)
-# ix = np.where(frq > 5)[0]
-# il = ix[0]
-# ir = ix[-1]
-# ixl = ixfrq[:ncenter] <= 5)[0]  # Left bins with freqs <= 5
-# ixr = np.where(frq[ncenter:] <= 5)[0]  # Right bins with freqs <= 5
+tfrqr = np.sum(tfrq[ir:])
 
 
 #
