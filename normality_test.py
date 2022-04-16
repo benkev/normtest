@@ -13,7 +13,7 @@ pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
 
 N = int(1e4)
 dat_mean = 3.4
-dat_sig = 10.7
+dat_sig = 2.7
 alpha = 0.95
 
 # seed(12)
@@ -47,37 +47,7 @@ normal_PDF = np.exp(-z**2/2)/np.sqrt(2*np.pi) # Standard normal PDF
 tfrq = (h*N/xsig)*normal_PDF  # Theoretical frequency
 chi2 = np.sum((frq - tfrq)**2/tfrq)
 
-#
-# Group the leftmost and rightmost bins with frequencies less then or equal 5
-#
-iq1 = int(nfrq/4)    # First quartile
-iq4 = int(nfrq*3/4)  # Fourth quartile
-
-j = 0
-while j < iq1:
-    if frq[j] > 5:
-        il = j
-        break
-    j = j + 1
-    print(j, frq[j])
-
-il = il - 1
-    
-j = nfrq - 1
-while j > iq4:
-    if frq[j] > 5:
-        ir = j
-        break
-    j = j - 1
-    print(j, frq[j])
-
-ir = ir + 1
-
-frql = np.sum(frq[:il])
-tfrql = np.sum(tfrq[:il])
-frqr = np.sum(frq[ir:])
-tfrqr = np.sum(tfrq[ir:])
-
+# raise SystemExit
 
 #
 # Critical value of chi2(k) with k degrees of freedom, for significance 0.95
@@ -85,6 +55,8 @@ tfrqr = np.sum(tfrq[ir:])
 #
 k = nfrq - 2 - 1
 chi2cr = scipy.stats.chi2.ppf(alpha, k)
+
+
 
 cmps = ' < ' if chi2 < chi2cr else ' > '
 norm_or_not = ' Normal ' if chi2 < chi2cr else ' NOT Normal '
@@ -95,7 +67,7 @@ pl.hist(dat, bins=edges, alpha=0.2, color='green', histtype='stepfilled')
 # pl.plot(x, frq)
 pl.plot(x, tfrq, color='red', label='Theoretical')
 pl.legend(fontsize=15, loc='upper right')
-pl.title('Pearson Normality test: $N_x$ = %d, $\emph{bin}$ = %6.4f' % \
+pl.title('Pearson Normality test: $N_x$ = %d, $\emph{bin}$ = %g' % \
          (N, h), fontsize=15)
 pl.xlabel('$x$', fontsize=18)
 pl.ylabel('Frequency', fontsize=15)
@@ -111,8 +83,12 @@ pl.figtext(0.7, 0.63, r'Mean = %5.2f' % dat_mean, fontsize=15)
 pl.figtext(0.7, 0.58, r'$\sigma=%5.2f$' % dat_sig, fontsize=15)
 pl.figtext(0.7, 0.52, r'$x \in [%d  ..  %d]$' % (lx, rx), fontsize=15)
 
-# pl.show()
+pl.savefig('fig/Pearson_test_N%d_bin%g_mean%g_std%g.svg' % \
+           (N, h, dat_mean, dat_sig), format='svg')
 
+pl.show()
+
+print()
 print('N = ', N, ', nfrq = ', nfrq)
 print('x \in [%d .. %d], bin size = %6.4f' % (lx, rx, h))
 print('chi2_observed = %6.2f' % chi2, ', chi2_critical = %6.2f' % chi2cr, \
@@ -120,6 +96,5 @@ print('chi2_observed = %6.2f' % chi2, ', chi2_critical = %6.2f' % chi2cr, \
 print('chi2_observed' + cmps + 'chi2_critical: ' + \
       norm_or_not + ' at %4.2f significance level' % alpha)
 
-pl.show()
 
 
