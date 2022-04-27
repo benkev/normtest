@@ -12,7 +12,7 @@ from numpy.random import normal
 pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
 
 N = int(1e4)
-h = 0.25                 # Interval length
+h = 0.125                 # Interval length
 alpha = 0.95
 # seed(12)
 
