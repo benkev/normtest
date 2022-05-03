@@ -5,9 +5,9 @@ import matplotlib.pyplot as pl
 
 F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))
 
-nfrm = 1000
+nfrm = 1
 ndat = 2500*nfrm
-thr = 0.92         # Threshold in STD 
+thr = 0.82         # Threshold in STD 
 
 d = np.zeros(nfrm*2500, dtype=np.uint32)   # Raw data
 xt = np.zeros_like(d, dtype=np.float64)
@@ -19,11 +19,11 @@ for ifrm in range(nfrm):
     i1 = i0 + 2500
     h = np.fromfile('rd1910_wz_268-1811.m5b', dtype=np.uint32, \
                     offset=foff, count=4)
-    print('i0=%d, i1=%d' % (i0,i1))
+#    print('i0=%d, i1=%d' % (i0,i1))
     d[i0:i1] = np.fromfile('rd1910_wz_268-1811.m5b', dtype=np.uint32, \
                     offset=foff+16, count=2500)
 
-    print('Header: 0x%08x  0x%08x  0x%08x  0x%08x' % tuple(h))
+#    print('Header: 0x%08x  0x%08x  0x%08x  0x%08x' % tuple(h))
 
     d01 = 0x03 & d[i0:i1]     # 0th channel, bits 0 and 1
     x[np.where(d01 == 3)] =  1.5
