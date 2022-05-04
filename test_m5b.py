@@ -1,13 +1,16 @@
 import math
 import numpy as np
 import matplotlib.pyplot as pl
+#from matplotlib.font_manager import FontProperties
 # import scipy.stats
 
 F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))
 
-nfrm = 1
+pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
+
+nfrm = 10000
 ndat = 2500*nfrm
-thr = 0.82         # Threshold in STD 
+thr = 1.0 # 0.82       # Threshold in STD 
 
 d = np.zeros(nfrm*2500, dtype=np.uint32)   # Raw data
 xt = np.zeros_like(d, dtype=np.float64)
@@ -54,12 +57,13 @@ xt[np.where(d01t == 0)] =  -1.5
 # xt[np.where(d23t == 1)] = -0.5
 # xt[np.where(d23t == 0)] =  -1.5
 
-pl.figure()
-pl.hist(xt, rwidth=0.5, bins=[-3, -2, -1, 0, 1, 2, 3]); pl.grid(1)
+# pl.figure()
+# pl.hist(xt, rwidth=0.5, bins=[-3, -2, -1, 0, 1, 2, 3]); pl.grid(1)
+# pl.plot([-1.5, -0.5, 0.5, 1.5], hsnor*ndat, 'ro') # Normal distribution
 
 # pl.show()
 
-F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))
+F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))  # Normal CDF
 
 Fthr = F(-thr)
 # hsnor = np.array([F(-thr), F(0)-F(-thr), F(thr) - F(0), 1 - F(0.92)])
@@ -74,6 +78,71 @@ print('Normal:       %5.3f  %5.3f  %5.3f  %5.3f' % tuple(hsnor))
 print('Experimental: %5.3f  %5.3f  %5.3f  %5.3f' % tuple(hsrel))
 print('Chi2: %8f' % chi2)
 
-pl.plot([-1.5, -0.5, 0.5, 1.5], hsnor*ndat, 'ro') # Normal distribution
+
+
+#
+# Plot integrals
+#
+xrul = np.linspace(-3., 3., 51)
+fnorm = 1/(2*np.pi)*np.exp(-xrul**2/2)
+
+xloc = [-1.5, -0.5, 0.5, 1.5]
+xloc0 = [-1.5, -0.5, 0., 0.5, 1.5]
+#xloc0 = [-1.5, -1., -0.5, 0., 0.5, 1., 1.5]
+pl.figure()
+pl.plot(xrul, 1.5*fnorm, 'b-.', lw=0.5)
+pl.bar(xloc, hsnor, width=0.5) # , color='b') # , alpha=0.9)
+# a = pl.bar(xloc, hsnor, width=0.5) # , color='b') # , alpha=0.9)
+pl.bar(xloc, hsrel, width=0.2, color='orange')
+y0, y1 = pl.ylim()
+pl.ylim(y0, 1.4*y1)
+pl.plot([-1,-1], [0, y1], 'k') #, lw=0.7)
+pl.plot([1,1], [0, y1], 'k') #, lw=0.7)
+pl.plot([0,0], [0, y1], color='k') #, lw=0.7)
+pl.plot(xloc, hsrel, 'r.')
+pl.xlim(-3.5, 3.5)
+pl.grid(1)
+# pl.xticks(xloc0, ['$-\infty \sim -v_0$', '$-v_0 \sim 0$', '$0$',
+#                   '$0 \sim v_0$', '$v_0 \sim +\infty$'])
+pl.xticks(xloc, ['$-\infty \sim -v_0$', '$-v_0 \sim 0$',
+                  '$0 \sim v_0$', '$v_0 \sim +\infty$'], fontsize=11)
+
+# a0 = a[0]
+# bcol = a0.get_facecolor()  # Pick the default 'blue' color of the hsrel bars
+
+#font0 = FontProperties()
+#font = font0.copy()
+#font.set_family('monospace')
+#cfont = {'fontname':'Courier'}
+
+pl.text(-1.2, 1.015*y1, '$-v_0$') #, fontsize=12)
+pl.text(0.95, 1.015*y1, '$v_0$') #, fontsize=12)
+pl.text(-0.04, 1.015*y1, '$0$') #, fontsize=12)
+
+# pl.text(-3.4, 1.3*y1, 'Normal:       %5.3f  %5.3f  %5.3f  %5.3f' % \
+#         tuple(hsnor), color='b', fontsize=14)
+# pl.text(-3.4, 1.2*y1, 'Experimental: %5.3f  %5.3f  %5.3f  %5.3f' % \
+#         tuple(hsrel), color='r', fontsize=14)
+
+pl.text(-3.4, 1.3*y1, 'Normal:', color='b', fontsize=14)
+pl.text(-3.4, 1.2*y1, 'Experimental:', color='r', fontsize=14)
+pl.text(2.1, 1.2*y1, '$\epsilon^2 =$ %8.2e' % chi2, color='r', fontsize=12)
+
+for itx in range(4):
+    pl.text(xloc[itx]-0.2, 1.3*y1, '%5.3f' % hsnor[itx], color='b', \
+            fontsize=14)
+    pl.text(xloc[itx]-0.2, 1.2*y1, '%5.3f' % hsrel[itx], color='r', \
+            fontsize=14)
+
+
+    
+pl.text(-3.3, 1.015*y1, '$v_0 = %4.2f\sigma$' % thr, fontsize=14)
+pl.text(1.8, 1.015*y1, '%d Frames' % nfrm, fontsize=13)
+    
+pl.title('M5B Data vs Normal in Quantiles between $-v_0, 0, and +v_0$', \
+         fontsize=15)
+
+pl.savefig('fig/M5B_vs_Normal_in_Quantiles_nfrms_%d_thres_%4.2fsigma.svg' % \
+               (nfrm, thr), format='svg')
 
 pl.show()
