@@ -8,9 +8,9 @@ F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))
 
 pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
 
-nfrm = 10000
+nfrm = 1000
 ndat = 2500*nfrm
-thr = 1.0 # 0.82       # Threshold in STD 
+thr = 0.6652475842498528 # 0.82       # Threshold in STD 
 
 d = np.zeros(nfrm*2500, dtype=np.uint32)   # Raw data
 xt = np.zeros_like(d, dtype=np.float64)
@@ -142,7 +142,7 @@ pl.text(1.8, 1.015*y1, '%d Frames' % nfrm, fontsize=13)
 pl.title('M5B Data vs Normal in Quantiles between $-v_0, 0, and +v_0$', \
          fontsize=15)
 
-pl.savefig('fig/M5B_vs_Normal_in_Quantiles_nfrms_%d_thres_%4.2fsigma.svg' % \
-               (nfrm, thr), format='svg')
+# pl.savefig('fig/M5B_vs_Normal_in_Quantiles_nfrms_%d_thres_%4.2fsigma.svg' % \
+#                (nfrm, thr), format='svg')
 
 pl.show()

@@ -83,8 +83,8 @@ pl.figtext(0.7, 0.63, r'Mean = %5.2f' % dat_mean, fontsize=15)
 pl.figtext(0.7, 0.58, r'$\sigma=%5.2f$' % dat_sig, fontsize=15)
 pl.figtext(0.7, 0.52, r'$x \in [%d  ..  %d]$' % (lx, rx), fontsize=15)
 
-pl.savefig('fig/Pearson_test_N%d_bin%g_mean%g_std%g.svg' % \
-           (N, h, dat_mean, dat_sig), format='svg')
+# pl.savefig('fig/Pearson_test_N%d_bin%g_mean%g_std%g.svg' % \
+#            (N, h, dat_mean, dat_sig), format='svg')
 
 pl.show()
 

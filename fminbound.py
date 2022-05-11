@@ -1,7 +1,6 @@
 import numpy as np
 
-def fminbound(func, bounds, args=(),
-                             xatol=1e-5, maxiter=500, disp=0):
+def fminbound(func, bounds, args=(), xatol=1e-5, maxiter=500, disp=0):
     """
     Options
     -------
@@ -131,12 +130,6 @@ def fminbound(func, bounds, args=(),
     if flag == 0: print('Solution found.')
     if flag == 1: print('Maximum number of function calls reached.')
     
-    # result = OptimizeResult(fun=fval, status=flag, success=(flag == 0),
-    #                         message={0: 'Solution found.',
-    #                                  1: 'Maximum number of function calls '
-    #                                     'reached.',
-    #                                  2: _status_message['nan']}.get(flag, ''),
-    #                         x=xf, nfev=num)
 
     return xf
 
