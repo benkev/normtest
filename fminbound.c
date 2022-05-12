@@ -7,13 +7,14 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <math.h>
+#include <float.h>
 
 #define sign(x) ((x) > 0) ? 1 : ((x < 0) ? -1 : 0)
 /* #define min(X, Y)  ((X) < (Y) ? (X) : (Y)) */
 /* #define max(X, Y)  ((X) < (Y) ? (X) : (Y)) */
 
-float fminbound(float (*func)(), float a, float b, float *args, float xatol,
-                int maxiter, int disp) {
+float fminbound(float (*func)(float x, float *args), float a, float b,
+                float *args, float xatol, int maxiter, int disp) {
 
     /* def fminbound(func, bounds, args=(), xatol=1e-5, maxiter=500, disp=0): */
     /*     """ */
@@ -34,14 +35,16 @@ float fminbound(float (*func)(), float a, float b, float *args, float xatol,
 
     float fulc, nfc, xf, rat, e, x, fx, fu, ffulc, fnfc, xm, tol1, tol2;
     float p, q, r, fval;
-    int golden, num, si; 
+    int golden, si; 
     int maxfun = maxiter;
     int flag = 0;
-    float sqrt_eps = sqrt(2.2e-16);
+    /* float sqrt_eps = sqrt(2.2e-16); */
+    float sqrt_eps = sqrt(FLT_EPSILON); // sqrt(1.19209e-07);
     float golden_mean = 0.5*(3.0 - sqrt(5.0));
-
-    char *header = " Func-count     x          f(x)          Procedure";
-    char *step = "       initial";
+    int num = 0;
+    
+    char *header = " Func-count     x          f(x)          Procedure\n";
+    char *step = "       initial\n";
 
     if (a > b) {
         printf("The lower bound exceeds the upper bound.");
@@ -53,7 +56,7 @@ float fminbound(float (*func)(), float a, float b, float *args, float xatol,
     
     rat = e = 0.0;
     x = xf;
-    fx = func(x, *args);
+    fx = (*func)(x, args);
     num = 1;
     /*    fmin_data = (1, xf, fx)  */
     fu = INFINITY;
@@ -66,10 +69,14 @@ float fminbound(float (*func)(), float a, float b, float *args, float xatol,
     if (disp > 2) {
         printf("\n");
         printf("%s", header);
-        printf("%5.0f   %12.6g %12.6g %s", 1.0, xf, fx, step);
+        printf("%5d   %12.6g %12.6g %s", 1, xf, fx, step);
     }
     
     while (fabsf(xf - xm) > (tol2 - 0.5*(b - a))) {
+
+        /* printf("fabsf(xf - xm) = %g, (tol2 - 0.5*(b - a)) = %g\n", */
+        /*        fabsf(xf - xm), (tol2 - 0.5*(b - a))); */
+        
         golden = 1;
         /* Check for parabolic fit */
         if (fabsf(e) > tol1) {
@@ -90,7 +97,7 @@ float fminbound(float (*func)(), float a, float b, float *args, float xatol,
                 rat = (p + 0.0)/q;
                 x = xf + rat;
 
-                step = "       parabolic";
+                step = "       parabolic\n";
                 
                 if (((x - a) < tol2) || ((b - x) < tol2)) {
                     si = sign(xm - xf) + ((xm - xf) == 0);
@@ -107,16 +114,16 @@ float fminbound(float (*func)(), float a, float b, float *args, float xatol,
                 e = b - xf;
                 rat = golden_mean*e;
 
-                step = "       golden";
+                step = "       golden\n";
             }
         
         si = sign(rat) + (rat == 0);
-        x = xf + si*fmax(fabsf(rat), tol1);
-        fu = func(x, *args);
+        x = xf + si*fmaxf(fabsf(rat), tol1);
+        fu = (*func)(x, args);
         num += 1;
                     
         if (disp > 2)
-            printf("%5.0f   %12.6g %12.6g %s", num, x, fu, step);
+            printf("%5d   %12.6g %12.6g %s", num, x, fu, step);
 
         if (fu <= fx) {
             if (x >= xf)
