@@ -88,7 +88,7 @@ def fminbound(func, bounds, args=(), xatol=1e-5, maxiter=500, disp=0):
             step = '       golden'
 
         si = np.sign(rat) + (rat == 0)
-        x = xf + si * np.maximum(np.abs(rat), tol1)
+        x = xf + si * np.maximum(np.abs(rat), tol1)        
         fu = func(x, *args)
         num += 1
         fmin_data = (num, x, fu)
