@@ -40,7 +40,6 @@ def fminbound(func, bounds, args=(), xatol=1e-5, maxiter=500, disp=0):
     num = 1
     fmin_data = (1, xf, fx)
     fu = np.inf
-
     ffulc = fnfc = fx
     xm = 0.5 * (a + b)
     tol1 = sqrt_eps * np.abs(xf) + xatol / 3.0
@@ -67,30 +66,62 @@ def fminbound(func, bounds, args=(), xatol=1e-5, maxiter=500, disp=0):
             e = rat
 
             # Check for acceptability of parabola
+
+            print("Chk accpt parabola: p = %g, q = %g, r = %g, " \
+                   "np.abs(0.5*q*r) = %g\na = %g, b = %g, xf = %g" %
+                   (p, q, r, np.abs(0.5*q*r), a, b, xf))
+            print("q*(a - xf) = %g, q*(b - xf) = %g\n" \
+                   "np.abs(p) < np.abs(0.5*q*r) = %s, p > q*(a - xf) = %s, " \
+                   "p < q*(b - xf) = %s" %
+                  (q*(a - xf), q*(b - xf), str(np.abs(p) < np.abs(0.5*q*r)),
+                  str(p > q*(a - xf)), str(p < q*(b - xf))))
+            print("(np.abs(p) < np.abs(0.5*q*r)) && (p > q*(a - xf)) " \
+                   "&& (p < q*(b - xf)) = %s" % 
+                   str((np.abs(p) < np.abs(0.5*q*r)) and (p > q*(a - xf)) and
+                           (p < q*(b - xf))))
+             
             if ((np.abs(p) < np.abs(0.5*q*r)) and (p > q*(a - xf)) and
                     (p < q * (b - xf))):
+
+                print("Parabola accepted.");
+                
                 rat = (p + 0.0) / q
                 x = xf + rat
+                
                 step = '       parabolic'
 
+                print("Parabolic: x = %g, a = %g, b = %g, tol2 = %g\n"  \
+                       "(x - a) < tol2 = %s, (b - x) < tol2) = %s" %
+                       (x, a, b, tol2, str((x - a) < tol2),
+                        str((b - x) < tol2)));
+            
                 if ((x - a) < tol2) or ((b - x) < tol2):
                     si = np.sign(xm - xf) + ((xm - xf) == 0)
                     rat = tol1 * si
             else:      # do a golden-section step
                 golden = 1
 
+        print("golden = %d" % golden);
+        
         if golden:  # do a golden-section step
+
+            print("Golden accepted.")
+            
             if xf >= xm:
                 e = a - xf
             else:
                 e = b - xf
             rat = golden_mean*e
+
             step = '       golden'
 
+            print("xf = %g, xm = %g, e = %g, rat = %g" % (xf, xm, e, rat))
+            
         si = np.sign(rat) + (rat == 0)
         x = xf + si * np.maximum(np.abs(rat), tol1)        
         fu = func(x, *args)
         num += 1
+        
         fmin_data = (num, x, fu)
         if disp > 2:
             print("%5.0f   %12.6g %12.6g %s" % (fmin_data + (step,)))

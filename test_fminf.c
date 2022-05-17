@@ -1,7 +1,7 @@
 /*
- * test_fmin.c
+ * test_fminf.c
  *
- * Double precision version
+ * Single precision version
  */
 
 #include <stdio.h>
@@ -10,24 +10,23 @@
 #include <unistd.h>
 #include <math.h>
 
-double fminbnd(double (*func)(double x, double *args), double a, double b,
-                 double *args, double xatol, int maxiter, double *fval,
-                 int *flag, int disp);
-double fun(double x, double *args);
+float fminbndf(float (*func)(float x, float *args), float a, float b,
+                float *args, float xatol, int maxiter, float *fval, int *flag,
+                int disp);
+float fun(float x, float *args);
 
-double fun(double x, double *args) {
-    double f = 0.0;
+float fun(float x, float *args) {
+    float f;
     f = (x-2.0)*(x+1.0)*x;
-    /* printf("args[0] = %g, args[1] = %g\n", args[0], args[1]); */
     return f;
 }
 
 int main(int argc, char *argv[]) {
-    double x0 = 0.0;
-    double fval = 0.0;
+    float x0 = 0.0;
+    float fval = 0.0;
     int flag = 0;
-    double a, b, xatol = 1e-3;
-    double args[2] = {7., 9.};
+    float a, b, xatol = 1e-3;
+    float args[2] = {7., 9.};
 
     /* printf ("argc = %d\n", argc); */
 
@@ -37,20 +36,20 @@ int main(int argc, char *argv[]) {
     case 3: {
         a = strtof(argv[1], NULL);
         b = strtof(argv[2], NULL);
-        printf("test_fmin: a=%g, b=%g, xatol=%g\n", a, b, xatol);
         break;
     }
     default:
         printf("At least two arguments, a and b, a < b, needed, " \
                "and (optional) xatol.\n");
         return 1;
+        // break;
     }
 
     /* a = atof(argv[1]); */
     /* b = atof(argv[2]); */
-
     
-    x0 = fminbnd(*fun, a, b, args, xatol, 15, &fval, &flag, 3);
+    
+    x0 = fminbndf(*fun, a, b, args, xatol, 50, &fval, &flag, 3);
 
     printf("x0 = %8f, fval = %8f, flag = %d\n", x0, fval, flag);
     
