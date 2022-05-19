@@ -42,7 +42,7 @@ int main() {
     fread(dat, sizeof(__uint32_t), sz, fh);
 
     ifrmdat = 4;
-    for (ifrm=0; ifrm<100; ifrm++) {
+    for (ifrm=0; ifrm<3; ifrm++) {
     /*     printf("%05x", dat[idt] & 0xfffff);      // Whole seconds ot time */
     /*     printf(".%04x\n", dat[idt+1] / 0x10000); // Tenths of milliseconds */
         for (idt=0; idt<2500; idt++)

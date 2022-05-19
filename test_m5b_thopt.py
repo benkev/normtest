@@ -66,7 +66,7 @@ t_hist = time.time()
 thr = fminbound(quanerr, args=(hsexp,), bounds=[0.5,1.2], disp=3)
 
 t_topt = time.time() - t_hist
-print("--- topt: %6f seconds ---" % t_topt)
+print("--- optimization: %6f seconds ---" % t_topt)
 
 Fthr = F(-thr)
 hsnor = np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])  # Normal quantiles
