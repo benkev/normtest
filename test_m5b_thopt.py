@@ -63,6 +63,9 @@ t_hist = time.time() - t_where
 print("--- hist: %6f seconds ---" % t_hist)
 t_hist = time.time()
 
+#
+# Search for the minimum of residual bw normal & experimental quantiles
+#
 thr = fminbound(quanerr, args=(hsexp,), bounds=[0.5,1.2], disp=3)
 
 t_topt = time.time() - t_hist
@@ -71,7 +74,7 @@ print("--- optimization: %6f seconds ---" % t_topt)
 Fthr = F(-thr)
 hsnor = np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])  # Normal quantiles
 
-err = sum((hsnor - hsexp)**2)
+err = sum((hsnor - hsexp)**2)  # Residual bw normal & exprm. quantiles
 
 print('Normal:       %5.3f  %5.3f  %5.3f  %5.3f' % tuple(hsnor))
 print('Experimental: %5.3f  %5.3f  %5.3f  %5.3f' % tuple(hsexp))

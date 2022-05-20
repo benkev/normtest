@@ -14,11 +14,11 @@
 #define sign(x) ((x) > 0.0) ? 1.0 : (((x) < 0.0) ? -1.0 : 0.0)
 /* #define min(X, Y)  ((X) < (Y) ? (X) : (Y)) */
 /* #define max(X, Y)  ((X) < (Y) ? (X) : (Y)) */
-#define strbool(b) ((b) ? "true" : "false")
+#define strbool(b) ((b) ? "True" : "False")
 
 
 float fminbndf(float (*func)(float x, float *args), float a, float b,
-                 float *args, float xatol, int maxiter, float *fval,
+               float *args, float xatol, int maxiter, float *fval, int *niter,
                int *flag, int disp) {
 
     /*     Options */
@@ -62,11 +62,6 @@ float fminbndf(float (*func)(float x, float *args), float a, float b,
 
     float f = 0;
     fx = (*func)(x, args);
-    printf("x = %g, f = fun(x) = %g, args[0] = %g, args[1] = %g\n",
-           x, f, args[0], args[1]);
-    
-    printf("fminbnd.c: a=%g, b=%g, args[0]=%g, args[1]=%g\n",
-           a, b, args[0], args[1]);
 
     if (a > b) {
         printf("The lower bound exceeds the upper bound: a > b.\n");
@@ -77,6 +72,7 @@ float fminbndf(float (*func)(float x, float *args), float a, float b,
     
     *fval = 0.0; /* Assume solution found */
     *flag = 0;
+    *niter = 0;
     
     fulc = a + golden_mean*(b - a);
     nfc = xf = fulc;
@@ -114,32 +110,12 @@ float fminbndf(float (*func)(float x, float *args), float a, float b,
 
             /* Check for acceptability of parabola */
 
-            printf("Chk accpt parabola: p = %g, q = %g, r = %g, " \
-                   "fabs(0.5*q*r) = %g\na = %g, b = %g, xf = %g,\n" \
-                   "q*(a - xf) = %g, q*(b - xf) = %g\n" \
-                   "fabs(p) < fabs(0.5*q*r) = %s, p > q*(a - xf) = %s, "
-                   "p < q*(b - xf) = %s\n",
-                   p, q, r, fabs(0.5*q*r), a, b, xf, q*(a - xf), q*(b - xf),
-                   strbool(fabs(p) < fabs(0.5*q*r)),  strbool(p > q*(a - xf)),
-                   strbool(p < q*(b - xf)));
-            printf("(fabs(p) < fabs(0.5*q*r)) && (p > q*(a - xf)) " \
-                   "&& (p < q*(b - xf)) = %s\n", 
-                   strbool((fabs(p) < fabs(0.5*q*r)) && (p > q*(a - xf)) &&
-                           (p < q*(b - xf))));
-            
             if ((fabs(p) < fabs(0.5*q*r)) && (p > q*(a - xf)) &&
                 (p < q*(b - xf))) {
-
-                printf("Parabola accepted.\n");
-                
                 rat = (p + 0.0)/q;
                 x = xf + rat;
 
                 step = "       parabolic\n";
-                
-                printf("Parabolic: x = %g, a = %g, b = %g, tol2 = %g\n"  \
-                       "((x - a) < tol2) = %d, ((b - x) < tol2)) = %d\n",
-                       x, a, b, tol2, ((x - a) < tol2), ((b - x) < tol2));
             
                 if (((x - a) < tol2) || ((b - x) < tol2)) {
                     si = sign(xm - xf) + ((xm - xf) == 0.0);
@@ -150,12 +126,8 @@ float fminbndf(float (*func)(float x, float *args), float a, float b,
                 golden = 1;
         }
 
-        printf("golden = %d\n", golden);
-        
         if (golden) {  /* do a golden-section step */
             
-            printf("Golden accepted.\n");
-
             if (xf >= xm)
                 e = a - xf;
             else
@@ -163,9 +135,6 @@ float fminbndf(float (*func)(float x, float *args), float a, float b,
             rat = golden_mean*e;
 
             step = "       golden\n";
-
-            printf("xf = %g, xm = %g, e = %g, rat = %g\n", xf, xm, e, rat);
-            
         }
         
         si = sign(rat) + (rat == 0.0);
@@ -213,12 +182,13 @@ float fminbndf(float (*func)(float x, float *args), float a, float b,
             *flag = 1;
             break;
         }
-    }   /* while() */
+    }   /* while(fabs(xf - xm) ... */
     
     if (isnan(xf) || isnan(fx) || isnan(fu))
         *flag = 2;
 
     *fval = fu;
+    *niter = num;
 
     return xf;
 }
