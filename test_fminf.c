@@ -11,8 +11,8 @@
 #include <math.h>
 
 float fminbndf(float (*func)(float x, float *args), float a, float b,
-                float *args, float xatol, int maxiter, float *fval, int *flag,
-                int disp);
+               float *args, float xatol, int maxiter, float *fval, int *niter, 
+               int *flag, int disp);
 float fun(float x, float *args);
 
 float fun(float x, float *args) {
@@ -24,7 +24,7 @@ float fun(float x, float *args) {
 int main(int argc, char *argv[]) {
     float x0 = 0.0;
     float fval = 0.0;
-    int flag = 0;
+    int nitr = 0, flag = 0;
     float a, b, xatol = 1e-3;
     float args[2] = {7., 9.};
 
@@ -49,9 +49,10 @@ int main(int argc, char *argv[]) {
     /* b = atof(argv[2]); */
     
     
-    x0 = fminbndf(*fun, a, b, args, xatol, 50, &fval, &flag, 3);
+    x0 = fminbndf(*fun, a, b, args, xatol, 50, &fval, &nitr, &flag, 3);
 
-    printf("x0 = %8f, fval = %8f, flag = %d\n", x0, fval, flag);
+    printf("x0 = %8f, fval = %8f, nitr = %d, flag = %d\n",
+           x0, fval, nitr, flag);
     
     return 0;
 }

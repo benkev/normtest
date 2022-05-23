@@ -1,6 +1,6 @@
 /*
-    test m5b.c
-
+ *   test_m5b_thopt.c
+ *
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,8 +52,8 @@ float residual(float thresh, float *q_exprm) {
     /* q_norm0: quantile of Gaussian in [thresh .. 0] and [0 .. thresh] : */
     float q_norm = f_normcdf(-thresh);
     float q_norm0 = 0.5 - q_norm;
-    float chi2 = pow(q_norm - q_exprm[0], 2) + pow(q_norm0 - q_exprm[0], 2) +
-                 pow(q_norm - q_exprm[0], 2) + pow(q_norm0 - q_exprm[0], 2);
+    float chi2 = pow(q_norm -  q_exprm[0], 2) + pow(q_norm0 - q_exprm[1], 2) +
+                 pow(q_norm0 - q_exprm[2], 2) + pow(q_norm -  q_exprm[3], 2);
     return chi2;
 }
 
@@ -90,7 +90,7 @@ int main() {
     FILE *fh = NULL;
     FILE *fth = NULL, *fqr = NULL, *ffl = NULL, *fitr = NULL, *fout = NULL;
 
-    int nfrm = 20480;
+    int nfrm = 2048;
     float nfdat_fl = (float) nfdat;
     int total_frms = 0;
     int last_frmbytes = 0;
@@ -99,16 +99,6 @@ int main() {
     clock_t tic, toc;
  
     
-    
-    /* qua =   malloc(sizeof(float[nfrm][16][4])); */
-    /* pqua = (float *)qua; */
-    /* qresd = malloc(sizeof(float[nfrm][16])); */
-    /* thr =   malloc(sizeof(float[nfrm][16])); */
-    /* flag =  malloc(sizeof(int[nfrm][16])); */
-    /* niter =  malloc(sizeof(int[nfrm][16])); */
-                               
-
-
     /*
      * Create 16 2-bit masks for 16 channels
      */
@@ -138,9 +128,9 @@ int main() {
     printf("Number of whole frames: %d\n", total_frms);
     printf("Last frame size: %d Bytes = %d words.\n",
            last_frmbytes, last_frmwords);
-    /*
-     * nfrm = total_frms; // Uncomment to read in the TOTAL M5B FILE 
-     */
+    
+    /* nfrm = total_frms; // Uncomment to read in the TOTAL M5B FILE  */
+    
 
     /* dat = (__uint32_t *) malloc(m5bbytes*sizeof(__uint32_t)); */
 
@@ -240,7 +230,12 @@ int main() {
 
     time(&toc); /* End computations */
     
-    printf("Computations took time: %ld s.\n", toc - tic);
+    long tictoc = (long) (toc - tic);
+    long tmin = tictoc/60, tsec = tictoc%60;
+    if (tmin == 0) 
+        printf("Computations took time: %ld s.\n", tictoc);
+    else
+        printf("Computations took time: %ld min. %ld s.\n", tmin, tsec);
     
     fth = fopen("thresh.txt","w");
     for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
@@ -260,7 +255,7 @@ int main() {
         /* fprintf(fqr, "%d: ", ifrm); */
         /* printf("%d: ", ifrm); */
         for (ich=0; ich<16; ich++) { /* Channel count */
-            fprintf(fqr, "%10g ", qresd[ifrm][ich]);
+            fprintf(fqr, "%12g ", qresd[ifrm][ich]);
             /* printf("%10g ", qresd[ifrm][ich]); */
         }
         fprintf(fqr, "\n");
@@ -295,16 +290,16 @@ int main() {
     fclose(ffl);
 
    
-    fout = fopen("quantiles.txt","w");
-    for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
-        for (iqua=0; iqua<4; iqua++) {
-            fprintf(fout, "%g ", qua[ifrm][4][iqua]);
-            /* printf("%g ", qua[ifrm][4][iqua]); */
-        }
-        fprintf(fout, "\n");
-        /* printf("\n"); */
-    }
-    fclose(fout);
+    /* fout = fopen("quantiles.txt","w"); */
+    /* for (ifrm=0; ifrm<nfrm; ifrm++) { /\* Frame count *\/ */
+    /*     for (iqua=0; iqua<4; iqua++) { */
+    /*         fprintf(fout, "%g ", qua[ifrm][14][iqua]); */
+    /*         /\* printf("%g ", qua[ifrm][4][iqua]); *\/ */
+    /*     } */
+    /*     fprintf(fout, "\n"); */
+    /*     /\* printf("\n"); *\/ */
+    /* } */
+    /* fclose(fout); */
 
     free(dat);
 }

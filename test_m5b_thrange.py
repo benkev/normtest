@@ -31,7 +31,7 @@ def calc_hserr(xt, thr, prres=False):
 pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
 
 nthr = 51
-nfrm = 1000
+nfrm = 1  # 000
 ndat = 2500*nfrm
 thrs = np.linspace(0.4, 1.5, nthr)       # Thresholds in STD
 chi2s = np.zeros(nthr,  dtype=np.float64)

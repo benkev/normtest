@@ -8,13 +8,16 @@ F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))
 
 pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
 
-nfrm = 1000
-ndat = 2500*nfrm
-thr = 0.6652475842498528 # 0.82       # Threshold in STD 
+nfrm = 1
+ndat = 2500*nfrm   # Total data (32-bit words)
+# thr = 0.6652475842498528 # 0.82       # Threshold in STD 
+thr = 0.817       # Threshold in STD 
+# thr = 0.798121
 
-d = np.zeros(nfrm*2500, dtype=np.uint32)   # Raw data
+d = np.zeros(ndat, dtype=np.uint32)   # Raw data
 xt = np.zeros_like(d, dtype=np.float64)
 x = np.zeros(2500, dtype=np.float64)
+qua = np.zeros(4, dtype=np.uint32)  # Quantiles
 
 for ifrm in range(nfrm):
     foff = 10016*ifrm
@@ -50,18 +53,9 @@ xt[np.where(d01t == 2)] =  0.5
 xt[np.where(d01t == 1)] = -0.5
 xt[np.where(d01t == 0)] =  -1.5
 
-# d23t = 0b1100 & d   # 1th channel, bits 0 and 1
+for idt in range(ndat):
+    qua[d01t[idt]] += 1
 
-# xt[np.where(d23t == 3)] =  1.5
-# xt[np.where(d23t == 2)] =  0.5
-# xt[np.where(d23t == 1)] = -0.5
-# xt[np.where(d23t == 0)] =  -1.5
-
-# pl.figure()
-# pl.hist(xt, rwidth=0.5, bins=[-3, -2, -1, 0, 1, 2, 3]); pl.grid(1)
-# pl.plot([-1.5, -0.5, 0.5, 1.5], hsnor*ndat, 'ro') # Normal distribution
-
-# pl.show()
 
 F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))  # Normal CDF
 

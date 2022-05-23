@@ -21,8 +21,10 @@ def quanerr(thr, args):
 t_start = time.time()
 
 
-nfrm = 100000
+nfrm = 1 #00000
 ndat = 2500*nfrm
+chan = 14
+chmask = 0x03 << (2*chan)
 
 d = np.zeros(nfrm*2500, dtype=np.uint32)   # Raw data
 xt = np.zeros_like(d, dtype=np.float64)
@@ -45,7 +47,8 @@ print("--- read: %6f seconds ---" % t_read)
 t_read = time.time()
 
 
-d01t = 0x03 & d   # 0th channel, bits 0 and 1
+d01t = chmask & d   # 0th channel, bits 0 and 1
+d01t >>= (2*chan)   # Shift to lower 2 bits
 
 xt[np.where(d01t == 3)] =  1.5
 xt[np.where(d01t == 2)] =  0.5
@@ -76,7 +79,7 @@ hsnor = np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])  # Normal quantiles
 
 err = sum((hsnor - hsexp)**2)  # Residual bw normal & exprm. quantiles
 
-print('Normal:       %5.3f  %5.3f  %5.3f  %5.3f' % tuple(hsnor))
-print('Experimental: %5.3f  %5.3f  %5.3f  %5.3f' % tuple(hsexp))
-print('Threshold: %8f  Error: %8f' % (thr, err))
+print('Gaussian quantiles:       %5.3f  %5.3f  %5.3f  %5.3f' % tuple(hsnor))
+print('Experimental quantiles:   %5.3f  %5.3f  %5.3f  %5.3f' % tuple(hsexp))
+print('Optimal threshold: %8f  Error: %8f' % (thr, err))
 
