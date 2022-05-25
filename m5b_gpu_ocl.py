@@ -42,7 +42,7 @@ dat = np.fromfile(fname, dtype=np.uint32, count=frmwords*nfrm)
 
 toc = time.time()
 
-print("M5B file has been read. Time: %d s.\n", toc - tic);
+print("M5B file has been read. Time: %7.3f s.\n" % (toc-tic))
 
 tic = time.time()
 
@@ -63,10 +63,25 @@ niter = np.zeros((nfrm,16), dtype=np.uint32)
 # # the host buffer, , to the device buffer (referred as buf_)
 # # in the GPU memory.
 # #
-# buf_rndst = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=rndst)
-# buf_rndu =  cl.Buffer(ctx, mf.WRITE_ONLY, rndu.nbytes)
-buf_dat = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=dat)
+# buf_dat = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=dat)
+# buf_qua = cl.Buffer(ctx, mf.WRITE_ONLY, hostbuf=qua)
+# buf_qresd = cl.Buffer(ctx, mf.WRITE_ONLY, hostbuf=qresd)
+# buf_thr = cl.Buffer(ctx, mf.WRITE_ONLY, hostbuf=thr)
+# buf_flag = cl.Buffer(ctx, mf.WRITE_ONLY, hostbuf=flag)
+# buf_niter = cl.Buffer(ctx, mf.WRITE_ONLY, hostbuf=niter)
 
+
+#
+# Read the kernel code from file
+#
+# with open (".cl") as fh: ker = fh.read()
+
+# prg = cl.Program(ctx, ker).build(options=['-I .'])
+
+# prg.genrand(queue, (Nproc,), (Nwitem,), buf_dat, buf_qua, buf_qresd,
+#             buf_thr, buf_flag, buf_niter, nfrm)
+
+# cl.enqueue_copy(queue, rndu, buf_rndu)
 
 
 
