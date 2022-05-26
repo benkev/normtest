@@ -46,11 +46,23 @@ print("M5B file has been read. Time: %7.3f s.\n" % (toc-tic))
 
 tic = time.time()
 
-qua =   np.zeros((nfrm,16,4), dtype=np.float32)
-qresd = np.zeros((nfrm,16), dtype=np.float32)
-thr =   np.zeros((nfrm,16), dtype=np.float32)
-flag =  np.zeros((nfrm,16), dtype=np.uint32)
-niter = np.zeros((nfrm,16), dtype=np.uint32)
+ch_mask = np.zeros((nfrm,16), dtype=np.uint32)    # Channel 2-bit masks
+quantl = np.zeros((nfrm,16,4), dtype=np.float32)  # Quantiles
+residl = np.zeros((nfrm,16), dtype=np.float32)    # Residuals
+thresh = np.zeros((nfrm,16), dtype=np.float32)    # Thresholds
+flag =   np.zeros((nfrm,16), dtype=np.uint16)     # Flags
+niter =  np.zeros((nfrm,16), dtype=np.uint16) # Number of iterations fminbnd()
+
+ # /*
+ #  * Create 16 2-bit masks for 16 channels
+ #  */
+ # ch_mask[0] = 0x00000003;       /* Mask for channel 0 */
+ # for (ich=1; ich<16; ich++)
+ #     ch_mask[ich] = ch_mask[ich-1] << 2;
+    
+ # /* for (ich=0; ich<16; ich++) */
+ # /*     printf("ch_mask[%2d] = %08x = %032b\n", ich, ch_mask[ich]); */
+
 
 # mf = cl.mem_flags
 
@@ -63,10 +75,11 @@ niter = np.zeros((nfrm,16), dtype=np.uint32)
 # # the host buffer, , to the device buffer (referred as buf_)
 # # in the GPU memory.
 # #
+# buf_ch_mask = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=ch_mask)
 # buf_dat = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=dat)
-# buf_qua = cl.Buffer(ctx, mf.WRITE_ONLY, hostbuf=qua)
-# buf_qresd = cl.Buffer(ctx, mf.WRITE_ONLY, hostbuf=qresd)
-# buf_thr = cl.Buffer(ctx, mf.WRITE_ONLY, hostbuf=thr)
+# buf_quantl = cl.Buffer(ctx, mf.WRITE_ONLY, hostbuf=quantl)
+# buf_residl = cl.Buffer(ctx, mf.WRITE_ONLY, hostbuf=residl)
+# buf_thresh = cl.Buffer(ctx, mf.WRITE_ONLY, hostbuf=thresh)
 # buf_flag = cl.Buffer(ctx, mf.WRITE_ONLY, hostbuf=flag)
 # buf_niter = cl.Buffer(ctx, mf.WRITE_ONLY, hostbuf=niter)
 
@@ -74,16 +87,33 @@ niter = np.zeros((nfrm,16), dtype=np.uint32)
 #
 # Read the kernel code from file
 #
-# with open (".cl") as fh: ker = fh.read()
+# with open ("gauss_test_m5b.cl") as fh: ker = fh.read()
 
 # prg = cl.Program(ctx, ker).build(options=['-I .'])
 
-# prg.genrand(queue, (Nproc,), (Nwitem,), buf_dat, buf_qua, buf_qresd,
-#             buf_thr, buf_flag, buf_niter, nfrm)
+# prg.gausstestm5b(queue, (Nproc,), (Nwitem,), buf_ch_mask, buf_dat,
+#                  buf_quantl, buf_residl, buf_thresh, buf_flag,
+#                  buf_niter, nfrm)
 
-# cl.enqueue_copy(queue, rndu, buf_rndu)
+# cl.enqueue_copy(queue, quantl, buf_quantl)
+# cl.enqueue_copy(queue, residl, buf_residl)
+# cl.enqueue_copy(queue, thresh, buf_thresh)
+# cl.enqueue_copy(queue, flag, buf_flag)
+# cl.enqueue_copy(queue, niter, buf_niter)
 
 
 
 # queue.flush()
 # queue.finish()
+
+# buf_ch_mask.release()
+# buf_dat.release()
+# buf_quantl.release()
+# buf_residl.release()
+# buf_thresh.release()
+# buf_flag.release()
+# buf_niter.release()
+
+# toc = time.time()
+
+# print("GPU time: %ld s." % toc-tic)
