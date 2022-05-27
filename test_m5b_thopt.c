@@ -35,7 +35,7 @@ float f_normcdf(float x) {
 
 float residual(float thresh, float *q_exprm) {
     /*
-     * The function minimized to find the optimal quantization threshold
+     * The function to be minimized to find the optimal quantization threshold
      *
      * Inputs:
      * thresh: theshold for the quantization like:
@@ -63,10 +63,11 @@ float residual(float thresh, float *q_exprm) {
 int main() {
     size_t m5bbytes;
     __uint32_t chbits;
-    __uint32_t *dat=NULL;
-    __uint32_t ifrm, idt, ich, ifrmdat, iqua, ptim1, ptim2, pdat, i, iseq;
+    __uint32_t *dat = NULL;
+    __uint32_t *pdat = NULL, *ptim1 = NULL, *ptim2 = NULL;
+    int ifrm, idt, ich, ifrmdat, iqua, ixtim1, ixtim2, ixdat, i, iseq;
     float (*qua)[16][4]; /* 4 quantiles of the exprm. data for 16 channels */
-    float *pqua;
+    float *pqua = NULL, *pqua_init = NULL;
     float q_exprm[4] = {1., 2., 3., 4.};
     float sum_qua = 0.0;
     __uint32_t ch_mask[16];        /*  2-bit masks for all channels */
@@ -166,36 +167,54 @@ int main() {
     flag =  malloc(sizeof(int[nfrm][16]));
     niter =  malloc(sizeof(int[nfrm][16]));
                                
-    ptim1 = 2; /* Pointer to the word with whole seconds in header */
-    ptim2 = 3; /* Pointer to the word with tenths of milliseconds in header */
-    pdat = 4;  /* Pointer to the 2500-word data block */
+    ixtim1 = 2; /* Pointer to the word with whole seconds in header */
+    ixtim2 = 3; /* Pointer to the word with tenths of milliseconds in header */
+    ixdat = 4;  /* Pointer to the 2500-word data block */
     
     for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
 
-    /*     Print time within a second from frame header */
-    /*     printf("%05x", dat[ptim1] & 0xfffff);   // Whole seconds of time */
-    /*     printf(".%04x\n", dat[ptim2] / 0x10000); // Tenths of milliseconds */
+    /*   Print time within a second from frame header */
+    /*   printf("%05x", dat[ixtim1] & 0xfffff);   // Whole seconds of time */
+    /*   printf(".%04x\n", dat[ixtim2] / 0x10000); // Tenths of milliseconds */
+
+        pqua = pqua_init = (float *) qua[ifrm];
 
         /* Zeroize the quantiles for current frame: all channels. */
-        pqua = (float *) qua[ifrm];
         for (iseq=0; iseq<nchqua; iseq++)
             *pqua++ = 0.0;
         /* for (ich=0; ich<16; ich++) */
         /*     for (iqua=0; iqua<4; iqua++) */
         /*         qua[ifrm][ich][iqua] = 0.0; */
+        
+        // pdat = &dat[ixdat] + 4; /* Pointer to the data block in the frame */
+        pqua = (float *) &qua[ifrm];
 
-
-        for (idt=0; idt<nfdat; idt++) /* Data 32b-words in frame count */
+        // if (ifrm == 1) printf("dat = %08p, pdat = %08p\n", dat, pdat);
+        // printf("&dat[ixdat] = %08p\n", &dat[ixdat]);
+        // printf("&qua[ifrm] = %08p\n", &qua[ifrm]);
+        
+        for (idt=0; idt<nfdat; idt++) { /* Data 32b-words in frame count */
+            
             for (ich=0; ich<16; ich++) {
-                chbits = dat[pdat+idt] & ch_mask[ich]; /* 2-bit-stream value */
+                /* 2-bit-stream value */
+                // chbits = *pdat & ch_mask[ich];
+                chbits = dat[ixdat+idt] & ch_mask[ich];
                 /* Move the 2-bit-stream of the ich-th channel to the
-                 * rightmost position in the 32-bit word 
+                 * rightmost position in the 32-bit word chbits
+                 * to get the quantile index iqua from 0,1,2,3 */
+                iqua = chbits >> (2*ich);
+                pqua[ich*nqua+iqua] += 1.0;
+
+                /* 2-bit-stream value */
+                /* chbits = dat[ixdat+idt] & ch_mask[ich]; */
+                /* Move the 2-bit-stream of the ich-th channel to the
+                 * rightmost position in the 32-bit word
                  * to get the quantile index from 0,1,2,3 */
-                iqua = chbits >> 2*ich; 
-                qua[ifrm][ich][iqua] += 1.0;
+                /* iqua = chbits >> 2*ich; */
+                /* qua[ifrm][ich][iqua] += 1.0; */
             }
-
-
+            // pdat++;
+        }
         /* 
          * Finding optimal quantization thresholds and residuals
          */
@@ -229,9 +248,9 @@ int main() {
         }
         
         /* Move pointers to the next frame */
-        pdat = pdat + frmwords;
-        ptim1 = ptim1 + frmwords;
-        ptim2 = ptim2 + frmwords;
+        ixdat = ixdat + frmwords;
+        ixtim1 = ixtim1 + frmwords;
+        ixtim2 = ixtim2 + frmwords;
         
     }                 /* for (ifrm=0 ... */
 
