@@ -67,7 +67,7 @@ int main() {
     __uint32_t *pdat = NULL, *ptim1 = NULL, *ptim2 = NULL;
     int ifrm, idt, ich, ifrmdat, iqua, ixtim1, ixtim2, ixdat, i, iseq;
     float (*qua)[16][4]; /* 4 quantiles of the exprm. data for 16 channels */
-    float *pqua = NULL, *pqua_init = NULL;
+    float *pqua = NULL, *pqua_init = NULL, *pqua_ch = NULL;
     float q_exprm[4] = {1., 2., 3., 4.};
     float sum_qua = 0.0;
     __uint32_t ch_mask[16];        /*  2-bit masks for all channels */
@@ -187,7 +187,7 @@ int main() {
         /*         qua[ifrm][ich][iqua] = 0.0; */
         
         // pdat = &dat[ixdat] + 4; /* Pointer to the data block in the frame */
-        pqua = (float *) &qua[ifrm];
+        pqua = (float *) &qua[ifrm]; /* 1D array pqua[i] == qua[ifrm][i] */
 
         // if (ifrm == 1) printf("dat = %08p, pdat = %08p\n", dat, pdat);
         // printf("&dat[ixdat] = %08p\n", &dat[ixdat]);
@@ -215,19 +215,33 @@ int main() {
             }
             // pdat++;
         }
+        
         /* 
          * Finding optimal quantization thresholds and residuals
          */
-        for (ich=0; ich<16; ich++) {
+        for (ich=0; ich<nch; ich++) {
             /*
              * Normalize the quantiles dividing them by the frame size
              * so that their sum be 1: sum(q_exprm) == 1.
              */
+            /* 1D array pqua_ch[i] == qua[ifrm][ich][i] */
+            pqua_ch = (float *) &qua[ifrm][ich];
+            
+            q_exprm[0] = *pqua_ch++ / nfdat_fl;
+            q_exprm[1] = *pqua_ch++ / nfdat_fl;
+            q_exprm[2] = *pqua_ch++ / nfdat_fl;
+            q_exprm[3] = *pqua_ch++ / nfdat_fl;
 
-            q_exprm[0] = (qua[ifrm][ich][0]) / nfdat_fl;
-            q_exprm[1] = (qua[ifrm][ich][1]) / nfdat_fl;
-            q_exprm[2] = (qua[ifrm][ich][2]) / nfdat_fl;
-            q_exprm[3] = (qua[ifrm][ich][3]) / nfdat_fl;
+            
+            /* q_exprm[0] = pqua[ich*nqua]   / nfdat_fl; */
+            /* q_exprm[1] = pqua[ich*nqua+1] / nfdat_fl; */
+            /* q_exprm[2] = pqua[ich*nqua+2] / nfdat_fl; */
+            /* q_exprm[3] = pqua[ich*nqua+3] / nfdat_fl; */
+
+            /* q_exprm[0] = (qua[ifrm][ich][0]) / nfdat_fl; */
+            /* q_exprm[1] = (qua[ifrm][ich][1]) / nfdat_fl; */
+            /* q_exprm[2] = (qua[ifrm][ich][2]) / nfdat_fl; */
+            /* q_exprm[3] = (qua[ifrm][ich][3]) / nfdat_fl; */
 
 
             /*
@@ -241,6 +255,11 @@ int main() {
             th0 = fminbndf(*residual, 0.5, 1.5, q_exprm, xatol, 20,
                            &res, &nitr, &flg, 0);
 
+            /* qresd[ifrm*nch+ich] = res; */
+            /* thr[ifrm*nch+ich] = th0; */
+            /* niter[ifrm*nch+ich] = nitr; */
+            /* flag[ifrm*nch+ich] = flg; */
+            
             qresd[ifrm][ich] = res;
             thr[ifrm][ich] = th0;
             niter[ifrm][ich] = nitr;
