@@ -87,7 +87,7 @@ niter =  np.zeros((nfrm,16), dtype=np.uint16) # Number of iterations fminbnd()
 #
 # Read the kernel code from file
 #
-# with open ("gauss_test_m5b.cl") as fh: ker = fh.read()
+# with open ("ker_gauss_test_m5b.cl") as fh: ker = fh.read()
 
 # prg = cl.Program(ctx, ker).build(options=['-I .'])
 

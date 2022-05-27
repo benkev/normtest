@@ -64,7 +64,7 @@ int main() {
     size_t m5bbytes;
     __uint32_t chbits;
     __uint32_t *dat=NULL;
-    __uint32_t ifrm, idt, ich, ifrmdat, iqua, ptim1, ptim2, pdat, i;
+    __uint32_t ifrm, idt, ich, ifrmdat, iqua, ptim1, ptim2, pdat, i, iseq;
     float (*qua)[16][4]; /* 4 quantiles of the exprm. data for 16 channels */
     float *pqua;
     float q_exprm[4] = {1., 2., 3., 4.};
@@ -90,7 +90,10 @@ int main() {
     FILE *fh = NULL;
     FILE *fth = NULL, *fqr = NULL, *ffl = NULL, *fitr = NULL, *fout = NULL;
 
-    int nfrm = 2048;
+    int nfrm = 100;
+    int nch = 16;   /* 16 2-bit channels in each 32-bit word */
+    int nqua = 4;   /* 4 quantiles for each channel */
+    int nchqua = nch*nqua; /* Total of quantiles for 16 chans, 64 */
     float nfdat_fl = (float) nfdat;
     int total_frms = 0;
     int last_frmbytes = 0;
@@ -129,7 +132,7 @@ int main() {
     printf("Last frame size: %d Bytes = %d words.\n",
            last_frmbytes, last_frmwords);
     
-    nfrm = total_frms; // Uncomment to read in the TOTAL M5B FILE
+    /* nfrm = total_frms; // Uncomment to read in the TOTAL M5B FILE */
     
 
     /* dat = (__uint32_t *) malloc(m5bbytes*sizeof(__uint32_t)); */
@@ -174,9 +177,13 @@ int main() {
     /*     printf(".%04x\n", dat[ptim2] / 0x10000); // Tenths of milliseconds */
 
         /* Zeroize the quantiles for current frame: all channels. */
-        for (ich=0; ich<16; ich++)
-            for (iqua=0; iqua<4; iqua++)
-                qua[ifrm][ich][iqua] = 0.0;
+        pqua = (float *) qua[ifrm];
+        for (iseq=0; iseq<nchqua; iseq++)
+            *pqua++ = 0.0;
+        /* for (ich=0; ich<16; ich++) */
+        /*     for (iqua=0; iqua<4; iqua++) */
+        /*         qua[ifrm][ich][iqua] = 0.0; */
+
 
         for (idt=0; idt<nfdat; idt++) /* Data 32b-words in frame count */
             for (ich=0; ich<16; ich++) {
@@ -236,7 +243,8 @@ int main() {
         printf("Computations took time: %ld s.\n", tictoc);
     else
         printf("Computations took time: %ld min. %ld s.\n", tmin, tsec);
-    
+
+
     fth = fopen("thresh.txt","w");
     for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
         /* fprintf(fth, "%d: ", ifrm); */
@@ -289,17 +297,19 @@ int main() {
     }
     fclose(ffl);
 
-   
-    /* fout = fopen("quantiles.txt","w"); */
-    /* for (ifrm=0; ifrm<nfrm; ifrm++) { /\* Frame count *\/ */
-    /*     for (iqua=0; iqua<4; iqua++) { */
-    /*         fprintf(fout, "%g ", qua[ifrm][14][iqua]); */
-    /*         /\* printf("%g ", qua[ifrm][4][iqua]); *\/ */
-    /*     } */
-    /*     fprintf(fout, "\n"); */
-    /*     /\* printf("\n"); *\/ */
-    /* } */
-    /* fclose(fout); */
+
+    int chn = 4;
+    
+    fout = fopen("quantiles_4chn.txt","w");
+    for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
+        for (iqua=0; iqua<4; iqua++) {
+            fprintf(fout, "%g ", qua[ifrm][chn][iqua]);
+            /* printf("%g ", qua[ifrm][chn][iqua]); */
+        }
+        fprintf(fout, "\n");
+        /* printf("\n"); */
+    }
+    fclose(fout);
 
     free(dat);
 }

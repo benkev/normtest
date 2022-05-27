@@ -6,17 +6,18 @@
 // #include <stdlib.h>
 // #include <stdint.h>
 // #include <unistd.h>
-// #include <math.h>
+#include <math.h>
 // #include <time.h>
 
 #define A(x,y) a[x*width + y]   // ????????????????????????????????????????
 
-float sqrt2 = sqrt(2.0);   /* Global */
-float fmega = pow(1024.,2);   /* Global */
-float fgiga = pow(1024.,3);   /* Global */
-int frmwords = 2504; /* 32-bit words in one frame including the 4-word header */
-int frmbytes = 2504*4;
-int nfdat = 2500;   /* 32-bit words of data in one frame */
+__constant float sqrt2 = sqrt(2.0);   /* Global */
+__constant int frmwords = 2504; /* 32-bit words in a frame with 4-word header */
+__constant int frmbytes = 2504*4;
+__constant int nfdat = 2500;   /* 32-bit words of data in one frame */
+__constant int nch = 16;   /* 16 2-bit channels in each 32-bit word */
+__constant int nqua = 4;   /* 4 quantiles for each channel */
+__constant int nchqua = nch*nqua; /* Total of quantiles for 16 chans, 64 */
 
 float fminbndf(float (*func)(float x, float *args), float a, float b,
                float *args, float xatol, int maxiter, float *fval, int *niter, 
@@ -26,13 +27,6 @@ float f_normcdf(float x) {
     float f = 0.5*(1.0 + erf(x/sqrt2));
     return f;
 }
-
-/* def quanerr(thr, args): */
-/*     Fthr = F(-thr) */
-/*     hsnor = np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])  # Normal quantiles */
-/*     hsexp = np.copy(args) */
-/*     err = sum((hsnor - hsexp)**2) */
-/*     return err */
 
 
 float residual(float thresh, float *q_exprm) {
@@ -70,11 +64,13 @@ __kernel void gausstestm5b(__global int *dat, __global uint *ch_mask,
                            __global float *quantl, __global float *residl,
                            __global float *thresh, __global short *flag,
                            __global short *niter, uint nfrm) {
-    size_t m5bbytes;
-    uint chbits;
-    uint ifrm, idt, ich, iqua, ptim1, ptim2, pdat, i;
-    float (*quantl)[16][4]; /* 4 quantiles of the exprm. data for 16 channels */
-    float *pquantl;
+
+    size_t ifrm = get_global_id(0);  /* Unique process and frame number */
+    
+    uint ch_bits;
+    uint ifrm, idt, ich, iqua, ptim1, ptim2, pdat, i, iseq;
+    // float (*quantl)[16][4]; /* 4 quantiles of  data for 16 channels */
+    float *pqua;
     float q_exprm[4] = {1., 2., 3., 4.};
     float sum_qua = 0.0;
     // uint ch_mask[16];        /*  2-bit masks for all channels */
@@ -111,62 +107,67 @@ __kernel void gausstestm5b(__global int *dat, __global uint *ch_mask,
     ptim2 = 3; /* Pointer to the word with tenths of milliseconds in header */
     pdat = 4;  /* Pointer to the 2500-word data block */
     
-    for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
+    // for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
 
-        /* Zeroize the quantiles for current frame: all channels. */
-        for (ich=0; ich<16; ich++)
-            for (iqua=0; iqua<4; iqua++)
-                quantl[ifrm][ich][iqua] = 0.0;
+    /* Zeroize the quantiles for current frame: all channels. */
+    pqua = (float *) quantl[Nchqua*ifrm];
+    for (iseq=0; iseq<Nchqua; iseq++)
+        *pqua++ = 0.0;
+    // for (ich=0; ich<16; ich++)
+    //     for (iqua=0; iqua<4; iqua++)
+    //         // quantl[ifrm][ich][iqua] = 0.0;
+    //         // quantl[(ifrm*nch + ich)*nqua + iqua)] = 0.0
 
-        for (idt=0; idt<nfdat; idt++) /* Data 32b-words in frame count */
-            for (ich=0; ich<16; ich++) {
-                chbits = dat[pdat+idt] & ch_mask[ich]; /* 2-bit-stream value */
-                /* Move the 2-bit-stream of the ich-th channel to the
-                 * rightmost position in the 32-bit word 
-                 * to get the quantile index from 0,1,2,3 */
-                iqua = chbits >> 2*ich; 
-                quantl[ifrm][ich][iqua] += 1.0;
-            }
-
-
-        /* 
-         * Finding optimal quantization thresholds and residuals
-         */
+    for (idt=0; idt<nfdat; idt++) /* Data 32b-words in frame count */
         for (ich=0; ich<16; ich++) {
-            /*
-             * Normalize the quantiles dividing them by the frame size
-             * so that their sum be 1: sum(q_exprm) == 1.
-             */
-
-            q_exprm[0] = (quantl[ifrm][ich][0]) / nfdat_fl;
-            q_exprm[1] = (quantl[ifrm][ich][1]) / nfdat_fl;
-            q_exprm[2] = (quantl[ifrm][ich][2]) / nfdat_fl;
-            q_exprm[3] = (quantl[ifrm][ich][3]) / nfdat_fl;
-
-
-            /*
-             * Fit the Gaussian PDF to the quantiles of the signals from 
-             * the M5B file. The single variable search Brent's  method is 
-             * used find the optimal value of the signal rms (i.e. STD), 
-             * which provides the minimum residual between quantiles of 
-             * the Gaussian PDF and those of the 2-bit streams 
-             * from M5B files. 
-             */
-            th0 = fminbndf(*residual, 0.5, 1.5, q_exprm, xatol, 20,
-                           &res, &nitr, &flg, 0);
-
-            qresd[ifrm][ich] = res;
-            thresh[ifrm][ich] = th0;
-            niter[ifrm][ich] = nitr;
-            flag[ifrm][ich] = flg;
+            ch_bits = dat[pdat+idt] & ch_mask[ich]; /* 2-bit-stream value */
+            /* Move the 2-bit-stream of the ich-th channel to the
+             * rightmost position in the 32-bit word 
+             * to get the quantile index from 0,1,2,3 */
+            iqua = ch_bits >> 2*ich; 
+            quantl[ifrm][ich][iqua] += 1.0;
         }
+
+
+    /* 
+     * Finding optimal quantization thresholds and residuals
+     */
+    for (ich=0; ich<16; ich++) {
+        /*
+         * Normalize the quantiles dividing them by the frame size
+         * so that their sum be 1: sum(q_exprm) == 1.
+         */
+
+        q_exprm[0] = (quantl[ifrm][ich][0]) / nfdat_fl;
+        q_exprm[1] = (quantl[ifrm][ich][1]) / nfdat_fl;
+        q_exprm[2] = (quantl[ifrm][ich][2]) / nfdat_fl;
+        q_exprm[3] = (quantl[ifrm][ich][3]) / nfdat_fl;
+
+
+        /*
+         * Fit the Gaussian PDF to the quantiles of the signals from 
+         * the M5B file. The single variable search Brent's  method is 
+         * used find the optimal value of the signal rms (i.e. STD), 
+         * which provides the minimum residual between quantiles of 
+         * the Gaussian PDF and those of the 2-bit streams 
+         * from M5B files. 
+         */
+        th0 = fminbndf(*residual, 0.5, 1.5, q_exprm, xatol, 20,
+                       &res, &nitr, &flg, 0);
+
+        qresd[ifrm][ich] = res;
+        thresh[ifrm][ich] = th0;
+        niter[ifrm][ich] = nitr;
+        flag[ifrm][ich] = flg;
+            
+    }
         
-        /* Move pointers to the next frame */
-        pdat = pdat + frmwords;
-        ptim1 = ptim1 + frmwords;
-        ptim2 = ptim2 + frmwords;
+    /* Move pointers to the next frame */
+    pdat = pdat + frmwords;
+    ptim1 = ptim1 + frmwords;
+    ptim2 = ptim2 + frmwords;
         
-    }                 /* for (ifrm=0 ... */
+    // }                 /* for (ifrm=0 ... */
 
 }
 
