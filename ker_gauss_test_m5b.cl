@@ -68,23 +68,14 @@ __kernel void gausstestm5b(__global int *dat, __global uint *ch_mask,
     size_t ifrm = get_global_id(0);  /* Unique process and frame number */
     
     uint ch_bits;
-    uint ifrm, idt, ich, iqua, ptim1, ptim2, pdat, i, iseq;
+    uint ifrm, idt, ich, iqua, ixtim1, ixtim2, ixdat, i, iseq;
     // float (*quantl)[16][4]; /* 4 quantiles of  data for 16 channels */
     float *pqua;
-    float q_exprm[4] = {1., 2., 3., 4.};
-    float sum_qua = 0.0;
-    // uint ch_mask[16];        /*  2-bit masks for all channels */
-
+    float q_exprm[4];
     
     /* Optimization function parameters */
     float xatol = 1e-4;
     int maxiter = 20;
-
-    /* Results */
-    // float (*thresh)[16];    /* Optimal quantization thesholds found */
-    // float (*qresd)[16]; /* Residuals between normal and exprm. quantiles */
-    // int (*flag)[16];   /* Optimization flags  */
-    // int (*niter)[16]; /* Numbers of calls to residual() function */
 
     int nitr = 0;    /* Number of calls to the optimized function residual() */
     float res; /* The minimal value of the quantization threshold */
@@ -103,9 +94,9 @@ __kernel void gausstestm5b(__global int *dat, __global uint *ch_mask,
     // /* for (ich=0; ich<16; ich++) */
     // /*     printf("ch_mask[%2d] = %08x = %032b\n", ich, ch_mask[ich]); */
 
-    ptim1 = 2; /* Pointer to the word with whole seconds in header */
-    ptim2 = 3; /* Pointer to the word with tenths of milliseconds in header */
-    pdat = 4;  /* Pointer to the 2500-word data block */
+    ixtim1 = 2; /* Pointer to the word with whole seconds in header */
+    ixtim2 = 3; /* Pointer to the word with tenths of milliseconds in header */
+    ixdat = 4;  /* Pointer to the 2500-word data block */
     
     // for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
 
@@ -113,35 +104,49 @@ __kernel void gausstestm5b(__global int *dat, __global uint *ch_mask,
     pqua = (float *) quantl[Nchqua*ifrm];
     for (iseq=0; iseq<Nchqua; iseq++)
         *pqua++ = 0.0;
+    
     // for (ich=0; ich<16; ich++)
     //     for (iqua=0; iqua<4; iqua++)
     //         // quantl[ifrm][ich][iqua] = 0.0;
     //         // quantl[(ifrm*nch + ich)*nqua + iqua)] = 0.0
 
+     /* 1D array pqua[i] == qua[ifrm][i] */
+    pqua = (float *) &quantl[Nchqua*ifrm];
+    
     for (idt=0; idt<nfdat; idt++) /* Data 32b-words in frame count */
-        for (ich=0; ich<16; ich++) {
-            ch_bits = dat[pdat+idt] & ch_mask[ich]; /* 2-bit-stream value */
+        for (ich=0; ich<nch; ich++) {
+            ch_bits = dat[ixdat+idt] & ch_mask[ich]; /* 2-bit-stream value */
             /* Move the 2-bit-stream of the ich-th channel to the
-             * rightmost position in the 32-bit word 
-             * to get the quantile index from 0,1,2,3 */
-            iqua = ch_bits >> 2*ich; 
-            quantl[ifrm][ich][iqua] += 1.0;
+             * rightmost position in the 32-bit word  chbits
+             * to get the quantile index iqua from 0,1,2,3 */
+            iqua = ch_bits >> (2*ich);
+            pqua[ich*nqua+iqua] += 1.0; /* quantl[ifrm][ich][iqua] += 1.0; */
+            
+            
         }
 
 
     /* 
      * Finding optimal quantization thresholds and residuals
      */
-    for (ich=0; ich<16; ich++) {
+    for (ich=0; ich<nch; ich++) {
         /*
          * Normalize the quantiles dividing them by the frame size
          * so that their sum be 1: sum(q_exprm) == 1.
          */
 
-        q_exprm[0] = (quantl[ifrm][ich][0]) / nfdat_fl;
-        q_exprm[1] = (quantl[ifrm][ich][1]) / nfdat_fl;
-        q_exprm[2] = (quantl[ifrm][ich][2]) / nfdat_fl;
-        q_exprm[3] = (quantl[ifrm][ich][3]) / nfdat_fl;
+        /* 1D array pqua_ch[i] == quantl[ifrm][ich][i] */
+        pqua_ch = (float *) quantl[(ifrm*nch + ich)*nqua]; // ???????????????
+            
+        q_exprm[0] = *pqua_ch++ / nfdat_fl;
+        q_exprm[1] = *pqua_ch++ / nfdat_fl;
+        q_exprm[2] = *pqua_ch++ / nfdat_fl;
+        q_exprm[3] = *pqua_ch++ / nfdat_fl;
+
+        // q_exprm[0] = (quantl[ifrm][ich][0]) / nfdat_fl;
+        // q_exprm[1] = (quantl[ifrm][ich][1]) / nfdat_fl;
+        // q_exprm[2] = (quantl[ifrm][ich][2]) / nfdat_fl;
+        // q_exprm[3] = (quantl[ifrm][ich][3]) / nfdat_fl;
 
 
         /*
@@ -163,9 +168,9 @@ __kernel void gausstestm5b(__global int *dat, __global uint *ch_mask,
     }
         
     /* Move pointers to the next frame */
-    pdat = pdat + frmwords;
-    ptim1 = ptim1 + frmwords;
-    ptim2 = ptim2 + frmwords;
+    ixdat = ixdat + frmwords;
+    ixtim1 = ixtim1 + frmwords;
+    ixtim2 = ixtim2 + frmwords;
         
     // }                 /* for (ifrm=0 ... */
 

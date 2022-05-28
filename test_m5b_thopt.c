@@ -67,7 +67,7 @@ int main() {
     __uint32_t *pdat = NULL, *ptim1 = NULL, *ptim2 = NULL;
     int ifrm, idt, ich, ifrmdat, iqua, ixtim1, ixtim2, ixdat, i, iseq;
     float (*qua)[16][4]; /* 4 quantiles of the exprm. data for 16 channels */
-    float *pqua = NULL, *pqua_init = NULL, *pqua_ch = NULL;
+    float *pqua = NULL, *pqua_ch = NULL;
     float q_exprm[4] = {1., 2., 3., 4.};
     float sum_qua = 0.0;
     __uint32_t ch_mask[16];        /*  2-bit masks for all channels */
@@ -82,6 +82,8 @@ int main() {
     float (*qresd)[16]; /* Residuals between normal and exprm. quantiles */
     int (*flag)[16];   /* Optimization flags  */
     int (*niter)[16]; /* Numbers of calls to residual() function */
+    float *pthr = NULL, *pqresd = NULL;
+    int *pniter = NULL, *pflag = NULL;
     int nitr = 0;    /* Number of calls to the optimized function residual() */
     float res; /* The minimal value of the quantization threshold */
     float th0; /* Optimal quantization theshold found */
@@ -177,9 +179,18 @@ int main() {
     /*   printf("%05x", dat[ixtim1] & 0xfffff);   // Whole seconds of time */
     /*   printf(".%04x\n", dat[ixtim2] / 0x10000); // Tenths of milliseconds */
 
-        pqua = pqua_init = (float *) qua[ifrm];
+        /*
+         * Difference qua[ifrm] vs &qua[ifrm]:
+         *   qua[ifrm] is the pointer to the 0-th element of the [16][4] 
+         *     subarray of 16 4-word elements, or to its 4-element subarray. 
+         *   &qua[ifrm] is the pointer to the whole of [16][4] subarray. 
+         *
+         * Here there is no difference since the either are converted to 
+         * single word pointers, (float *), to be assigned to pqua.
+         */
 
         /* Zeroize the quantiles for current frame: all channels. */
+        pqua = (float *) qua[ifrm];
         for (iseq=0; iseq<nchqua; iseq++)
             *pqua++ = 0.0;
         /* for (ich=0; ich<16; ich++) */
@@ -187,12 +198,9 @@ int main() {
         /*         qua[ifrm][ich][iqua] = 0.0; */
         
         // pdat = &dat[ixdat] + 4; /* Pointer to the data block in the frame */
+
         pqua = (float *) &qua[ifrm]; /* 1D array pqua[i] == qua[ifrm][i] */
 
-        // if (ifrm == 1) printf("dat = %08p, pdat = %08p\n", dat, pdat);
-        // printf("&dat[ixdat] = %08p\n", &dat[ixdat]);
-        // printf("&qua[ifrm] = %08p\n", &qua[ifrm]);
-        
         for (idt=0; idt<nfdat; idt++) { /* Data 32b-words in frame count */
             
             for (ich=0; ich<16; ich++) {
@@ -219,6 +227,14 @@ int main() {
         /* 
          * Finding optimal quantization thresholds and residuals
          */
+        pqresd = (float *) &qresd[ifrm];
+        pthr =   (float *) &thr[ifrm];
+        pniter = (int *)  &niter[ifrm];
+        pflag =  (int *)  &flag[ifrm];
+
+        /* printf("thr = %08p, pthr = %08p, pthr-thr = %ld\n", */
+        /*        thr, pthr, pthr-(float *)thr); */
+        
         for (ich=0; ich<nch; ich++) {
             /*
              * Normalize the quantiles dividing them by the frame size
@@ -232,7 +248,7 @@ int main() {
             q_exprm[2] = *pqua_ch++ / nfdat_fl;
             q_exprm[3] = *pqua_ch++ / nfdat_fl;
 
-            
+            /* OR (which is much clearer): */
             /* q_exprm[0] = pqua[ich*nqua]   / nfdat_fl; */
             /* q_exprm[1] = pqua[ich*nqua+1] / nfdat_fl; */
             /* q_exprm[2] = pqua[ich*nqua+2] / nfdat_fl; */
@@ -255,15 +271,24 @@ int main() {
             th0 = fminbndf(*residual, 0.5, 1.5, q_exprm, xatol, 20,
                            &res, &nitr, &flg, 0);
 
-            /* qresd[ifrm*nch+ich] = res; */
-            /* thr[ifrm*nch+ich] = th0; */
-            /* niter[ifrm*nch+ich] = nitr; */
-            /* flag[ifrm*nch+ich] = flg; */
+            pqresd[ich] = res;
+            pthr[ich] = th0;
+            pniter[ich] = nitr;
+            pflag[ich] = flg;
             
-            qresd[ifrm][ich] = res;
-            thr[ifrm][ich] = th0;
-            niter[ifrm][ich] = nitr;
-            flag[ifrm][ich] = flg;
+            /* pqresd[ifrm*nch+ich] = res; */
+            /* pthr[ifrm*nch+ich] = th0; */
+            /* pniter[ifrm*nch+ich] = nitr; */
+            /* pflag[ifrm*nch+ich] = flg; */
+            
+            /* qresd[ifrm][ich] = res; */
+            /* thr[ifrm][ich] = th0; */
+            /* niter[ifrm][ich] = nitr; */
+            /* flag[ifrm][ich] = flg; */
+
+            /* printf("&thr[ifrm][ich] = %08p, &pthr[ifrm*nch+ich] = %08p\n", */
+            /*        &thr[ifrm][ich], &pthr[ifrm*nch+ich]); */
+
         }
         
         /* Move pointers to the next frame */
