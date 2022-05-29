@@ -90,7 +90,7 @@ __kernel void gausstestm5b(__global uint *dat, __global uint *ch_mask,
      * (or "work item" in the OpenCL terminology.)
      */
     ixdat = ifrm*frmwords + nfhead;  /* Index at the 2500-word data block */
-    uint *pdat = (uint *) dat[ixdat];   
+    uint *pdat = dat + ixdat;   
     
     float *pqresd = (float *) qresd[ifrm];
     float *pthr =   (float *) thr[ifrm];
@@ -170,7 +170,7 @@ __kernel void gausstestm5b(__global uint *dat, __global uint *ch_mask,
         // flag[ifrm][ich] = flg;
             
     }
-        
+    return; 
 }
 
 

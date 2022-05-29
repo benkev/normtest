@@ -135,7 +135,7 @@ int main() {
     printf("Last frame size: %d Bytes = %d words.\n",
            last_frmbytes, last_frmwords);
     
-    /* nfrm = total_frms; // Uncomment to read in the TOTAL M5B FILE */
+    nfrm = total_frms; // Uncomment to read in the TOTAL M5B FILE
     
 
     /* dat = (__uint32_t *) malloc(m5bbytes*sizeof(__uint32_t)); */
@@ -197,7 +197,8 @@ int main() {
         /*     for (iqua=0; iqua<4; iqua++) */
         /*         qua[ifrm][ich][iqua] = 0.0; */
         
-        // pdat = &dat[ixdat] + 4; /* Pointer to the data block in the frame */
+        /* Pointer to the data block in the frame */
+        uint *pdat = dat + ixdat; 
 
         pqua = (float *) &qua[ifrm]; /* 1D array pqua[i] == qua[ifrm][i] */
 
@@ -206,7 +207,8 @@ int main() {
             for (ich=0; ich<16; ich++) {
                 /* 2-bit-stream value */
                 // chbits = *pdat & ch_mask[ich];
-                chbits = dat[ixdat+idt] & ch_mask[ich];
+                chbits = pdat[idt] & ch_mask[ich];
+                /* chbits = dat[ixdat+idt] & ch_mask[ich]; */
                 /* Move the 2-bit-stream of the ich-th channel to the
                  * rightmost position in the 32-bit word chbits
                  * to get the quantile index iqua from 0,1,2,3 */
