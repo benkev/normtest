@@ -227,10 +227,15 @@ int main() {
         /* 
          * Finding optimal quantization thresholds and residuals
          */
-        pqresd = (float *) &qresd[ifrm];
-        pthr =   (float *) &thr[ifrm];
-        pniter = (int *)  &niter[ifrm];
-        pflag =  (int *)  &flag[ifrm];
+        /* pqresd = (float *) &qresd[ifrm]; */
+        /* pthr =   (float *) &thr[ifrm]; */
+        /* pniter = (int *)  &niter[ifrm]; */
+        /* pflag =  (int *)  &flag[ifrm]; */
+
+        pqresd = (float *) qresd[ifrm];
+        pthr =   (float *) thr[ifrm];
+        pniter = (int *)  niter[ifrm];
+        pflag =  (int *)  flag[ifrm];
 
         /* printf("thr = %08p, pthr = %08p, pthr-thr = %ld\n", */
         /*        thr, pthr, pthr-(float *)thr); */
@@ -275,11 +280,6 @@ int main() {
             pthr[ich] = th0;
             pniter[ich] = nitr;
             pflag[ich] = flg;
-            
-            /* pqresd[ifrm*nch+ich] = res; */
-            /* pthr[ifrm*nch+ich] = th0; */
-            /* pniter[ifrm*nch+ich] = nitr; */
-            /* pflag[ifrm*nch+ich] = flg; */
             
             /* qresd[ifrm][ich] = res; */
             /* thr[ifrm][ich] = th0; */

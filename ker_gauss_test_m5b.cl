@@ -15,6 +15,7 @@ __constant float sqrt2 = sqrt(2.0);   /* Global */
 __constant int frmwords = 2504; /* 32-bit words in a frame with 4-word header */
 __constant int frmbytes = 2504*4;
 __constant int nfdat = 2500;   /* 32-bit words of data in one frame */
+__constant int nfhead = 4;   /* 32-bit words of header in one frame */
 __constant int nch = 16;   /* 16 2-bit channels in each 32-bit word */
 __constant int nqua = 4;   /* 4 quantiles for each channel */
 __constant int nchqua = nch*nqua; /* Total of quantiles for 16 chans, 64 */
@@ -60,7 +61,7 @@ float residual(float thresh, float *q_exprm) {
 
 // int main() {
 
-__kernel void gausstestm5b(__global int *dat, __global uint *ch_mask,
+__kernel void gausstestm5b(__global uint *dat, __global uint *ch_mask,
                            __global float *quantl, __global float *residl,
                            __global float *thresh, __global short *flag,
                            __global short *niter, uint nfrm) {
@@ -84,6 +85,19 @@ __kernel void gausstestm5b(__global int *dat, __global uint *ch_mask,
 
     float nfdat_fl = (float) nfdat;
 
+    /*
+     * Set pointers to the ifrm-th frame to process in this thread 
+     * (or "work item" in the OpenCL terminology.)
+     */
+    ixdat = ifrm*frmwords + nfhead;  /* Index at the 2500-word data block */
+    uint *pdat = (uint *) dat[ixdat];   
+    
+    float *pqresd = (float *) qresd[ifrm];
+    float *pthr =   (float *) thr[ifrm];
+    short *pniter = (short *) niter[ifrm];
+    short *pflag =  (short *) flag[ifrm];
+
+
     // /*
     //  * Create 16 2-bit masks for 16 channels
     //  */
@@ -91,38 +105,23 @@ __kernel void gausstestm5b(__global int *dat, __global uint *ch_mask,
     // for (ich=1; ich<16; ich++)
     //     ch_mask[ich] = ch_mask[ich-1] << 2;
     
-    // /* for (ich=0; ich<16; ich++) */
-    // /*     printf("ch_mask[%2d] = %08x = %032b\n", ich, ch_mask[ich]); */
-
-    ixtim1 = 2; /* Pointer to the word with whole seconds in header */
-    ixtim2 = 3; /* Pointer to the word with tenths of milliseconds in header */
-    ixdat = 4;  /* Pointer to the 2500-word data block */
     
-    // for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
-
     /* Zeroize the quantiles for current frame: all channels. */
     pqua = (float *) quantl[Nchqua*ifrm];
     for (iseq=0; iseq<Nchqua; iseq++)
         *pqua++ = 0.0;
     
-    // for (ich=0; ich<16; ich++)
-    //     for (iqua=0; iqua<4; iqua++)
-    //         // quantl[ifrm][ich][iqua] = 0.0;
-    //         // quantl[(ifrm*nch + ich)*nqua + iqua)] = 0.0
-
      /* 1D array pqua[i] == qua[ifrm][i] */
     pqua = (float *) &quantl[Nchqua*ifrm];
     
     for (idt=0; idt<nfdat; idt++) /* Data 32b-words in frame count */
         for (ich=0; ich<nch; ich++) {
-            ch_bits = dat[ixdat+idt] & ch_mask[ich]; /* 2-bit-stream value */
+            ch_bits = pdat[idt] & ch_mask[ich]; /* 2-bit-stream value */
             /* Move the 2-bit-stream of the ich-th channel to the
              * rightmost position in the 32-bit word  chbits
              * to get the quantile index iqua from 0,1,2,3 */
             iqua = ch_bits >> (2*ich);
             pqua[ich*nqua+iqua] += 1.0; /* quantl[ifrm][ich][iqua] += 1.0; */
-            
-            
         }
 
 
@@ -160,20 +159,18 @@ __kernel void gausstestm5b(__global int *dat, __global uint *ch_mask,
         th0 = fminbndf(*residual, 0.5, 1.5, q_exprm, xatol, 20,
                        &res, &nitr, &flg, 0);
 
-        qresd[ifrm][ich] = res;
-        thresh[ifrm][ich] = th0;
-        niter[ifrm][ich] = nitr;
-        flag[ifrm][ich] = flg;
+        pqresd[ich] = res;
+        pthr[ich] = th0;
+        pniter[ich] = nitr;
+        pflag[ich] = flg;
+            
+        // qresd[ifrm][ich] = res;
+        // thresh[ifrm][ich] = th0;
+        // niter[ifrm][ich] = nitr;
+        // flag[ifrm][ich] = flg;
             
     }
         
-    /* Move pointers to the next frame */
-    ixdat = ixdat + frmwords;
-    ixtim1 = ixtim1 + frmwords;
-    ixtim2 = ixtim2 + frmwords;
-        
-    // }                 /* for (ifrm=0 ... */
-
 }
 
 
