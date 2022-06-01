@@ -135,7 +135,7 @@ int main() {
     printf("Last frame size: %d Bytes = %d words.\n",
            last_frmbytes, last_frmwords);
     
-    nfrm = total_frms; // Uncomment to read in the TOTAL M5B FILE
+    /* nfrm = total_frms; // Uncomment to read in the TOTAL M5B FILE */
     
 
     /* dat = (__uint32_t *) malloc(m5bbytes*sizeof(__uint32_t)); */
@@ -198,7 +198,7 @@ int main() {
         /*         qua[ifrm][ich][iqua] = 0.0; */
         
         /* Pointer to the data block in the frame */
-        uint *pdat = dat + ixdat; 
+        __uint32_t *pdat = dat + ixdat; 
 
         pqua = (float *) &qua[ifrm]; /* 1D array pqua[i] == qua[ifrm][i] */
 
