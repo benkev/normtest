@@ -1,5 +1,13 @@
 /*
  *   test_m5b_thopt.c
+ * 
+ * Normality (Gaussianity) test for M5B files. Single precision floats.
+ *
+ * Compilation:
+ * $ gcc -std=c99 fminbndf.c test_m5b_thopt.c -o test_m5b_thopt -lm
+ *
+ * Requires:
+ * fminbndf(), 1D function minimum search within bounds [a,b].
  *
  */
 #include <stdio.h>
@@ -135,7 +143,7 @@ int main() {
     printf("Last frame size: %d Bytes = %d words.\n",
            last_frmbytes, last_frmwords);
     
-    /* nfrm = total_frms; // Uncomment to read in the TOTAL M5B FILE */
+    nfrm = total_frms; // Uncomment to read in the TOTAL M5B FILE
     
 
     /* dat = (__uint32_t *) malloc(m5bbytes*sizeof(__uint32_t)); */

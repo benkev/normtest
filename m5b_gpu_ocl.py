@@ -1,3 +1,14 @@
+#
+#   test_m5b_thopt.c
+# 
+# Normality (Gaussianity) test for M5B files on GPU
+# Single precision floats.
+#
+# Requires:
+# ker_m5b_gauss_test.cl, OpenCL kernel.
+#
+
+
 import os, sys
 import numpy as np
 import matplotlib.pyplot as pl
@@ -8,17 +19,15 @@ tic = time.time()
 
 fname = 'rd1910_wz_268-1811.m5b'
 
-Nwitem_max = 256
+# Nwitem_max = 256
 
 nfrm = np.uint32(100)
 
 argc = len(sys.argv)
 if argc > 1:
     nfrm = np.uint32(sys.argv[1])
-
-# print("argc = {0},  sys.argv = ".format(argc), sys.argv)
-# print()
-
+if argc > 2:
+    nwg = np.uint32(sys.argv[2])
 
 fmega = pow(1024.,2)
 fgiga = pow(1024.,3)
@@ -41,15 +50,9 @@ print("Number of whole frames: %d" % total_frms)
 print("Last frame size: %d Bytes = %d words." %
       (last_frmbytes, last_frmwords))
 
-print()
-print("argc = {0},  sys.argv = ".format(argc), sys.argv)
-print()
+# sizeof(size_t) = CL_DEVICE_ADDRESS_BITS = 64 here
 
-
-
-# nfrm = np.uint64(100)  # sizeof(size_t) = CL_DEVICE_ADDRESS_BITS = 64 here */
-
-# nfrm = total_frms; # Uncomment to read in the TOTAL M5B FILE
+nfrm = np.uint32(total_frms); # Uncomment to read in the TOTAL M5B FILE
     
 dat = np.fromfile(fname, dtype=np.uint32, count=frmwords*nfrm)
 
@@ -77,21 +80,21 @@ niter =  np.zeros((nfrm*16), dtype=np.uint16)  # Number of iterations fminbnd()
 #
 # Find how many work groups/CUDA blocks and 
 #                work items/CUDA threads per block needed
-quot, rem = divmod(nfrm, Nwitem_max)
-if quot == 0:
-    Nwgroup = 1
-    Nwitem = rem
-elif rem == 0:
-    Nwgroup = quot
-    Nwitem = Nwitem_max
-else:            # Both quot and rem != 0: last w-group will be < Nwitem_max 
-    Nwgroup = quot + 1
-    Nwitem = Nwitem_max
+# quot, rem = divmod(nfrm, Nwitem_max)
+# if quot == 0:
+#     Nwgroup = 1
+#     Nwitem = rem
+# elif rem == 0:
+#     Nwgroup = quot
+#     Nwitem = Nwitem_max
+# else:            # Both quot and rem != 0: last w-group will be < Nwitem_max 
+#     Nwgroup = quot + 1
+#     Nwitem = Nwitem_max
 
-Nproc = Nwitem*Nwgroup
+# Nproc = Nwitem*Nwgroup
 
-print("nfrm = {0}: Nwgroup = {1}, Nwitem = {2}, workitems in last group: {3}"
-      .format(nfrm, Nwgroup, Nwitem, rem))
+# print("nfrm = {0}: Nwgroup = {1}, Nwitem = {2}, workitems in last group: {3}"
+#       .format(nfrm, Nwgroup, Nwitem, rem))
 
 # raise SystemExit
 
@@ -102,9 +105,9 @@ ch_mask[0] = 0x00000003;  # Mask for ch 0: 0b00000000000000000000000000000011
 for ich in range(1,16):
     ch_mask[ich] = ch_mask[ich-1] << 2;
 
-print("M5B 2-bit stream masks:")
-for ich in range(16):
-    print("ch_mask[{0:>2}] = 0x{1:>08x} = 0b{1:032b}".format(ich, ch_mask[ich]))
+# print("M5B 2-bit stream masks:")
+# for ich in range(16):
+#   print("ch_mask[{0:>2}] = 0x{1:>08x} = 0b{1:032b}".format(ich, ch_mask[ich]))
 
 
 mf = cl.mem_flags
@@ -128,25 +131,21 @@ buf_niter = cl.Buffer(ctx,  mf.WRITE_ONLY, niter.nbytes)
 
 
 #
-# Read the kernel code from file
+# Read the kernel code from file into the string "ker"
 #
 with open ("ker_m5b_gauss_test.cl") as fh: ker = fh.read()
 
 prg = cl.Program(ctx, ker).build(options=['-I .'])
 
-completeEvent = prg.m5b_gauss_test(queue, (Nproc,), (Nwitem,),
-                 buf_ch_mask, buf_dat,  buf_quantl, buf_residl, 
-                 buf_thresh,  buf_flag, buf_niter,  nfrm)
+prg.m5b_gauss_test(queue, (nfrm,), None,
+                 buf_dat, buf_ch_mask,  buf_quantl, buf_residl, 
+                 buf_thresh,  buf_flag, buf_niter,  nfrm).wait()
 
-events = [completeEvent]
-
-cl.enqueue_copy(queue, quantl, buf_quantl, wait_for=events)
-cl.enqueue_copy(queue, residl, buf_residl, wait_for=events)
-cl.enqueue_copy(queue, thresh, buf_thresh, wait_for=events)
-cl.enqueue_copy(queue, flag, buf_flag, wait_for=events)
-cl.enqueue_copy(queue, niter, buf_niter, wait_for=events)
-
-
+cl.enqueue_copy(queue, quantl, buf_quantl)
+cl.enqueue_copy(queue, residl, buf_residl)
+cl.enqueue_copy(queue, thresh, buf_thresh)
+cl.enqueue_copy(queue, flag, buf_flag)
+cl.enqueue_copy(queue, niter, buf_niter)
 
 queue.flush()
 queue.finish()
@@ -161,4 +160,58 @@ buf_niter.release()
 
 toc = time.time()
 
-print("GPU time: %ld s." % toc-tic)
+print("GPU time: %ld s." % (toc-tic))
+
+quantl = quantl.reshape(nfrm,16,4)
+residl = residl.reshape(nfrm,16)
+thresh = thresh.reshape(nfrm,16)
+flag = flag.reshape(nfrm,16)
+niter = niter.reshape(nfrm,16)
+
+
+#
+# Save results
+#
+
+tic = time.time()
+
+basefn = fname.split('.')[0]
+cnfrm = str(nfrm)
+
+fntail = basefn + '_ocl_' + cnfrm + '_frames.txt'
+
+with open('thresholds_' + fntail, 'w') as fh:
+    for ifrm in range(nfrm):
+        for ich in range(16):
+            fh.write('%8g ' % thresh[ifrm,ich])
+        fh.write('\n')
+
+with open('residuals_' + fntail, 'w') as fh:
+    for ifrm in range(nfrm):
+        for ich in range(16):
+            fh.write('%12g ' % residl[ifrm,ich])
+        fh.write('\n')
+
+with open('n_iterations_' + fntail, 'w') as fh:
+    for ifrm in range(nfrm):
+        for ich in range(16):
+            fh.write('%2hu ' % niter[ifrm,ich])
+        fh.write('\n')
+
+with open('flags_' + fntail, 'w') as fh:
+    for ifrm in range(nfrm):
+        for ich in range(16):
+            fh.write('%1hu ' % flag[ifrm,ich])
+        fh.write('\n')
+
+with open('quantiles_' + fntail, 'w') as fh:
+    for ifrm in range(nfrm):
+        for ich in range(16):
+            fh.write('%g %g %g %g    ' % tuple(quantl[ifrm,ich,:]))
+        fh.write('\n')
+
+toc = time.time()
+
+print('Saving results in files: %d s.' % (toc-tic))
+
+        

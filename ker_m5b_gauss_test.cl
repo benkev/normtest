@@ -1,6 +1,12 @@
 /*
  *   ker_m5b_gauss_test.cl
  *
+ * OpenCL kernel for Normality (Gaussianity) test for M5B files on GPU
+ * Single precision floats.
+ *
+ * Requires:
+ * fminbndf(), 1D function minimum search within bounds [a,b].
+ *
  */
 
 #include <fminbndf.cl>
@@ -49,11 +55,9 @@ float residual(float thresh, float *q_exprm) {
 }
 
 
-// prg.m5b_gauss_test(queue, (Nproc,), (Nwitem,), buf_dat, buf_quantl, buf_residl,
-//              buf_thresh, buf_flag, buf_niter, nfrm)
+// prg.m5b_gauss_test(queue, (Nproc,), (Nwitem,), buf_dat, buf_quantl,
+//              buf_residl, buf_thresh, buf_flag, buf_niter, nfrm)
         
-
-// int main() {
 
 __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
                            __global float *quantl, __global float *residl,
@@ -61,9 +65,18 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
                            __global ushort *niter, uint nfrm) {
 
     size_t ifrm = get_global_id(0);  /* Unique m5b frame and thread number */
+    size_t lwi = get_local_id(0);  /* Local work-item # within a work-group */
+    size_t nwg = get_num_groups(0); /* Number of work-groups for dim 0*/
+    size_t ngs = get_global_size(0); /* Number of global work-items for dim 0 */
+    size_t nls = get_local_size(0);  /* Number of local work-items for dim 0 */
 
-    printf("proc#: %ld\n", ifrm);
-
+    // printf("%ld:%ld (gid:lid)\n", ifrm, lwi); 
+    if (ifrm == 0) {
+        printf("Number of global work-items:%ld\n", ngs);
+        printf("Number of local work-items:%ld\n", nls);
+        // printf("sizeof(uint) = %d\n", sizeof(uint)); 
+    }
+    
     if (ifrm > nfrm) return;  // ======== Ignore extra threads============ >>>
     
     /* 
@@ -117,22 +130,52 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
     pqua = quantl + ix_nchqua; /* 1D array pqua[i] == quantl[ifrm][i] */
     for (iseq=0; iseq<nchqua; iseq++)
         *pqua++ = 0.0;
+
     /*
      * Sum up the quantiles from the 2500 data words for all 16 channels
      */
     pqua = quantl + ix_nchqua; /* 1D array pqua[i] == quantl[ifrm][i] */
-    
-    for (idt=0; idt<nfdat; idt++) /* Data 32b-words in frame count */
+
+    // printf("ifrm = %ld, ix_nchqua = %4ld, quantl = %14p, pqua = %14p, " \
+    //        "dif=%4ld\n",
+    //        ifrm, ix_nchqua, (void*)quantl, (void*)pqua,
+    //        (pqua-quantl));
+
+    // if (ifrm ==2) {
+    //     printf("M5B 2-bit stream masks:\n");
+    //     for (ich=0; ich<16; ich++)
+    //         printf("ch_mask[%2u] = %10x\n", ich, ch_mask[ich]);
+    // }
+
+    for (idt=0; idt<nfdat; idt++) { /* Data 32b-words in frame count */
+
         for (ich=0; ich<nch; ich++) {
             ch_bits = pdat[idt] & ch_mask[ich]; /* 2-bit-stream value */
+
             /* Move the 2-bit-stream of the ich-th channel to the
              * rightmost position in the 32-bit word  chbits
              * to get the quantile index iqua from 0,1,2,3 */
             iqua = ch_bits >> (2*ich);
+            
+            // if (ifrm == 0 && idt == 0)
+            //     printf("%ld: iqua = %u\n", ifrm, iqua);
+
             pqua[ich*nqua+iqua] += 1.0; /* quantl[ifrm][ich][iqua] += 1.0; */
+
+            // if (ifrm == 0 && idt == 0)
+            //     for (i=0; i<4; i++)
+            //         printf("%g ", quantl[i]);
+            // printf("\n");
         }
+    }
 
-
+    // if (ifrm == 0) {
+    //     printf("ifrm = %d; quantiles: ", ifrm);
+    //     for (i=0; i<4; i++)
+    //         printf("%g ", quantl[i]);
+    //     printf("\n");
+    // }
+    
     /* 
      * Finding optimal quantization thresholds and residuals
      */
@@ -178,6 +221,7 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
         // flag[ifrm][ich] = flg;
             
     }
+
     return; 
 }
 
