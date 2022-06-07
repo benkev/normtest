@@ -96,6 +96,8 @@ print(c_gpu.get())
 
 print("-" * 80)
 print("CPU-GPU difference:")
-print(c_cpu - c_gpu.get())
+cdif = c_cpu - c_gpu.get()
+print(cdif)
+print('cdif_max = ', abs(cdif).max())
 
 np.allclose(c_cpu, c_gpu.get()) 

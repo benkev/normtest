@@ -36,8 +36,10 @@ def fminbound(func, bounds, args=(), xatol=1e-5, maxiter=500, disp=0):
     nfc, xf = fulc, fulc
     rat = e = 0.0
     x = xf
-    fx = func(x, *args)
+
     num = 1
+    
+    fx = func(x, *args)
     fmin_data = (1, xf, fx)
     fu = np.inf
     ffulc = fnfc = fx

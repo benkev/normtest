@@ -19,18 +19,22 @@ __constant__ int nfhead = 4;     /* 32-bit words of header in one frame */
 __constant__ int nch = 16;       /* 16 2-bit channels in each 32-bit word */
 __constant__ int nqua = 4;       /* 4 quantiles for each channel */
 __constant__ int nchqua = 64;    /* = nch*nqua, total of quantiles for 16 chs */
+/* Optimization function parameters */
+__constant__ float xatol = 1e-4; /* Absolute error */
+__constant__ int maxiter = 20;   /* Maximum number of iterations */
 
-float fminbndf(float (*func)(float x, float *args), float a, float b,
+
+__device__ float fminbndf(float (*func)(float x, float *args), float a, float b,
                float *args, float xatol, int maxiter, float *fval, int *niter, 
                int *flag, int disp);
 
-float f_normcdf(float x) {
+__device__ float f_normcdf(float x) {
     float f = 0.5*(1.0 + erf(x/sqrt2));
     return f;
 }
 
 
-float residual(float thresh, float *q_exprm) {
+__device__ float residual(float thresh, float *q_exprm) {
     /*
      * The function minimized to find the optimal quantization threshold
      *
@@ -55,14 +59,10 @@ float residual(float thresh, float *q_exprm) {
 }
 
 
-// prg.m5b_gauss_test(queue, (Nproc,), (Nwitem,), buf_dat, buf_quantl,
-//              buf_residl, buf_thresh, buf_flag, buf_niter, nfrm)
-        
-
-__global__ void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
-                           __global float *quantl, __global float *residl,
-                           __global float *thresh, __global ushort *flag,
-                           __global ushort *niter, uint nfrm) {
+__global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
+                           float *quantl, float *residl,
+                           float *thresh, ushort *flag,
+                           ushort *niter, uint nfrm) {
 
     // size_t ifrm = get_global_id(0);  /* Unique m5b frame and thread number */
     // size_t lwi = get_local_id(0); /* Local work-item # within a work-group */
@@ -73,9 +73,9 @@ __global__ void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
     int ifrm = threadIdx.x;
 
     if (ifrm == 0) {
-        printf("Number of global work-items:%ld\n", ngs);
-        printf("Number of local work-items:%ld\n", nls);
-        // printf("sizeof(uint) = %d\n", sizeof(uint)); 
+        // printf("Number of global work-items:%ld\n", ngs);
+        // printf("Number of local work-items:%ld\n", nls);
+        printf("sizeof(uint) = %ld\n", sizeof(uint)); 
     }
     
     if (ifrm > nfrm) return;  // ======== Ignore extra threads============ >>>
@@ -90,17 +90,12 @@ __global__ void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
      */ 
     
     uint ch_bits;
-    uint idt, ich, iqua, ixtim1, ixtim2, ixdat, i, iseq;
+    uint idt, ich, iqua, ixdat, iseq;
     // float (*quantl)[16][4]; /* 4 quantiles of  data for 16 channels */
-    float *pqua = NULL, *pqua_ch = NULL;
+    float *pqua = NULL;
     float q_exprm[4];
     float  *presidl = NULL, *pthresh = NULL;
     ushort *pniter = NULL,  *pflag = NULL;
-
-
-    /* Optimization function parameters */
-    float xatol = 1e-4;
-    int maxiter = 20;
 
     int nitr = 0;    /* Number of calls to the optimized function residual() */
     float res; /* The minimal value of the quantization threshold */
@@ -208,7 +203,7 @@ __global__ void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
          * the Gaussian PDF and those of the 2-bit streams 
          * from M5B files. 
          */
-        th0 = fminbndf(*residual, 0.5, 1.5, q_exprm, xatol, 20,
+        th0 = fminbndf(*residual, 0.5, 1.5, q_exprm, xatol, maxiter,
                        &res, &nitr, &flg, 0);
 
         presidl[ich] = res;

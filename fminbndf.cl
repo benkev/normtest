@@ -44,17 +44,20 @@ float fminbndf(float (*func)(float x, float *args), float a, float b,
      */
 
     int golden, si; 
-    float fulc, nfc, xf, rat, e, x, fx, fu, ffulc, fnfc, xm, tol1, tol2;
+    float fx, fu, ffulc, fnfc, xm, tol1, tol2;
     float p, q, r;
     float sqrt_eps = sqrt(FLT_EPSILON);  // sqrt(1.19209e-07);
     /* float sqrt_eps = sqrt(DBL_EPSILON);    // sqrt(2.22044604925e-16); */
     float golden_mean = 0.5*(3.0 - sqrt(5.0));
-    int num = 0;
-    
-    // char *header = " Func-count     x          f(x)          Procedure\n";
-    // char *step = "       initial\n";
+    float fulc = a + golden_mean * (b - a);
+    float nfc = fulc;
+    float xf = fulc;
+    float rat = 0.0;
+    float e = 0.0;
+    float x = xf;
+    //    float f = 0.0;
+    int num = 1;
 
-    float f = 0;
     fx = (*func)(x, args);
 
     if (a > b) {
@@ -73,8 +76,6 @@ float fminbndf(float (*func)(float x, float *args), float a, float b,
     rat = e = 0.0;
     x = xf;
     fx = (*func)(x, args);
-    num = 1;
-    /*    fmin_data = (1, xf, fx)  */
     fu = INFINITY;
     ffulc = fnfc = fx;
     xm = 0.5*(a + b);

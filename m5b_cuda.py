@@ -1,5 +1,5 @@
 #
-#   m5b_gpu_ocl.py
+#   m5b_cuda.py
 # 
 # Normality (Gaussianity) test for M5B files on GPU
 # Single precision floats.
@@ -12,8 +12,8 @@
 import os, sys
 import numpy as np
 import matplotlib.pyplot as pl
-import pyopencl as cl
 import time
+from pycuda import driver, compiler, gpuarray, tools
 
 tic = time.time()
 
@@ -58,7 +58,7 @@ dat = np.fromfile(fname, dtype=np.uint32, count=frmwords*nfrm)
 
 toc = time.time()
 
-print("M5B file has been read. Time: %.3f s.\n" % (toc-tic))
+print("M5B file has been read. Time: %7.3f s.\n" % (toc-tic))
 
 tic = time.time()
 
@@ -72,10 +72,10 @@ tic = time.time()
 #
 ch_mask = np.zeros(16, dtype=np.uint32)           # Channel 2-bit masks
 quantl = np.zeros((nfrm*16*4), dtype=np.float32)  # Quantiles
-residl = np.zeros((nfrm*16), dtype=np.float32)    # Residuals
-thresh = np.zeros((nfrm*16), dtype=np.float32)    # Thresholds
-flag =   np.zeros((nfrm*16), dtype=np.uint16)     # Flags
-niter =  np.zeros((nfrm*16), dtype=np.uint16)  # Number of iterations fminbnd()
+# residl = np.zeros((nfrm*16), dtype=np.float32)    # Residuals
+# thresh = np.zeros((nfrm*16), dtype=np.float32)    # Thresholds
+# flag =   np.zeros((nfrm*16), dtype=np.uint16)     # Flags
+# niter =  np.zeros((nfrm*16), dtype=np.uint16) # Number of iterations fminbnd()
 
 #
 # Find how many work groups/CUDA blocks and 
@@ -109,54 +109,54 @@ for ich in range(1,16):
 # for ich in range(16):
 #   print("ch_mask[{0:>2}] = 0x{1:>08x} = 0b{1:032b}".format(ich, ch_mask[ich]))
 
-
-mf = cl.mem_flags
-
-ctx = cl.create_some_context()
-queue = cl.CommandQueue(ctx)
-
-#
-# Create input () and output ()
-# buffers in the GPU memory. The mf.COPY_HOST_PTR flag forces copying from
-# the host buffer, , to the device buffer (referred as buf_)
-# in the GPU memory.
-#
-buf_ch_mask = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=ch_mask)
-buf_dat = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=dat)
-buf_quantl = cl.Buffer(ctx, mf.WRITE_ONLY, quantl.nbytes)
-buf_residl = cl.Buffer(ctx, mf.WRITE_ONLY, residl.nbytes)
-buf_thresh = cl.Buffer(ctx, mf.WRITE_ONLY, thresh.nbytes)
-buf_flag = cl.Buffer(ctx,   mf.WRITE_ONLY, flag.nbytes)
-buf_niter = cl.Buffer(ctx,  mf.WRITE_ONLY, niter.nbytes)
-
-
 #
 # Read the kernel code from file into the string "ker"
 #
-with open ("ker_m5b_gauss_test.cl") as fh: ker = fh.read()
+with open ("ker_m5b_gauss_test.cu") as fh: kernel_code = fh.read()
 
-prg = cl.Program(ctx, ker).build(options=['-I .'])
+# -- initialize the device
+import pycuda.autoinit
 
-prg.m5b_gauss_test(queue, (nfrm,), None,
-                 buf_dat, buf_ch_mask,  buf_quantl, buf_residl, 
-                 buf_thresh,  buf_flag, buf_niter,  nfrm).wait()
+#
+# Transfer host (CPU) memory to device (GPU) memory 
+#
+dat_gpu =     gpuarray.to_gpu(dat)
+ch_mask_gpu = gpuarray.to_gpu(ch_mask)
 
-cl.enqueue_copy(queue, quantl, buf_quantl)
-cl.enqueue_copy(queue, residl, buf_residl)
-cl.enqueue_copy(queue, thresh, buf_thresh)
-cl.enqueue_copy(queue, flag, buf_flag)
-cl.enqueue_copy(queue, niter, buf_niter)
+#
+# Create empty gpu array for the result (C = A * B)
+#
+quantl_gpu = gpuarray.empty((nfrm*16*4,), np.float32)
+residl_gpu = gpuarray.empty((nfrm*16,), np.float32)
+thresh_gpu = gpuarray.empty((nfrm*16,), np.float32)
+flag_gpu = gpuarray.empty((nfrm*16,), np.uint16)
+niter_gpu = gpuarray.empty((nfrm*16,), np.uint16)
 
-queue.flush()
-queue.finish()
+#
+# Compile the kernel code 
+#
+mod = compiler.SourceModule(kernel_code,
+#                            options=['-I .'])
+#                            options=['-I ~/Work/normtest'])
+                            options=['-I /home/benkev/Work/normtest/'])
 
-buf_ch_mask.release()
-buf_dat.release()
-buf_quantl.release()
-buf_residl.release()
-buf_thresh.release()
-buf_flag.release()
-buf_niter.release()
+#
+# Get the kernel function from the compiled module
+#
+m5b_gauss_test = mod.get_function("m5b_gauss_test")
+
+#
+# Call the kernel on the card
+#
+m5b_gauss_test(dat_gpu, ch_mask_gpu,  quantl_gpu, residl_gpu, 
+               thresh_gpu,  flag_gpu, niter_gpu,  nfrm,
+               block = (int(nfrm), 1, 1))
+
+quantl = quantl_gpu.get()
+residl = residl_gpu.get()
+thresh = thresh_gpu.get()
+flag =   flag_gpu.get()
+niter =  niter_gpu.get()
 
 toc = time.time()
 
@@ -165,8 +165,8 @@ print("GPU time: %.3f s." % (toc-tic))
 quantl = quantl.reshape(nfrm,16,4)
 residl = residl.reshape(nfrm,16)
 thresh = thresh.reshape(nfrm,16)
-flag = flag.reshape(nfrm,16)
-niter = niter.reshape(nfrm,16)
+flag =   flag.reshape(nfrm,16)
+niter =  niter.reshape(nfrm,16)
 
 
 #
@@ -178,7 +178,7 @@ tic = time.time()
 basefn = fname.split('.')[0]
 cnfrm = str(nfrm)
 
-fntail = basefn + '_ocl_' + cnfrm + '_frames.txt'
+fntail = basefn + '_cuda_' + cnfrm + '_frames.txt'
 
 with open('thresholds_' + fntail, 'w') as fh:
     for ifrm in range(nfrm):
