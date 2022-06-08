@@ -19,7 +19,13 @@ tic = time.time()
 
 fname = 'rd1910_wz_268-1811.m5b'
 
-# Nwitem_max = 256
+#
+# It looks like 8 threads per block is optimum: 2.245 s to do 1.2 Gb m5b file!
+#
+Nwitem_max = 8 #16 # 1024 # 32  # 256
+
+if len(sys.argv) > 1:
+    Nwitem_max = int(sys.argv[1])
 
 nfrm = np.uint32(100)
 
@@ -79,22 +85,28 @@ quantl = np.zeros((nfrm*16*4), dtype=np.float32)  # Quantiles
 
 #
 # Find how many work groups/CUDA blocks and 
-#                work items/CUDA threads per block needed
-# quot, rem = divmod(nfrm, Nwitem_max)
-# if quot == 0:
-#     Nwgroup = 1
-#     Nwitem = rem
-# elif rem == 0:
-#     Nwgroup = quot
-#     Nwitem = Nwitem_max
-# else:            # Both quot and rem != 0: last w-group will be < Nwitem_max 
-#     Nwgroup = quot + 1
-#     Nwitem = Nwitem_max
+#               work items/CUDA threads per block needed
+#
+quot, rem = divmod(nfrm, Nwitem_max)
+if quot == 0:
+    Nwgroup = 1
+    Nwitem = rem
+elif rem == 0:
+    Nwgroup = quot
+    Nwitem = Nwitem_max
+else:            # Both quot and rem != 0: last w-group will be < Nwitem_max 
+    Nwgroup = quot + 1
+    Nwitem = Nwitem_max
 
+Nblocks =  int(Nwgroup)
+Nthreads = int(Nwitem)
+    
 # Nproc = Nwitem*Nwgroup
 
-# print("nfrm = {0}: Nwgroup = {1}, Nwitem = {2}, workitems in last group: {3}"
-#       .format(nfrm, Nwgroup, Nwitem, rem))
+print("nfrm = {0}: Nwgroup = {1}, Nwitem = {2}, workitems in last group: {3}"
+      .format(nfrm, Nwgroup, Nwitem, rem))
+print("nfrm = {0}: Nblocks = {1}, Nthreads = {2}, threads in last group: {3}"
+      .format(nfrm, Nblocks, Nthreads, rem))
 
 # raise SystemExit
 
@@ -150,7 +162,10 @@ m5b_gauss_test = mod.get_function("m5b_gauss_test")
 #
 m5b_gauss_test(dat_gpu, ch_mask_gpu,  quantl_gpu, residl_gpu, 
                thresh_gpu,  flag_gpu, niter_gpu,  nfrm,
-               block = (int(nfrm), 1, 1))
+               block = (Nthreads, 1, 1), grid = (Nblocks, 1))
+#               block = (int(nfrm), 1, 1))
+#               block=(nthreads,1,1), grid=(nblk,1)
+
 
 quantl = quantl_gpu.get()
 residl = residl_gpu.get()
@@ -168,6 +183,7 @@ thresh = thresh.reshape(nfrm,16)
 flag =   flag.reshape(nfrm,16)
 niter =  niter.reshape(nfrm,16)
 
+# raise SystemExit
 
 #
 # Save results

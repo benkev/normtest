@@ -19,15 +19,17 @@ tic = time.time()
 
 fname = 'rd1910_wz_268-1811.m5b'
 
-# Nwitem_max = 256
+wgsize = 8  # Work group size (# of work items in group)
 
 nfrm = np.uint32(100)
 
 argc = len(sys.argv)
 if argc > 1:
-    nfrm = np.uint32(sys.argv[1])
-if argc > 2:
-    nwg = np.uint32(sys.argv[2])
+    wgsize = int(sys.argv[1])   # In kernel: get_local_size(0)
+# if argc > 1:
+#     nfrm = np.uint32(sys.argv[1])
+# if argc > 2:
+#     nwg = np.uint32(sys.argv[2])
 
 fmega = pow(1024.,2)
 fgiga = pow(1024.,3)
@@ -77,7 +79,7 @@ thresh = np.zeros((nfrm*16), dtype=np.float32)    # Thresholds
 flag =   np.zeros((nfrm*16), dtype=np.uint16)     # Flags
 niter =  np.zeros((nfrm*16), dtype=np.uint16)  # Number of iterations fminbnd()
 
-#
+
 # Find how many work groups/CUDA blocks and 
 #                work items/CUDA threads per block needed
 # quot, rem = divmod(nfrm, Nwitem_max)
@@ -91,10 +93,18 @@ niter =  np.zeros((nfrm*16), dtype=np.uint16)  # Number of iterations fminbnd()
 #     Nwgroup = quot + 1
 #     Nwitem = Nwitem_max
 
-# Nproc = Nwitem*Nwgroup
+# # Nproc = Nwitem*Nwgroup
 
 # print("nfrm = {0}: Nwgroup = {1}, Nwitem = {2}, workitems in last group: {3}"
 #       .format(nfrm, Nwgroup, Nwitem, rem))
+
+
+#
+# Find wiglobal >= nfrm, the total number of work items divisable by the
+# local work size, wgsize (work group size)
+#
+wiglobal = int(wgsize*np.ceil(nfrm/wgsize))   # In kernel: get_global_size(0)
+
 
 # raise SystemExit
 
@@ -137,7 +147,8 @@ with open ("ker_m5b_gauss_test.cl") as fh: ker = fh.read()
 
 prg = cl.Program(ctx, ker).build(options=['-I .'])
 
-prg.m5b_gauss_test(queue, (nfrm,), None,
+# prg.m5b_gauss_test(queue, (nfrm,), None,
+prg.m5b_gauss_test(queue, (wiglobal,), (wgsize,),
                  buf_dat, buf_ch_mask,  buf_quantl, buf_residl, 
                  buf_thresh,  buf_flag, buf_niter,  nfrm).wait()
 
@@ -168,6 +179,7 @@ thresh = thresh.reshape(nfrm,16)
 flag = flag.reshape(nfrm,16)
 niter = niter.reshape(nfrm,16)
 
+# raise SystemExit
 
 #
 # Save results

@@ -70,12 +70,13 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
     // size_t ngs = get_global_size(0); /* Number of global work-items, dim 0 */
     // size_t nls = get_local_size(0);  /* Number of local work-items, dim 0 */
 
-    int ifrm = threadIdx.x;
+    int ifrm = blockDim.x*blockIdx.x + threadIdx.x;
+
 
     if (ifrm == 0) {
-        // printf("Number of global work-items:%ld\n", ngs);
-        // printf("Number of local work-items:%ld\n", nls);
-        printf("sizeof(uint) = %ld\n", sizeof(uint)); 
+        printf("Block size: %d\n", blockDim.x);
+        // printf("Number of threads per block: %d\n", nls);
+        // printf("sizeof(uint) = %ld\n", sizeof(uint)); 
     }
     
     if (ifrm > nfrm) return;  // ======== Ignore extra threads============ >>>
