@@ -106,10 +106,31 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
     float nfdat_fl = (float) nfdat;
 
     /*
+     * Here at least the header must be checked if it only contains the 
+     * fill-pattern 0x11223344 words signalling the "missing frame".
+     *
+     * From Mark_5C_Data_Frame_Specification_memo_058.pdf :
+     *
+     * Under certain circumstances, the Mark 5C writes a 
+     * ‘fill-pattern Data Frame’ in place of missing data. 
+     * The fill-pattern Data Frame consists of a normal-length Data Frame 
+     * completely filled with a user-specified 32-bit pattern. The correlator 
+     * recognizes this fill-pattern data to prevent the correlator from 
+     * processing the corresponding data segment.
+     *
+     * Mark 5B fill-pattern Data Frames are generated exactly like Mark 5C,
+     * but with a fixed length of 10016 bytes.
+     * The Mark 5B fill-pattern word is (0x11223344).
+     */
+    ixhdr = ifrm*frmwords;
+
+    
+
+    /*
      * Set pointers to the ifrm-th frame to process in this thread 
      * (or "work item" in the OpenCL terminology.)
      */
-    ixdat = ifrm*frmwords + nfhead;  /* Index at the 2500-word data block */
+    ixdat = ixhdr + nfhead;  /* Index at the 2500-word data block */
     uint *pdat = dat + ixdat;   
 
     size_t ix_nch = ifrm*nch;  /* Index at the 16-ch section of 1D arrays */
