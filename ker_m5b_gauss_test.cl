@@ -9,6 +9,14 @@
  *
  */
 
+#ifndef NULL
+   #ifdef __cplusplus
+      #define NULL 0
+   #else
+      #define NULL ((void *)0)
+   #endif
+#endif
+
 #include <fminbndf.cl>
 
 __constant float sqrt2 = 1.4142135; /* = sqrt(2.0) float 32-bit precision */
