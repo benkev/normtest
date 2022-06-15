@@ -1,5 +1,5 @@
 /*
- *   ker_m5b_gauss_test.cl
+ *   ker_m5b_gauss_test_amd.cl
  *
  * OpenCL kernel for Normality (Gaussianity) test for M5B files on GPU
  * Single precision floats.
@@ -75,7 +75,6 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
                            __global float *quantl, __global float *residl,
                            __global float *thresh, __global ushort *flag,
                            __global ushort *niter, uint nfrm) {
-
     size_t ifrm = get_global_id(0);  /* Unique m5b frame and thread number */
     size_t lwi = get_local_id(0);  /* Local work-item # within a work-group */
     size_t nwg = get_num_groups(0); /* Number of work-groups for dim 0*/
@@ -103,11 +102,12 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
     uint ch_bits;
     uint idt, ich, iqua, ixdat, ixhdr, iseq;
     // float (*quantl)[16][4]; /* 4 quantiles of  data for 16 channels */
-    float *pqua = NULL, *pqua_ch = NULL;
+    __global float *pqua = NULL, *pqua_ch = NULL;
     float q_exprm[4];
-    __private float  *presidl = NULL, *pthresh = NULL;
-    __private ushort *pniter = NULL,  *pflag = NULL;
-
+    __global float *presidl = NULL, *pthresh = NULL;
+    __global ushort *pniter = NULL,  *pflag = NULL;
+    // __private float  *presidl = NULL, *pthresh = NULL;
+    // __private ushort *pniter = NULL,  *pflag = NULL;
 
     int nitr = 0;    /* Number of calls to the optimized function residual() */
     float res; /* The minimal value of the quantization threshold */
@@ -144,8 +144,9 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
     __global uint *pdat = dat + ixdat;   
 
     size_t ix_nch = ifrm*nch;  /* Index at the 16-ch section of 1D arrays */
-    presidl = (__private float *) residl + ix_nch;
-    pthresh = (__private float *) thresh + ix_nch;
+
+    presidl = residl + ix_nch;
+    pthresh = thresh + ix_nch;
     pniter = niter + ix_nch;
     pflag =  flag + ix_nch;
 
@@ -215,7 +216,7 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
          */
 
         /* 1D array pqua_ch[i] == quantl[ifrm][ich][i] */
-        float *pqua_ch = quantl + (ifrm*nch + ich)*nqua; 
+        pqua_ch = quantl + (ifrm*nch + ich)*nqua; 
             
         q_exprm[0] = *pqua_ch++ / nfdat_fl;
         q_exprm[1] = *pqua_ch++ / nfdat_fl;
