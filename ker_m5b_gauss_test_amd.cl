@@ -32,14 +32,18 @@ __constant float xatol = 1e-4; /* Absolute error */
 __constant int maxiter = 20;   /* Maximum number of iterations */
 
 
-float fminbndf(float (*func)(float x, float *args), float a, float b,
-               float *args, float xatol, int maxiter, float *fval, int *niter, 
-               int *flag, int disp);
+// float fminbndf(float (*func)(float x, float *args), float a, float b,
+//                float *args, float xatol, int maxiter, float *fval,
+//                int *niter, int *flag, int disp);
 
 float f_normcdf(float x) {
     float f = 0.5*(1.0 + erf(x/sqrt2));
     return f;
 }
+
+float fminbndf_amd(float a, float b, float *args, float xatol, int maxiter,
+               float *fval, int *niter, int *flag, int disp);
+
 
 
 float residual(float thresh, float *q_exprm) {
@@ -237,7 +241,7 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
          * the Gaussian PDF and those of the 2-bit streams 
          * from M5B files. 
          */
-        th0 = fminbndf(*residual, 0.5, 1.5, q_exprm, xatol, maxiter,
+        th0 = fminbndf_amd(0.5, 1.5, q_exprm, xatol, maxiter,
                        &res, &nitr, &flg, 0);
 
         presidl[ich] = res;
