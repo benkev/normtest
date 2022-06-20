@@ -14,7 +14,7 @@ float f_normcdf(float x);
 float residual(float thresh, float *q_exprm);
 
 float fminbndf_amd(float a, float b, float *args, float xatol, int maxiter,
-               float *fval, int *niter, int *flag, int disp);
+                   float *fval, int *niter, int *flag, int disp) {
 
     /*     Options */
     /*     ------- */

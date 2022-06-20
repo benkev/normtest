@@ -49,8 +49,9 @@ print("M5B file size: %ld bytes = %g MiB = %g GiB" %
       (m5bbytes, m5bbytes/fmega, m5bbytes/fgiga))
 print("Frame size: %d Bytes = %d words." % (frmbytes, nfdat))
 print("Number of whole frames: %d" % total_frms)
-print("Last frame size: %d Bytes = %d words." %
-      (last_frmbytes, last_frmwords))
+if last_frmbytes != 0:
+    print("Last incomplete frame size: %d Bytes = %d words." %
+          (last_frmbytes, last_frmwords))
 
 # sizeof(size_t) = CL_DEVICE_ADDRESS_BITS = 64 here
 
@@ -60,6 +61,7 @@ dat = np.fromfile(fname, dtype=np.uint32, count=frmwords*nfrm)
 
 toc = time.time()
 
+print()
 print("M5B file has been read. Time: %.3f s.\n" % (toc-tic))
 
 tic = time.time()
@@ -147,7 +149,8 @@ with open ("ker_m5b_gauss_test_amd.cl") as fh: ker = fh.read()
 
 print("OpenCL kernel file 'ker_m5b_gauss_test_amd.cl' us used\n")
 
-prg = cl.Program(ctx, ker).build(options=['-I .'])
+#prg = cl.Program(ctx, ker).build(options=['-I .'])
+prg = cl.Program(ctx, ker).build(options=['-I /home/benkev/Work/normtest'])
 
 # prg.m5b_gauss_test(queue, (nfrm,), None,
 prg.m5b_gauss_test(queue, (wiglobal,), (wgsize,),
@@ -181,7 +184,7 @@ thresh = thresh.reshape(nfrm,16)
 flag = flag.reshape(nfrm,16)
 niter = niter.reshape(nfrm,16)
 
-raise SystemExit
+# raise SystemExit
 
 #
 # Save results

@@ -17,7 +17,7 @@
    #endif
 #endif
 
-#include <fminbndf.cl>
+#include <fminbndf_amd.cl>
 
 __constant float sqrt2 = 1.4142135; /* = sqrt(2.0) float 32-bit precision */
 __constant int frmwords = 2504; /* 32-bit words in a frame with 4-word header */
@@ -31,10 +31,6 @@ __constant int nchqua = 64;    /* = nch*nqua, total of quantiles for 16 chans */
 __constant float xatol = 1e-4; /* Absolute error */
 __constant int maxiter = 20;   /* Maximum number of iterations */
 
-
-// float fminbndf(float (*func)(float x, float *args), float a, float b,
-//                float *args, float xatol, int maxiter, float *fval,
-//                int *niter, int *flag, int disp);
 
 float f_normcdf(float x) {
     float f = 0.5*(1.0 + erf(x/sqrt2));
@@ -87,8 +83,9 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
 
     // printf("%ld:%ld (gid:lid)\n", ifrm, lwi); 
     if (ifrm == 0) {
-        printf("Number of global work-items:%ld\n", ngs);
-        printf("Number of local work-items:%ld\n", nls);
+        printf("Number of global work-items: %ld\n", ngs);
+        printf("Number of local work-items: %ld\n", nls);
+        printf("Number of work groups: %ld\n", nwg);
         // printf("sizeof(uint) = %d\n", sizeof(uint)); 
     }
     
