@@ -86,6 +86,7 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
     if (ifrm == 0) {
         printf("Number of global work-items:%ld\n", ngs);
         printf("Number of local work-items:%ld\n", nls);
+        printf("Number of work groups: %ld\n", nwg);
         // printf("sizeof(uint) = %d\n", sizeof(uint)); 
     }
     
