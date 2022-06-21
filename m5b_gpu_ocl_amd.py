@@ -149,8 +149,8 @@ with open ("ker_m5b_gauss_test_amd.cl") as fh: ker = fh.read()
 
 print("OpenCL kernel file 'ker_m5b_gauss_test_amd.cl' is used\n")
 
-#prg = cl.Program(ctx, ker).build(options=['-I .'])
-prg = cl.Program(ctx, ker).build(options=['-I /home/benkev/Work/normtest'])
+prg = cl.Program(ctx, ker).build(options=['-I .'])
+#prg = cl.Program(ctx, ker).build(options=['-I /home/benkev/Work/normtest'])
 
 # prg.m5b_gauss_test(queue, (nfrm,), None,
 prg.m5b_gauss_test(queue, (wiglobal,), (wgsize,),
