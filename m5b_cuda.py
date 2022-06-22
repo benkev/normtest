@@ -148,8 +148,6 @@ niter_gpu = gpuarray.empty((nfrm*16,), np.uint16)
 # Compile the kernel code 
 #
 mod = compiler.SourceModule(kernel_code,
-#                            options=['-I .'])
-#                            options=['-I ~/Work/normtest'])
                             options=['-I /home/benkev/Work/normtest/'])
 
 #
