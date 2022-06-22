@@ -122,7 +122,7 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
      * but with a fixed length of 10016 bytes.
      * The Mark 5B fill-pattern word is (0x11223344).
      */
-    ixhdr = ifrm*frmwords;
+    int ixhdr = ifrm*frmwords;
 
     
 
