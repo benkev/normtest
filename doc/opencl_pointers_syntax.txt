@@ -1,0 +1,26 @@
+/*
+ * General rule for pointers:
+ *
+ * [where they point] type * [where to store] name;
+ *
+ */
+
+/*
+ * 128 integers allocated on global memory
+ */
+__global int global_data[128];
+
+/*
+ * Pointer placed in the private memory, which points to
+ * a single-precision float located on the local memory.
+ * Absence of memory type means "__private: a default memory type. 
+ * 
+ */
+__local float *lf;
+
+
+/*
+ * 8 pointers stored on the local memory, each points to a char located
+ * in the global memory
+ */
+__global char * __local lgc[8];

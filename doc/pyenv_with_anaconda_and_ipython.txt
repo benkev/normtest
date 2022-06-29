@@ -1,0 +1,68 @@
+How to combine pyenv and Anaconda and ipython.
+
+Install pyenv plugin pyenv-update:
+git clone https://github.com/pyenv/pyenv-update.git $(pyenv
+root)/plugins/pyenv-update
+
+Install the newst version of pyenv:
+pyenv update
+
+Check what packages are available:
+pyenv install --list | less
+
+Install the newst version of python:
+pyenv install -v 3.10.1
+
+Install the newst version of anaconda:
+pyenv install anaconda3-2021.11 
+
+Set PYENV_ROOT and modify PATH, it must include pyenv's shims and bin:
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"
+
+To make pyenv use its shims, insert the "conda initialize" script
+into ~/.bashrc:
+------------------------------------------------
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/home/benkev/.pyenv/versions/anaconda3-2021.11/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/benkev/.pyenv/versions/anaconda3-2021.11/etc/profile.d/conda.sh" ]; then
+        . "/home/benkev/.pyenv/versions/anaconda3-2021.11/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/benkev/.pyenv/versions/anaconda3-2021.11/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+------------------------------------------------
+
+Make ipython use newer version of python:
+???
+Check
+~/.pyenv/shims/ipython
+~/.pyenv/versions/anaconda3-2021.11/bin/ipython
+
+I forgot how...
+
+Check
+https://stackoverflow.com/questions/9386048/ipython-reads-wrong-python-version
+
+Delete unneded install of anaconda^
+https://stackoverflow.com/questions/71714669/what-should-be-changed-in-the-bash-profile-file-to-delete-uninstall-conda-anaco
+
+
+
+
+
+
+
+
+
+
+
+
+
+
