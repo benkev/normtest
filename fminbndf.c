@@ -50,7 +50,7 @@ float fminbndf(float (*func)(float x, float *args), float a, float b,
      */
 
     int golden, si; 
-    float fx, fu, ffulc, fnfc, xm, tol1, tol2;
+    float fulc, fx, fu, ffulc, fnfc, xm, tol1, tol2;
     float p, q, r;
     float sqrt_eps = sqrt(FLT_EPSILON);  // sqrt(1.19209e-07);
     /* float sqrt_eps = sqrt(DBL_EPSILON);    // sqrt(2.22044604925e-16); */

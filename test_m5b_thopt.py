@@ -1,3 +1,10 @@
+#
+# test_m5b_thopt.py
+#
+# Find optimal value of the quantization threshold for one of the 16 m5b stream
+# through nfrm data blocks
+#
+
 import math
 import numpy as np
 import matplotlib.pyplot as pl
@@ -21,7 +28,7 @@ def quanerr(thr, args):
 t_start = time.time()
 
 
-nfrm = 1 #00000
+nfrm = 100000
 ndat = 2500*nfrm
 chan = 14
 chmask = 0x03 << (2*chan)
@@ -67,7 +74,7 @@ print("--- hist: %6f seconds ---" % t_hist)
 t_hist = time.time()
 
 #
-# Search for the minimum of residual bw normal & experimental quantiles
+# Search for the minimum of residual between normal & experimental quantiles
 #
 thr = fminbound(quanerr, args=(hsexp,), bounds=[0.5,1.2], disp=3)
 
