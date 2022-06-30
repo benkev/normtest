@@ -137,7 +137,7 @@ int main() {
            m5bbytes, m5bbytes/fmega, m5bbytes/fgiga);
     printf("Frame size: %d Bytes = %d words.\n", frmbytes, nfdat);
     printf("Number of whole frames: %d\n", total_frms);
-    if (frmbytes == 0)
+    if (frmbytes != 0)
         printf("Last frame size: %d Bytes = %d words.\n",
                last_frmbytes, last_frmwords);
     
