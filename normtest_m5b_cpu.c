@@ -1,10 +1,10 @@
 /*
- * m5b_cpu.c
+ * normtest_m5b_cpu.c
  * 
  * Normality (Gaussianity) test for M5B files. Single precision floats.
  *
  * Compilation:
- * $ gcc -std=c99 fminbndf.c m5b_cpu.c -o m5b_cpu -lm
+ * $ gcc -std=c99 fminbndf.c normtest_m5b_cpu.c -o normtest_m5b_cpu -lm
  *
  * Requires:
  * fminbndf(), 1D function minimum search within bounds [a,b].
@@ -169,15 +169,14 @@ int main() {
     time(&tic); /* Start computations */
     
     qua =   malloc(sizeof(float[nfrm][16][4]));
-    pqua = (float *)qua;
     qresd = malloc(sizeof(float[nfrm][16]));
     thr =   malloc(sizeof(float[nfrm][16]));
     flag =  malloc(sizeof(int[nfrm][16]));
     niter =  malloc(sizeof(int[nfrm][16]));
                                
-    ixtim1 = 2; /* Pointer to the word with whole seconds in header */
-    ixtim2 = 3; /* Pointer to the word with tenths of milliseconds in header */
-    ixdat = 4;  /* Pointer to the 2500-word data block */
+    ixtim1 = 2; /* Index to the word with whole seconds in header */
+    ixtim2 = 3; /* Index to the word with tenths of milliseconds in header */
+    ixdat = 4;  /* Index to the start of 2500-word data block */
     
     for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
 
@@ -202,36 +201,45 @@ int main() {
 
         /* Zeroize the quantiles for current frame: all channels: */
         /* for ich = 0..15: for iqua = 0..3: qua[ifrm][ich][iqua] = 0.0; */
-        pqua = (float *) qua[ifrm];
+        pqua = (float *) qua[ifrm]; /* Pointer to 0th float in 16x4 subarr. */
         for (iseq=0; iseq<nchqua; iseq++)
             *pqua++ = 0.0;
+
+        /* To further work with the arrays of results, set pointers
+         * to the starts of current frame's result data */ 
+        pqresd = (float *) qresd[ifrm];
+        pthr =   (float *) thr[ifrm];
+        pniter = (int *)  niter[ifrm];
+        pflag =  (int *)  flag[ifrm];
 
         if (good_frame) { 
         
             /* Pointer to the data block in the frame */
-            // __uint32_t *pdat = dat + ixdat; 
             pdat = dat + ixdat; 
 
+            /* Pointer to the the quantile [16][4] subarray */
             pqua = (float *) &qua[ifrm]; /* 1D array pqua[i] == qua[ifrm][i] */
 
+            /*
+             * In the following loop over the 2500 words of current frame
+             * data block. For each of 16 streams the 4 unnormalized quantiles
+             * are counted as numbers of occurrencies the binary values 
+             * 00, 01, 10, 11. 
+             *
+             */
             for (idt=0; idt<nfdat; idt++) { /* Data 32b-words in frame count */
             
                 for (ich=0; ich<16; ich++) {
                     /* 2-bit-stream value */
-                    // chbits = *pdat & ch_mask[ich];
-                    chbits = pdat[idt] & ch_mask[ich];
-                    /* chbits = dat[ixdat+idt] & ch_mask[ich]; */
-                    /* Move the 2-bit-stream of the ich-th channel to the
-                     * rightmost position in the 32-bit word chbits
+                    chbits = pdat[idt] & ch_mask[ich]; /* Channel bits */
+                    /* Move the 2-bit stream value of the ich-th channel
+                     * to the rightmost position in the 32-bit word chbits
                      * to get the quantile index iqua from 0,1,2,3 */
                     iqua = chbits >> (2*ich);
-                    pqua[ich*nqua+iqua] += 1.0;
+                    pqua[ich*nqua+iqua] += 1.0; /* Accrue iqua-th quantile */
 
-                    /* 2-bit-stream value */
+                    /* The same in the array-index notation: */
                     /* chbits = dat[ixdat+idt] & ch_mask[ich]; */
-                    /* Move the 2-bit-stream of the ich-th channel to the
-                     * rightmost position in the 32-bit word
-                     * to get the quantile index from 0,1,2,3 */
                     /* iqua = chbits >> 2*ich; */
                     /* qua[ifrm][ich][iqua] += 1.0; */
                 }
@@ -239,26 +247,15 @@ int main() {
         
             /* 
              * Finding optimal quantization thresholds and residuals
+             * in current frame for all the 16 channels
              */
-            /* pqresd = (float *) &qresd[ifrm]; */
-            /* pthr =   (float *) &thr[ifrm]; */
-            /* pniter = (int *)  &niter[ifrm]; */
-            /* pflag =  (int *)  &flag[ifrm]; */
-
-            pqresd = (float *) qresd[ifrm];
-            pthr =   (float *) thr[ifrm];
-            pniter = (int *)  niter[ifrm];
-            pflag =  (int *)  flag[ifrm];
-
-            /* printf("thr = %08p, pthr = %08p, pthr-thr = %ld\n", */
-            /*        thr, pthr, pthr-(float *)thr); */
-        
             for (ich=0; ich<nch; ich++) {
                 /*
                  * Normalize the quantiles dividing them by the frame size
                  * so that their sum be 1: sum(q_exprm) == 1.
+                 *
+                 * 1D array pqua_ch[i] == qua[ifrm][ich][i] 
                  */
-                /* 1D array pqua_ch[i] == qua[ifrm][ich][i] */
                 pqua_ch = (float *) &qua[ifrm][ich];
             
                 q_exprm[0] = *pqua_ch++ / nfdat_fl;
@@ -272,6 +269,7 @@ int main() {
                 /* q_exprm[2] = pqua[ich*nqua+2] / nfdat_fl; */
                 /* q_exprm[3] = pqua[ich*nqua+3] / nfdat_fl; */
 
+                /* OR (which is even better): */
                 /* q_exprm[0] = (qua[ifrm][ich][0]) / nfdat_fl; */
                 /* q_exprm[1] = (qua[ifrm][ich][1]) / nfdat_fl; */
                 /* q_exprm[2] = (qua[ifrm][ich][2]) / nfdat_fl; */
@@ -294,24 +292,22 @@ int main() {
                 pniter[ich] = nitr;
                 pflag[ich] = flg;
             
+                /* OR (which is much clearer): */
                 /* qresd[ifrm][ich] = res; */
                 /* thr[ifrm][ich] = th0; */
                 /* niter[ifrm][ich] = nitr; */
                 /* flag[ifrm][ich] = flg; */
 
-                /* printf("&thr[ifrm][ich] = %08p, " \           */
-                /*        "&pthr[ifrm*nch+ich] = %08p\n",        */
-                /*        &thr[ifrm][ich], &pthr[ifrm*nch+ich]); */
-
-            } /* for (ich=0; ... */
+           } /* for (ich=0; ... */
             
         } /* if (good_frame) ... */
         
         else { /* if the frame is bad */
             for (ich=0; ich<nch; ich++) {
                 /*
-                 * Normalize the quantiles dividing them by the frame size
-                 * so that their sum be 1: sum(q_exprm) == 1.
+                 * Fill the arrays of results for current bad frame
+                 * with zeroes to indicate absence of results.
+                 * The flags are set to all-ones.
                  */
                 pqresd[ich] = 0.0;
                 pthr[ich] = 0.0;

@@ -1,7 +1,8 @@
 #
-#   m5b_gpu_ocl_amd.py
+#   normtest_m5b_ocl_amd.py
 # 
 # Normality (Gaussianity) test for M5B files on GPU
+# using PyOpenCL package for AMD OpenCL.
 # Single precision floats.
 #
 # Requires:
@@ -80,25 +81,6 @@ residl = np.zeros((nfrm*16), dtype=np.float32)    # Residuals
 thresh = np.zeros((nfrm*16), dtype=np.float32)    # Thresholds
 flag =   np.zeros((nfrm*16), dtype=np.uint16)     # Flags
 niter =  np.zeros((nfrm*16), dtype=np.uint16)  # Number of iterations fminbnd()
-
-
-# Find how many work groups/CUDA blocks and 
-#                work items/CUDA threads per block needed
-# quot, rem = divmod(nfrm, Nwitem_max)
-# if quot == 0:
-#     Nwgroup = 1
-#     Nwitem = rem
-# elif rem == 0:
-#     Nwgroup = quot
-#     Nwitem = Nwitem_max
-# else:            # Both quot and rem != 0: last w-group will be < Nwitem_max 
-#     Nwgroup = quot + 1
-#     Nwitem = Nwitem_max
-
-# # Nproc = Nwitem*Nwgroup
-
-# print("nfrm = {0}: Nwgroup = {1}, Nwitem = {2}, workitems in last group: {3}"
-#       .format(nfrm, Nwgroup, Nwitem, rem))
 
 
 #

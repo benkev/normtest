@@ -1,7 +1,8 @@
 #
-#   m5b_cuda.py
+#   normtest_m5b_cuda.py
 # 
-# Normality (Gaussianity) test for M5B files on GPU
+# Normality (Gaussianity) test for M5B files on Nvidia GPU
+# using PyCUDA package.
 # Single precision floats.
 #
 # Requires:
