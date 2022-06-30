@@ -17,11 +17,12 @@
 #include <math.h>
 #include <time.h>
 
-float sqrt2 = sqrt(2.0);   /* Global */
-float fmega = pow(1024.,2);   /* Global */
-float fgiga = pow(1024.,3);   /* Global */
-int frmwords = 2504; /* 32-bit words in one frame including the 4-word header */
-const int frmbytes = 2504*4;
+
+const float sqrt2 = 1.4142135623730951; /* == sqrt(2.0); Global */
+const float fmega = 1048576.0;          /* == pow(1024.,2); Global */
+const float fgiga = 1073741824.0;       /* == pow(1024.,3); Global */
+const int frmwords = 2504; /* Words in one frame including the 4-word header */
+const int frmbytes = 2504*4; /* Bytes in one frame including the header */
 const int nfdat = 2500;   /* 32-bit words of data in one frame */
 const __uint32_t fill_pattern = 0x11223344; /* Bad frame words' content */
 
@@ -104,7 +105,7 @@ int main() {
     int total_frms = 0;
     int last_frmbytes = 0;
     int last_frmwords = 0;
-    int bad_frame = 0;     /* Boolean */
+    int good_frame = 0;     /* Boolean */
 
     clock_t tic, toc;
  
@@ -136,8 +137,9 @@ int main() {
            m5bbytes, m5bbytes/fmega, m5bbytes/fgiga);
     printf("Frame size: %d Bytes = %d words.\n", frmbytes, nfdat);
     printf("Number of whole frames: %d\n", total_frms);
-    printf("Last frame size: %d Bytes = %d words.\n",
-           last_frmbytes, last_frmwords);
+    if (frmbytes == 0)
+        printf("Last frame size: %d Bytes = %d words.\n",
+               last_frmbytes, last_frmwords);
     
     nfrm = total_frms; // Uncomment to read in the TOTAL M5B FILE
     
@@ -181,17 +183,12 @@ int main() {
 
         /* Detect and skip bad frame by checking if the 4 words of its header
          * contain the fill pattern */ 
-        bad_frame = (dat[0] == fill_pattern) && (dat[1] == fill_pattern) &&
-                    (dat[2] == fill_pattern) && (dat[3] == fill_pattern);
-
-
-        ??????????????????????????????????????????????
-
-
-        
-    /*   Print time within a second from frame header */
-    /*   printf("%05x", dat[ixtim1] & 0xfffff);   // Whole seconds of time */
-    /*   printf(".%04x\n", dat[ixtim2] / 0x10000); // Tenths of milliseconds */
+        good_frame = !((dat[0] == fill_pattern) && (dat[1] == fill_pattern) &&
+                       (dat[2] == fill_pattern) && (dat[3] == fill_pattern));
+       
+        /* Print time within a second from frame header */
+        /* printf("%05x", dat[ixtim1] & 0xfffff);  // Whole seconds of time */
+        /* printf(".%04x\n", dat[ixtim2]/0x10000); // Tenths of milliseconds */
 
         /*
          * Difference qua[ifrm] vs &qua[ifrm]:
@@ -203,116 +200,132 @@ int main() {
          * single word pointers, (float *), to be assigned to pqua.
          */
 
-        /* Zeroize the quantiles for current frame: all channels. */
+        /* Zeroize the quantiles for current frame: all channels: */
+        /* for ich = 0..15: for iqua = 0..3: qua[ifrm][ich][iqua] = 0.0; */
         pqua = (float *) qua[ifrm];
         for (iseq=0; iseq<nchqua; iseq++)
             *pqua++ = 0.0;
-        /* for (ich=0; ich<16; ich++) */
-        /*     for (iqua=0; iqua<4; iqua++) */
-        /*         qua[ifrm][ich][iqua] = 0.0; */
+
+        if (good_frame) { 
         
-        /* Pointer to the data block in the frame */
-        __uint32_t *pdat = dat + ixdat; 
+            /* Pointer to the data block in the frame */
+            // __uint32_t *pdat = dat + ixdat; 
+            pdat = dat + ixdat; 
 
-        pqua = (float *) &qua[ifrm]; /* 1D array pqua[i] == qua[ifrm][i] */
+            pqua = (float *) &qua[ifrm]; /* 1D array pqua[i] == qua[ifrm][i] */
 
-        for (idt=0; idt<nfdat; idt++) { /* Data 32b-words in frame count */
+            for (idt=0; idt<nfdat; idt++) { /* Data 32b-words in frame count */
             
-            for (ich=0; ich<16; ich++) {
-                /* 2-bit-stream value */
-                // chbits = *pdat & ch_mask[ich];
-                chbits = pdat[idt] & ch_mask[ich];
-                /* chbits = dat[ixdat+idt] & ch_mask[ich]; */
-                /* Move the 2-bit-stream of the ich-th channel to the
-                 * rightmost position in the 32-bit word chbits
-                 * to get the quantile index iqua from 0,1,2,3 */
-                iqua = chbits >> (2*ich);
-                pqua[ich*nqua+iqua] += 1.0;
+                for (ich=0; ich<16; ich++) {
+                    /* 2-bit-stream value */
+                    // chbits = *pdat & ch_mask[ich];
+                    chbits = pdat[idt] & ch_mask[ich];
+                    /* chbits = dat[ixdat+idt] & ch_mask[ich]; */
+                    /* Move the 2-bit-stream of the ich-th channel to the
+                     * rightmost position in the 32-bit word chbits
+                     * to get the quantile index iqua from 0,1,2,3 */
+                    iqua = chbits >> (2*ich);
+                    pqua[ich*nqua+iqua] += 1.0;
 
-                /* 2-bit-stream value */
-                /* chbits = dat[ixdat+idt] & ch_mask[ich]; */
-                /* Move the 2-bit-stream of the ich-th channel to the
-                 * rightmost position in the 32-bit word
-                 * to get the quantile index from 0,1,2,3 */
-                /* iqua = chbits >> 2*ich; */
-                /* qua[ifrm][ich][iqua] += 1.0; */
+                    /* 2-bit-stream value */
+                    /* chbits = dat[ixdat+idt] & ch_mask[ich]; */
+                    /* Move the 2-bit-stream of the ich-th channel to the
+                     * rightmost position in the 32-bit word
+                     * to get the quantile index from 0,1,2,3 */
+                    /* iqua = chbits >> 2*ich; */
+                    /* qua[ifrm][ich][iqua] += 1.0; */
+                }
             }
-            // pdat++;
-        }
         
-        /* 
-         * Finding optimal quantization thresholds and residuals
-         */
-        /* pqresd = (float *) &qresd[ifrm]; */
-        /* pthr =   (float *) &thr[ifrm]; */
-        /* pniter = (int *)  &niter[ifrm]; */
-        /* pflag =  (int *)  &flag[ifrm]; */
+            /* 
+             * Finding optimal quantization thresholds and residuals
+             */
+            /* pqresd = (float *) &qresd[ifrm]; */
+            /* pthr =   (float *) &thr[ifrm]; */
+            /* pniter = (int *)  &niter[ifrm]; */
+            /* pflag =  (int *)  &flag[ifrm]; */
 
-        pqresd = (float *) qresd[ifrm];
-        pthr =   (float *) thr[ifrm];
-        pniter = (int *)  niter[ifrm];
-        pflag =  (int *)  flag[ifrm];
+            pqresd = (float *) qresd[ifrm];
+            pthr =   (float *) thr[ifrm];
+            pniter = (int *)  niter[ifrm];
+            pflag =  (int *)  flag[ifrm];
 
-        /* printf("thr = %08p, pthr = %08p, pthr-thr = %ld\n", */
-        /*        thr, pthr, pthr-(float *)thr); */
+            /* printf("thr = %08p, pthr = %08p, pthr-thr = %ld\n", */
+            /*        thr, pthr, pthr-(float *)thr); */
         
-        for (ich=0; ich<nch; ich++) {
-            /*
-             * Normalize the quantiles dividing them by the frame size
-             * so that their sum be 1: sum(q_exprm) == 1.
-             */
-            /* 1D array pqua_ch[i] == qua[ifrm][ich][i] */
-            pqua_ch = (float *) &qua[ifrm][ich];
+            for (ich=0; ich<nch; ich++) {
+                /*
+                 * Normalize the quantiles dividing them by the frame size
+                 * so that their sum be 1: sum(q_exprm) == 1.
+                 */
+                /* 1D array pqua_ch[i] == qua[ifrm][ich][i] */
+                pqua_ch = (float *) &qua[ifrm][ich];
             
-            q_exprm[0] = *pqua_ch++ / nfdat_fl;
-            q_exprm[1] = *pqua_ch++ / nfdat_fl;
-            q_exprm[2] = *pqua_ch++ / nfdat_fl;
-            q_exprm[3] = *pqua_ch++ / nfdat_fl;
+                q_exprm[0] = *pqua_ch++ / nfdat_fl;
+                q_exprm[1] = *pqua_ch++ / nfdat_fl;
+                q_exprm[2] = *pqua_ch++ / nfdat_fl;
+                q_exprm[3] = *pqua_ch++ / nfdat_fl;
 
-            /* OR (which is much clearer): */
-            /* q_exprm[0] = pqua[ich*nqua]   / nfdat_fl; */
-            /* q_exprm[1] = pqua[ich*nqua+1] / nfdat_fl; */
-            /* q_exprm[2] = pqua[ich*nqua+2] / nfdat_fl; */
-            /* q_exprm[3] = pqua[ich*nqua+3] / nfdat_fl; */
+                /* OR (which is much clearer): */
+                /* q_exprm[0] = pqua[ich*nqua]   / nfdat_fl; */
+                /* q_exprm[1] = pqua[ich*nqua+1] / nfdat_fl; */
+                /* q_exprm[2] = pqua[ich*nqua+2] / nfdat_fl; */
+                /* q_exprm[3] = pqua[ich*nqua+3] / nfdat_fl; */
 
-            /* q_exprm[0] = (qua[ifrm][ich][0]) / nfdat_fl; */
-            /* q_exprm[1] = (qua[ifrm][ich][1]) / nfdat_fl; */
-            /* q_exprm[2] = (qua[ifrm][ich][2]) / nfdat_fl; */
-            /* q_exprm[3] = (qua[ifrm][ich][3]) / nfdat_fl; */
+                /* q_exprm[0] = (qua[ifrm][ich][0]) / nfdat_fl; */
+                /* q_exprm[1] = (qua[ifrm][ich][1]) / nfdat_fl; */
+                /* q_exprm[2] = (qua[ifrm][ich][2]) / nfdat_fl; */
+                /* q_exprm[3] = (qua[ifrm][ich][3]) / nfdat_fl; */
 
 
-            /*
-             * Fit the Gaussian PDF to the quantiles of the signals from 
-             * the M5B file. The single variable search Brent's  method is 
-             * used find the optimal value of the signal rms (i.e. STD), 
-             * which provides the minimum residual between quantiles of 
-             * the Gaussian PDF and those of the 2-bit streams 
-             * from M5B files. 
-             */
-            th0 = fminbndf(*residual, 0.5, 1.5, q_exprm, xatol, 20,
-                           &res, &nitr, &flg, 0);
+                /*
+                 * Fit the Gaussian PDF to the quantiles of the signals from 
+                 * the M5B file. The Brent's method of single variable search
+                 * is used find the optimal value of the signal rms (i.e. STD), 
+                 * which provides the minimum residual between quantiles of 
+                 * the Gaussian PDF and those of the 2-bit streams 
+                 * from M5B files. 
+                 */
+                th0 = fminbndf(*residual, 0.5, 1.5, q_exprm, xatol, 20,
+                               &res, &nitr, &flg, 0);
 
-            pqresd[ich] = res;
-            pthr[ich] = th0;
-            pniter[ich] = nitr;
-            pflag[ich] = flg;
+                pqresd[ich] = res;
+                pthr[ich] = th0;
+                pniter[ich] = nitr;
+                pflag[ich] = flg;
             
-            /* qresd[ifrm][ich] = res; */
-            /* thr[ifrm][ich] = th0; */
-            /* niter[ifrm][ich] = nitr; */
-            /* flag[ifrm][ich] = flg; */
+                /* qresd[ifrm][ich] = res; */
+                /* thr[ifrm][ich] = th0; */
+                /* niter[ifrm][ich] = nitr; */
+                /* flag[ifrm][ich] = flg; */
 
-            /* printf("&thr[ifrm][ich] = %08p, &pthr[ifrm*nch+ich] = %08p\n", */
-            /*        &thr[ifrm][ich], &pthr[ifrm*nch+ich]); */
+                /* printf("&thr[ifrm][ich] = %08p, " \           */
+                /*        "&pthr[ifrm*nch+ich] = %08p\n",        */
+                /*        &thr[ifrm][ich], &pthr[ifrm*nch+ich]); */
 
-        }
+            } /* for (ich=0; ... */
+            
+        } /* if (good_frame) ... */
+        
+        else { /* if the frame is bad */
+            for (ich=0; ich<nch; ich++) {
+                /*
+                 * Normalize the quantiles dividing them by the frame size
+                 * so that their sum be 1: sum(q_exprm) == 1.
+                 */
+                pqresd[ich] = 0.0;
+                pthr[ich] = 0.0;
+                pniter[ich] = 0;
+                pflag[ich] = 1;
+            }  /* for (ich=0; ...  */
+        }      /* if the frame is bad */
         
         /* Move pointers to the next frame */
         ixdat = ixdat + frmwords;
         ixtim1 = ixtim1 + frmwords;
         ixtim2 = ixtim2 + frmwords;
         
-    }                 /* for (ifrm=0 ... */
+    } /* for (ifrm=0 ... */
 
     time(&toc); /* End computations */
     
@@ -323,6 +336,7 @@ int main() {
     else
         printf("Computations took time: %ld min. %ld s.\n", tmin, tsec);
 
+    time(&tic); /* Start output */
 
     fth = fopen("thresh.txt","w");
     for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
@@ -337,7 +351,7 @@ int main() {
     }
     fclose(fth);
 
-    fqr = fopen("qresd.txt","w");
+    fqr = fopen("residuals.txt","w");
     for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
         /* fprintf(fqr, "%d: ", ifrm); */
         /* printf("%d: ", ifrm); */
@@ -350,7 +364,7 @@ int main() {
     }
     fclose(fqr);
 
-    fitr = fopen("niter.txt","w");
+    fitr = fopen("n_iterations.txt","w");
     for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
         /* fprintf(fitr, "%d: ", ifrm); */
         /* printf("%d: ", ifrm); */
@@ -390,8 +404,17 @@ int main() {
     }
     fclose(fout);
 
-    free(dat);
-}
+    time(&toc); /* End output */
+    tictoc = (long) (toc - tic);
+    tmin = tictoc/60, tsec = tictoc%60;
+    if (tmin == 0) 
+        printf("Output took time: %ld s.\n", tictoc);
+    else
+        printf("Output took time: %ld min. %ld s.\n", tmin, tsec);
+
+
+//    free(dat);
+} /* main() */
 
 
 

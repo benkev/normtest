@@ -50,11 +50,12 @@ float fminbndf(float (*func)(float x, float *args), float a, float b,
      */
 
     int golden, si; 
-    float fulc, fx, fu, ffulc, fnfc, xm, tol1, tol2;
+    float fx, fu, ffulc, fnfc, xm, tol1, tol2;
     float p, q, r;
-    float sqrt_eps = sqrt(FLT_EPSILON);  // sqrt(1.19209e-07);
-    /* float sqrt_eps = sqrt(DBL_EPSILON);    // sqrt(2.22044604925e-16); */
-    float golden_mean = 0.5*(3.0 - sqrt(5.0));
+    const float sqrt_eps = sqrt(FLT_EPSILON); // sqrt(1.19209e-07);
+    /* const float sqrt_eps = sqrt(DBL_EPSILON); // sqrt(2.22044604925e-16); */
+    const float golden_mean = 0.5*(3.0 - sqrt(5.0));
+    float fulc = 0;
     float nfc = fulc;
     float xf = fulc;
     float rat = 0.0;
