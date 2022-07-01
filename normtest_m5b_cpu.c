@@ -68,8 +68,9 @@ int main() {
     size_t m5bbytes;
     __uint32_t chbits;
     __uint32_t *dat = NULL;
-    __uint32_t *pdat = NULL, *ptim1 = NULL, *ptim2 = NULL;
-    int ifrm, idt, ich, ifrmdat, iqua, ixtim1, ixtim2, ixdat, i, iseq;
+    __uint32_t *pfrm = NULL, *pdat = NULL, *ptim1 = NULL, *ptim2 = NULL;
+    int ifrm, idt, ich, ifrmdat, iqua, ixfrm, i, iseq;
+    /* int ixtim1, ixtim2; // May be useful later */
     float (*qua)[16][4]; /* 4 quantiles of the exprm. data for 16 channels */
     float *pqua = NULL, *pqua_ch = NULL;
     float q_exprm[4] = {1., 2., 3., 4.};
@@ -174,22 +175,36 @@ int main() {
     flag =  malloc(sizeof(int[nfrm][16]));
     niter =  malloc(sizeof(int[nfrm][16]));
                                
-    ixtim1 = 2; /* Index to the word with whole seconds in header */
-    ixtim2 = 3; /* Index to the word with tenths of milliseconds in header */
-    ixdat = 4;  /* Index to the start of 2500-word data block */
+    /* ixtim1 = 2; // Index to the word with whole seconds in header */
+    /* ixtim2 = 3; // Index to the word with tenths of milliseconds in header */
+    /* ixdat = 4;  // Index to the start of 2500-word data block */
+    ixfrm = 0; /* Index to the header of 2504-word frame */
     
     for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
 
-        /* Detect and skip bad frame by checking if the 4 words of its header
-         * contain the fill pattern */ 
-        good_frame = !((dat[0] == fill_pattern) && (dat[1] == fill_pattern) &&
-                       (dat[2] == fill_pattern) && (dat[3] == fill_pattern));
-       
+        /* Pointer to the 4-word header of the frame */
+        pfrm = dat + ixfrm;
+        
+        /*
+         * Detect and skip bad frame by checking if the 4 words of its header
+         * contain the fill pattern 0x11223344 
+         */ 
+        good_frame = !((pfrm[0] == fill_pattern) && (pfrm[1] == fill_pattern) &&
+                       (pfrm[2] == fill_pattern) && (pfrm[3] == fill_pattern));
+
+        /* Pointer to the start of data block in the frame */
+        pdat = pfrm + 4;
+        
+        /*
+         * This is the way to extract the time lable from header: 
+         */
         /* Print time within a second from frame header */
         /* printf("%05x", dat[ixtim1] & 0xfffff);  // Whole seconds of time */
         /* printf(".%04x\n", dat[ixtim2]/0x10000); // Tenths of milliseconds */
 
+        
         /*
+         * The C language:
          * Difference qua[ifrm] vs &qua[ifrm]:
          *   qua[ifrm] is the pointer to the 0-th element of the [16][4] 
          *     subarray of 16 4-word elements, or to its 4-element subarray. 
@@ -213,9 +228,6 @@ int main() {
         pflag =  (int *)  flag[ifrm];
 
         if (good_frame) { 
-        
-            /* Pointer to the data block in the frame */
-            pdat = dat + ixdat; 
 
             /* Pointer to the the quantile [16][4] subarray */
             pqua = (float *) &qua[ifrm]; /* 1D array pqua[i] == qua[ifrm][i] */
@@ -317,9 +329,9 @@ int main() {
         }      /* if the frame is bad */
         
         /* Move pointers to the next frame */
-        ixdat = ixdat + frmwords;
-        ixtim1 = ixtim1 + frmwords;
-        ixtim2 = ixtim2 + frmwords;
+        ixfrm = ixfrm + frmwords;
+        /* ixtim1 = ixtim1 + frmwords; */
+        /* ixtim2 = ixtim2 + frmwords; */
         
     } /* for (ifrm=0 ... */
 
