@@ -182,7 +182,7 @@ int main() {
     
     for (ifrm=0; ifrm<nfrm; ifrm++) { /* Frame count */
 
-        /* Pointer to the 4-word header of the frame */
+        /* Set pointer to the 4-word header of the frame */
         pfrm = dat + ixfrm;
         
         /*
@@ -192,7 +192,7 @@ int main() {
         good_frame = !((pfrm[0] == fill_pattern) && (pfrm[1] == fill_pattern) &&
                        (pfrm[2] == fill_pattern) && (pfrm[3] == fill_pattern));
 
-        /* Pointer to the start of data block in the frame */
+        /* Move pointer to the start of data block in the frame */
         pdat = pfrm + 4;
         
         /*
