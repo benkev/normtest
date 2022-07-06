@@ -108,8 +108,6 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
     float q_exprm[4];
     __global float *presidl = NULL, *pthresh = NULL;
     __global ushort *pniter = NULL,  *pflag = NULL;
-    // __private float  *presidl = NULL, *pthresh = NULL;
-    // __private ushort *pniter = NULL,  *pflag = NULL;
 
     int nitr = 0;    /* Number of calls to the optimized function residual() */
     float res; /* The minimal value of the quantization threshold */
