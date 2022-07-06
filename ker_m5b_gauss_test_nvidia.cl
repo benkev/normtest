@@ -10,18 +10,14 @@
  */
 
 #ifndef NULL
-    #ifdef __cplusplus
-        #define NULL 0
-    #else
-        #define NULL ((void *)0)
-    #endif
+#ifdef __cplusplus
+#define NULL 0
+#else
+#define NULL ((void *)0)
+#endif
 #endif
 
-#ifdef __amd
-    #include <fminbndf_amd.cl>
-#else
-    #include <fminbndf.cl>
-#endif
+#include <fminbndf.cl>
 
 __constant uint fill_pattern = 0x11223344; /* Bad frame words' content */
 __constant float sqrt2 = 1.4142135; /* = sqrt(2.0) float 32-bit precision */
@@ -37,19 +33,14 @@ __constant float xatol = 1e-4; /* Absolute error */
 __constant int maxiter = 20;   /* Maximum number of iterations */
 
 
-#ifdef __amd
 float fminbndf(float (*func)(float x, float *args), float a, float b,
                float *args, float xatol, int maxiter, float *fval, int *niter, 
                int *flag, int disp);
-#else
-float fminbndf_amd(float a, float b, float *args, float xatol, int maxiter,
-               float *fval, int *niter, int *flag, int disp);
-#endif
 
-// float f_normcdf(float x) {
-//     float f = 0.5*(1.0 + erf(x/sqrt2));
-//     return f;
-// }
+float f_normcdf(float x) {
+    float f = 0.5*(1.0 + erf(x/sqrt2));
+    return f;
+}
 
 
 float residual(float thresh, float *q_exprm) {
@@ -69,11 +60,10 @@ float residual(float thresh, float *q_exprm) {
 
     /* q_norm:  quantile of Gaussian in [-inf .. thresh]  [thresh .. +inf] : */
     /* q_norm0: quantile of Gaussian in [thresh .. 0] and [0 .. thresh] : */
-    /* float q_norm = f_normcdf(-thresh); // Inline f_normcdf(-thresh):   */
-    float q_norm = 0.5*(1.0 + erf(-thresh/sqrt2));
+    float q_norm = f_normcdf(-thresh);
     float q_norm0 = 0.5 - q_norm;
     float chi2 = pow(q_norm -  q_exprm[0], 2) + pow(q_norm0 - q_exprm[1], 2) +
-                 pow(q_norm0 - q_exprm[2], 2) + pow(q_norm -  q_exprm[3], 2);
+        pow(q_norm0 - q_exprm[2], 2) + pow(q_norm -  q_exprm[3], 2);
     return chi2;
 }
 
@@ -95,8 +85,8 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
 
     // printf("%ld:%ld (gid:lid)\n", ifrm, lwi); 
     if (ifrm == 0) {
-        printf("Number of global work-items: %ld\n", ngs);
-        printf("Number of local work-items: %ld\n", nls);
+        printf("Number of global work-items:%ld\n", ngs);
+        printf("Number of local work-items:%ld\n", nls);
         printf("Number of work groups: %ld\n", nwg);
         // printf("sizeof(uint) = %d\n", sizeof(uint)); 
     }
@@ -115,18 +105,11 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
     uint ch_bits;
     uint idt, ich, iqua, ixdat, ixhdr, iseq;
     // float (*quantl)[16][4]; /* 4 quantiles of  data for 16 channels */
-    float q_exprm[4]; /* Holds normalized quantiles, sum(q_exprm) = 1 */
-
-#ifdef __amd
-    __global float *pqua = NULL, *pqua_ch = NULL;
-    __global float *presidl = NULL, *pthresh = NULL;
-    __global ushort *pniter = NULL,  *pflag = NULL;
-#else
     float *pqua = NULL, *pqua_ch = NULL;
+    float q_exprm[4];
     float  *presidl = NULL, *pthresh = NULL;
     ushort *pniter = NULL,  *pflag = NULL;
-#endif
-    
+
     int nitr = 0;    /* Number of calls to the optimized function residual() */
     float res; /* The minimal value of the quantization threshold */
     float th0; /* Optimal quantization theshold found */
@@ -142,12 +125,7 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
      * (or "work item" in the OpenCL terminology.)
      */
     ixdat = ixhdr + nfhead;  /* Index at the 2500-word data block */
-
-#ifdef __amd
-    __global uint *pdat = dat + ixdat;   
-#else
     uint *pdat = dat + ixdat;   
-#endif
 
     size_t ix_nch = ifrm*nch;  /* Index at the 16-ch section of 1D arrays */
     presidl = residl + ix_nch;
@@ -165,7 +143,7 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
         *pqua++ = 0.0;
 
     /*
-     * Here at least the frame header is checked if it only contains the 
+     * Here at least the header are checked if it only contains the 
      * fill-pattern 0x11223344 words signalling the "missing frame".
      *
      * From Mark_5C_Data_Frame_Specification_memo_058.pdf :

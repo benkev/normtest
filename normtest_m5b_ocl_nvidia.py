@@ -1,5 +1,5 @@
 #
-#   normtest_m5b_ocl_nvid.py
+#   normtest_m5b_ocl_nvidia.py
 # 
 # Normality (Gaussianity) test for M5B files on GPU
 # using PyOpenCL package.
@@ -130,7 +130,7 @@ with open ("ker_m5b_gauss_test.cl") as fh: ker = fh.read()
 
 print("OpenCL kernel file 'ker_m5b_gauss_test.cl' is used\n")
 
-prg = cl.Program(ctx, ker).build(options=['-I .'])
+prg = cl.Program(ctx, ker).build(options=['-I . -D __nvidia'])
 #prg = cl.Program(ctx, ker).build(options=['-I /home/benkev/Work/normtest'])
 
 # prg.m5b_gauss_test(queue, (nfrm,), None,
@@ -165,7 +165,7 @@ thresh = thresh.reshape(nfrm,16)
 flag = flag.reshape(nfrm,16)
 niter = niter.reshape(nfrm,16)
 
-raise SystemExit
+# raise SystemExit
 
 #
 # Save results
@@ -175,34 +175,34 @@ tic = time.time()
 
 basefn = fname.split('.')[0]
 cnfrm = str(nfrm)
+tstamp = str(np.round(tic % 1000, 3))
+fntail = basefn + '_ocl_' + cnfrm + '_frames' + '_t' + tstamp + '.txt'
 
-fntail = basefn + '_ocl_' + cnfrm + '_frames.txt'
-
-with open('thresholds_' + fntail, 'w') as fh:
+with open('result/thresholds_' + fntail, 'w') as fh:
     for ifrm in range(nfrm):
         for ich in range(16):
             fh.write('%8g ' % thresh[ifrm,ich])
         fh.write('\n')
 
-with open('residuals_' + fntail, 'w') as fh:
+with open('result/residuals_' + fntail, 'w') as fh:
     for ifrm in range(nfrm):
         for ich in range(16):
             fh.write('%12g ' % residl[ifrm,ich])
         fh.write('\n')
 
-with open('n_iterations_' + fntail, 'w') as fh:
+with open('result/n_iterations_' + fntail, 'w') as fh:
     for ifrm in range(nfrm):
         for ich in range(16):
             fh.write('%2hu ' % niter[ifrm,ich])
         fh.write('\n')
 
-with open('flags_' + fntail, 'w') as fh:
+with open('result/flags_' + fntail, 'w') as fh:
     for ifrm in range(nfrm):
         for ich in range(16):
             fh.write('%1hu ' % flag[ifrm,ich])
         fh.write('\n')
 
-with open('quantiles_' + fntail, 'w') as fh:
+with open('result/quantiles_' + fntail, 'w') as fh:
     for ifrm in range(nfrm):
         for ich in range(16):
             fh.write('%g %g %g %g    ' % tuple(quantl[ifrm,ich,:]))

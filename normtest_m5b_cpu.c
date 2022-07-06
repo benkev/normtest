@@ -54,7 +54,8 @@ float residual(float thresh, float *q_exprm) {
 
     /* q_norm:  quantile of Gaussian in [-inf .. thresh]  [thresh .. +inf] : */
     /* q_norm0: quantile of Gaussian in [thresh .. 0] and [0 .. thresh] : */
-    float q_norm = f_normcdf(-thresh);
+    /* float q_norm = f_normcdf(-thresh); */
+    float q_norm = 0.5*(1.0 + erf(-thresh/sqrt2)); // Inline f_normcdf(-thresh)
     float q_norm0 = 0.5 - q_norm;
     float chi2 = pow(q_norm -  q_exprm[0], 2) + pow(q_norm0 - q_exprm[1], 2) +
                  pow(q_norm0 - q_exprm[2], 2) + pow(q_norm -  q_exprm[3], 2);
@@ -90,8 +91,8 @@ int main() {
     float *pthr = NULL, *pqresd = NULL;
     int *pniter = NULL, *pflag = NULL;
     int nitr = 0;    /* Number of calls to the optimized function residual() */
-    float res; /* The minimal value of the quantization threshold */
     float th0; /* Optimal quantization theshold found */
+    float res; /* Residual value for the optimal quantization theshold */
     int flg;   /* Optimization flag  */
 
     
@@ -139,7 +140,7 @@ int main() {
     printf("Frame size: %d Bytes = %d words.\n", frmbytes, nfdat);
     printf("Number of whole frames: %d\n", total_frms);
     if (frmbytes != 0)
-        printf("Last frame size: %d Bytes = %d words.\n",
+        printf("Last incomplete frame size: %d Bytes = %d words.\n",
                last_frmbytes, last_frmwords);
     
     nfrm = total_frms; // Uncomment to read in the TOTAL M5B FILE

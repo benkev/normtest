@@ -72,9 +72,10 @@ float residual(float thresh, float *q_exprm) {
         
 
 __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
-                           __global float *quantl, __global float *residl,
-                           __global float *thresh, __global ushort *flag,
-                           __global ushort *niter, uint nfrm) {
+                             __global float *quantl, __global float *residl,
+                             __global float *thresh, __global ushort *flag,
+                             __global ushort *niter, uint nfrm) {
+    
     size_t ifrm = get_global_id(0);  /* Unique m5b frame and thread number */
     size_t lwi = get_local_id(0);  /* Local work-item # within a work-group */
     size_t nwg = get_num_groups(0); /* Number of work-groups for dim 0*/
