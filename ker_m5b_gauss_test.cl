@@ -117,15 +117,10 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
     // float (*quantl)[16][4]; /* 4 quantiles of  data for 16 channels */
     float q_exprm[4]; /* Holds normalized quantiles, sum(q_exprm) = 1 */
 
-#ifdef __amd
     __global float *pqua = NULL, *pqua_ch = NULL;
     __global float *presidl = NULL, *pthresh = NULL;
     __global ushort *pniter = NULL,  *pflag = NULL;
-#else
-    float *pqua = NULL, *pqua_ch = NULL;
-    float  *presidl = NULL, *pthresh = NULL;
-    ushort *pniter = NULL,  *pflag = NULL;
-#endif
+    /* 
     
     int nitr = 0;    /* Number of calls to the optimized function residual() */
     float res; /* The minimal value of the quantization threshold */
@@ -143,11 +138,7 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
      */
     ixdat = ixhdr + nfhead;  /* Index at the 2500-word data block */
 
-#ifdef __amd
-    __global uint *pdat = dat + ixdat;   
-#else
-    uint *pdat = dat + ixdat;   
-#endif
+    __global uint *pdat = dat + ixdat; /* Pointer to word 0 of ifrm-th frame */
 
     size_t ix_nch = ifrm*nch;  /* Index at the 16-ch section of 1D arrays */
     presidl = residl + ix_nch;

@@ -125,7 +125,8 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
      * (or "work item" in the OpenCL terminology.)
      */
     ixdat = ixhdr + nfhead;  /* Index at the 2500-word data block */
-    uint *pdat = dat + ixdat;   
+    
+    __global uint *pdat = dat + ixdat; /* Pointer to word 0 of ifrm-th frame */ 
 
     size_t ix_nch = ifrm*nch;  /* Index at the 16-ch section of 1D arrays */
     presidl = residl + ix_nch;
