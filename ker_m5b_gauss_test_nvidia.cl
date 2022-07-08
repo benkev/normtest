@@ -162,7 +162,10 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
      */
 
     /* Detect and skip bad frame by checking if the 4 words of its header
-     * contain the fill pattern */ 
+     * contain the fill pattern */
+
+    ???????????? dat[0-3] ALWAYS point at the 1st frame header!!! ???????????
+    
     good_frame = !((dat[0] == fill_pattern) && (dat[1] == fill_pattern) &&
                    (dat[2] == fill_pattern) && (dat[3] == fill_pattern));
     
