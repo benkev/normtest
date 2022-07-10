@@ -19,12 +19,14 @@ import pyopencl as cl
 import sys
 
 argv = sys.argv
-if len(argv) > 1:
-    ker_name = argv[1]
-else:
+if len(argv) == 1:
     print('Error: an OpenCL kernel file must be specified. Quitting.')
-    # ker_name = "ker_m5b_gauss_test_amd.cl"
-    # ker_name = "ker_m5b_gauss_test_amd.cl"
+    raise SystemExit
+if len(argv) > 1:    
+    ker_name = argv[1]
+if len(argv) > 2:
+    platform = argv[2]
+# ker_name = "ker_m5b_gauss_test.cl", platform = "__amd" or "__nvidia"
 
 
 ctx = cl.create_some_context()
@@ -36,5 +38,5 @@ with open (ker_name) as fh: ker = fh.read()
 
 print("Compiling " + ker_name + ":") 
 
-prg = cl.Program(ctx, ker).build(options=['-I .'])
+prg = cl.Program(ctx, ker).build(options=['-I . -D ' + platform])
 
