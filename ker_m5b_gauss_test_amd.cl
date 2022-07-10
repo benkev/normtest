@@ -245,12 +245,13 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
         pniter[ich] = nitr;
         pflag[ich] = flg;
             
+        /* The same in the array-index notation: */
         // residl[ifrm][ich] = res;
         // thresh[ifrm][ich] = th0;
         // niter[ifrm][ich] = nitr;
         // flag[ifrm][ich] = flg;
             
-    }
+    } /* for (ich=0; ... */
 
     return; 
 }

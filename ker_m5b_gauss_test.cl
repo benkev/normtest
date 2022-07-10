@@ -27,7 +27,8 @@ __constant uint fill_pattern = 0x11223344; /* Bad frame words' content */
 __constant float sqrt2 = 1.4142135; /* = sqrt(2.0) float 32-bit precision */
 __constant int frmwords = 2504; /* 32-bit words in a frame with 4-word header */
 __constant int frmbytes = 2504*4;
-__constant int nfdat = 2500;   /* 32-bit words of data in one frame */
+__constant int nfdat = 2500;       /* Number of 32bit data words in one frame */
+__constant float nfdat_fl = 2500.; /* Float nfdat for quantile normalizing */
 __constant int nfhead = 4;     /* 32-bit words of header in one frame */
 __constant int nch = 16;       /* 16 2-bit channels in each 32-bit word */
 __constant int nqua = 4;       /* 4 quantiles for each channel */
@@ -38,12 +39,12 @@ __constant int maxiter = 20;   /* Maximum number of iterations */
 
 
 #ifdef __amd
+float fminbndf_amd(float a, float b, float *args, float xatol, int maxiter,
+               float *fval, int *niter, int *flag, int disp);
+#else
 float fminbndf(float (*func)(float x, float *args), float a, float b,
                float *args, float xatol, int maxiter, float *fval, int *niter, 
                int *flag, int disp);
-#else
-float fminbndf_amd(float a, float b, float *args, float xatol, int maxiter,
-               float *fval, int *niter, int *flag, int disp);
 #endif
 
 // float f_normcdf(float x) {
@@ -111,16 +112,19 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
      * flag[nfrm,16]:     Flags
      * niter[nfrm,16]:    Number of fminbnd() iterations
      */ 
-    
+    uint ix_nch, ix_nchqua, 
     uint ch_bits;
-    uint idt, ich, iqua, ixdat, ixhdr, iseq;
+//  uint idt, ich, iqua, ixdat, ixhdr, iseq; (ker...test_amd.cl)
+//  int  idt, ich, ifrmdat, iqua, ixfrm, i, iseq; (cpu)
+    uint idt, ich, ifrmdat, iqua, ixfrm, iseq;
     // float (*quantl)[16][4]; /* 4 quantiles of  data for 16 channels */
     float q_exprm[4]; /* Holds normalized quantiles, sum(q_exprm) = 1 */
-
+    
+    // __global uint *ptim1 = NULL, *ptim2 = NULL;
+    __global uint *pfrm = NULL, *pdat = NULL;
     __global float *pqua = NULL, *pqua_ch = NULL;
     __global float *presidl = NULL, *pthresh = NULL;
     __global ushort *pniter = NULL,  *pflag = NULL;
-    /* 
     
     int nitr = 0;    /* Number of calls to the optimized function residual() */
     float res; /* The minimal value of the quantization threshold */
@@ -130,122 +134,95 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
 
     float nfdat_fl = (float) nfdat;
 
-    ixhdr = ifrm*frmwords;
+    ixfrm = ifrm*frmwords;
+
+    // /*
+    //  * Set pointers to the ifrm-th frame to process in this thread 
+    //  * (or "work item" in the OpenCL terminology.)
+    //  */
+    // ixdat = ixfrm + nfhead;  /* Index at the 2500-word data block */
+
+    /* Set pointer to the 4-word header of the frame */
+    pfrm = dat + ixfrm;
 
     /*
-     * Set pointers to the ifrm-th frame to process in this thread 
-     * (or "work item" in the OpenCL terminology.)
+     * Detect and skip bad frame by checking if the 4 words of its header
+     * contain the fill pattern 0x11223344 
+     */ 
+    good_frame = !((pfrm[0] == fill_pattern) && (pfrm[1] == fill_pattern) &&
+                   (pfrm[2] == fill_pattern) && (pfrm[3] == fill_pattern));
+
+    /* Set pointer to the start of data block in the frame */
+    pdat = pfrm + 4;
+        
+    /* 
+     * Zeroize the quantiles for current frame: all channels. 
      */
-    ixdat = ixhdr + nfhead;  /* Index at the 2500-word data block */
+    ix_nchqua = ifrm*nchqua;  /* Index at the 16x4 section of quantl */
+    pqua = quantl + ix_nchqua; /* 1D array pqua[i] == quantl[ifrm][i] */
+    for (iseq=0; iseq<nchqua; iseq++)
+        *pqua++ = 0.0;
 
-    __global uint *pdat = dat + ixdat; /* Pointer to word 0 of ifrm-th frame */
-
-    size_t ix_nch = ifrm*nch;  /* Index at the 16-ch section of 1D arrays */
+    /* To work with the arrays of results, set pointers
+     * to the starts of current frame's result data */ 
+    ix_nch = ifrm*nch;  /* Index at the 16-ch section of the 1D arrays */
     presidl = residl + ix_nch;
     pthresh = thresh + ix_nch;
     pniter = niter + ix_nch;
     pflag =  flag + ix_nch;
 
-    /* 
-     * Zeroize the quantiles for current frame: all channels. 
-     */
-    size_t ix_nchqua = ifrm*nchqua;  /* Index at the 16x4 section of quantl */
-
-    pqua = quantl + ix_nchqua; /* 1D array pqua[i] == quantl[ifrm][i] */
-    for (iseq=0; iseq<nchqua; iseq++)
-        *pqua++ = 0.0;
-
-    /*
-     * Here at least the frame header is checked if it only contains the 
-     * fill-pattern 0x11223344 words signalling the "missing frame".
-     *
-     * From Mark_5C_Data_Frame_Specification_memo_058.pdf :
-     *
-     * Under certain circumstances, the Mark 5C writes a 
-     * ‘fill-pattern Data Frame’ in place of missing data. 
-     * The fill-pattern Data Frame consists of a normal-length Data Frame 
-     * completely filled with a user-specified 32-bit pattern. The correlator 
-     * recognizes this fill-pattern data to prevent the correlator from 
-     * processing the corresponding data segment.
-     *
-     * Mark 5B fill-pattern Data Frames are generated exactly like Mark 5C,
-     * but with a fixed length of 10016 bytes.
-     * The Mark 5B fill-pattern word is (0x11223344).
-     */
-
-    /* Detect and skip bad frame by checking if the 4 words of its header
-     * contain the fill pattern */
-
-    ???????????? dat[0-3] ALWAYS point at the 1st frame header!!! ???????????
-    
-    good_frame = !((dat[0] == fill_pattern) && (dat[1] == fill_pattern) &&
-                   (dat[2] == fill_pattern) && (dat[3] == fill_pattern));
-    
     if (good_frame) { 
         
-        /*
-         * Sum up the quantiles from the 2500 data words for all 16 channels
-         */
+        /* Pointer to the the quantile [16][4] subarray */
         pqua = quantl + ix_nchqua; /* 1D array pqua[i] == quantl[ifrm][i] */
 
-        // printf("ifrm = %ld, ix_nchqua = %4ld, quantl = %14p, pqua = %14p, " \
-        //        "dif=%4ld\n",
-        //        ifrm, ix_nchqua, (void*)quantl, (void*)pqua,
-        //        (pqua-quantl));
-
-        // if (ifrm ==2) {
-        //     printf("M5B 2-bit stream masks:\n");
-        //     for (ich=0; ich<16; ich++)
-        //         printf("ch_mask[%2u] = %10x\n", ich, ch_mask[ich]);
-        // }
-
-
+        /*
+         * Sum up the quantiles from the 2500 data words for all 16 channels
+         *
+         * In the following loop over the 2500 words of current frame
+         * data block. For each of 16 streams the 4 unnormalized quantiles
+         * are counted as numbers of occurrencies the binary values 
+         * 00, 01, 10, 11. 
+         *
+         */
         for (idt=0; idt<nfdat; idt++) { /* Data 32b-words in frame count */
 
             for (ich=0; ich<nch; ich++) {
-                ch_bits = pdat[idt] & ch_mask[ich]; /* 2-bit-stream value */
-
+                /* 2-bit-stream value */
+                ch_bits = pdat[idt] & ch_mask[ich];  /* Channel bits */
                 /* Move the 2-bit-stream of the ich-th channel to the
                  * rightmost position in the 32-bit word  chbits
                  * to get the quantile index iqua from 0,1,2,3 */
                 iqua = ch_bits >> (2*ich);
-            
-                // if (ifrm == 0 && idt == 0)
-                //     printf("%ld: iqua = %u\n", ifrm, iqua);
-
-                pqua[ich*nqua+iqua] += 1.0; /* quantl[ifrm][ich][iqua] += 1.0; */
-
-                // if (ifrm == 0 && idt == 0)
-                //     for (i=0; i<4; i++)
-                //         printf("%g ", quantl[i]);
-                // printf("\n");
+                pqua[ich*nqua+iqua] += 1.0; /* Accrue iqua-th quantile */
+                
+                /* The same in the array-index notation: */
+                /* ch_bits = dat[ixdat+idt] & ch_mask[ich]; */
+                /* iqua = ch_bits >> 2*ich; */
+                /* quantl[ifrm][ich][iqua] += 1.0; */
             }
         }
 
-        // if (ifrm == 0) {
-        //     printf("ifrm = %d; quantiles: ", ifrm);
-        //     for (i=0; i<4; i++)
-        //         printf("%g ", quantl[i]);
-        //     printf("\n");
-        // }
-    
         /* 
          * Finding optimal quantization thresholds and residuals
+         * in current frame for all the 16 channels
+         * using the accumulated quantiles' frequencies in quantl[ifrm][16][4]
          */
         for (ich=0; ich<nch; ich++) {
             /*
              * Normalize the quantiles dividing them by the frame size
              * so that their sum be 1: sum(q_exprm) == 1.
+             *
+             * 1D array pqua_ch[i] == quantl[ifrm][ich][i]
              */
-
-            /* 1D array pqua_ch[i] == quantl[ifrm][ich][i] */
-            float *pqua_ch = quantl + (ifrm*nch + ich)*nqua; 
+            pqua_ch = quantl + (ix_nch + ich)*nqua; 
             
             q_exprm[0] = *pqua_ch++ / nfdat_fl;
             q_exprm[1] = *pqua_ch++ / nfdat_fl;
             q_exprm[2] = *pqua_ch++ / nfdat_fl;
             q_exprm[3] = *pqua_ch++ / nfdat_fl;
 
+            /* The same in the array-index notation: */
             // q_exprm[0] = (quantl[ifrm][ich][0]) / nfdat_fl;
             // q_exprm[1] = (quantl[ifrm][ich][1]) / nfdat_fl;
             // q_exprm[2] = (quantl[ifrm][ich][2]) / nfdat_fl;
@@ -260,9 +237,13 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
              * the Gaussian PDF and those of the 2-bit streams 
              * from M5B files. 
              */
+#ifdef __amd
+            th0 = fminbndf_amd(0.5, 1.5, q_exprm, xatol, maxiter,
+                           &res, &nitr, &flg, 0);
+#else
             th0 = fminbndf(*residual, 0.5, 1.5, q_exprm, xatol, maxiter,
                            &res, &nitr, &flg, 0);
-
+#endif
             presidl[ich] = res;
             pthresh[ich] = th0;
             pniter[ich] = nitr;
@@ -275,7 +256,23 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
             // flag[ifrm][ich] = flg;
         
         } /* for (ich=0; ... */
-    }
+        
+    } /* if (good_frame) ... */
+
+    else { /* if the frame is bad */
+        for (ich=0; ich<nch; ich++) {
+            /*
+             * Fill the arrays of results for current bad frame
+             * with zeros to indicate absence of results.
+             * The flags are set to all-ones.
+             */
+            pqresd[ich] = 0.0;
+            pthr[ich] = 0.0;
+            pniter[ich] = 0;
+            pflag[ich] = 1;
+        }  /* for (ich=0; ...  */
+    }      /* if the frame is bad */
+     
     return; 
 }
 

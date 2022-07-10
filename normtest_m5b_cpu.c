@@ -67,7 +67,7 @@ float residual(float thresh, float *q_exprm) {
 
 int main() {
     size_t m5bbytes;
-    __uint32_t chbits;
+    __uint32_t ch_bits;
     __uint32_t *dat = NULL;
     __uint32_t *pfrm = NULL, *pdat = NULL, *ptim1 = NULL, *ptim2 = NULL;
     int ifrm, idt, ich, ifrmdat, iqua, ixfrm, i, iseq;
@@ -193,7 +193,7 @@ int main() {
         good_frame = !((pfrm[0] == fill_pattern) && (pfrm[1] == fill_pattern) &&
                        (pfrm[2] == fill_pattern) && (pfrm[3] == fill_pattern));
 
-        /* Move pointer to the start of data block in the frame */
+        /* Set pointer to the start of data block in the frame */
         pdat = pfrm + 4;
         
         /*
@@ -221,7 +221,7 @@ int main() {
         for (iseq=0; iseq<nchqua; iseq++)
             *pqua++ = 0.0;
 
-        /* To further work with the arrays of results, set pointers
+        /* To work with the arrays of results, set pointers
          * to the starts of current frame's result data */ 
         pqresd = (float *) qresd[ifrm];
         pthr =   (float *) thr[ifrm];
@@ -244,23 +244,24 @@ int main() {
             
                 for (ich=0; ich<16; ich++) {
                     /* 2-bit-stream value */
-                    chbits = pdat[idt] & ch_mask[ich]; /* Channel bits */
+                    ch_bits = pdat[idt] & ch_mask[ich]; /* Channel bits */
                     /* Move the 2-bit stream value of the ich-th channel
-                     * to the rightmost position in the 32-bit word chbits
+                     * to the rightmost position in the 32-bit word ch_bits
                      * to get the quantile index iqua from 0,1,2,3 */
-                    iqua = chbits >> (2*ich);
+                    iqua = ch_bits >> (2*ich);
                     pqua[ich*nqua+iqua] += 1.0; /* Accrue iqua-th quantile */
 
                     /* The same in the array-index notation: */
-                    /* chbits = dat[ixdat+idt] & ch_mask[ich]; */
-                    /* iqua = chbits >> 2*ich; */
+                    /* ch_bits = dat[ixdat+idt] & ch_mask[ich]; */
+                    /* iqua = ch_bits >> 2*ich; */
                     /* qua[ifrm][ich][iqua] += 1.0; */
                 }
             }
         
             /* 
              * Finding optimal quantization thresholds and residuals
-             * in current frame for all the 16 channels
+             * in current frame for all the 16 channels using the accumulated
+             * quantiles' frequencies in quantl[ifrm][16][4]
              */
             for (ich=0; ich<nch; ich++) {
                 /*
@@ -319,7 +320,7 @@ int main() {
             for (ich=0; ich<nch; ich++) {
                 /*
                  * Fill the arrays of results for current bad frame
-                 * with zeroes to indicate absence of results.
+                 * with zeros to indicate absence of results.
                  * The flags are set to all-ones.
                  */
                 pqresd[ich] = 0.0;
