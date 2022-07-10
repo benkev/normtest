@@ -112,8 +112,7 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
      * flag[nfrm,16]:     Flags
      * niter[nfrm,16]:    Number of fminbnd() iterations
      */ 
-    uint ix_nch, ix_nchqua, 
-    uint ch_bits;
+    uint ix_nch, ix_nchqua, ch_bits;
 //  uint idt, ich, iqua, ixdat, ixhdr, iseq; (ker...test_amd.cl)
 //  int  idt, ich, ifrmdat, iqua, ixfrm, i, iseq; (cpu)
     uint idt, ich, ifrmdat, iqua, ixfrm, iseq;
@@ -266,8 +265,8 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
              * with zeros to indicate absence of results.
              * The flags are set to all-ones.
              */
-            pqresd[ich] = 0.0;
-            pthr[ich] = 0.0;
+            presidl[ich] = 0.0;
+            pthresh[ich] = 0.0;
             pniter[ich] = 0;
             pflag[ich] = 1;
         }  /* for (ich=0; ...  */
