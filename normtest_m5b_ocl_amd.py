@@ -127,9 +127,12 @@ buf_niter = cl.Buffer(ctx,  mf.WRITE_ONLY, niter.nbytes)
 #
 # Read the kernel code from file into the string "ker"
 #
-with open ("ker_m5b_gauss_test_amd.cl") as fh: ker = fh.read()
+#kernel = "ker_m5b_gauss_test_amd.cl"
+kernel = "ker_m5b_gauss_test.cl"
 
-print("OpenCL kernel file 'ker_m5b_gauss_test_amd.cl' is used\n")
+with open (kernel) as fh: ker = fh.read()
+
+print("OpenCL kernel file '%s' is used\n" % kernel)
 
 prg = cl.Program(ctx, ker).build(options=['-I . -D __amd'])
 #prg = cl.Program(ctx, ker).build(options=['-I /home/benkev/Work/normtest'])
