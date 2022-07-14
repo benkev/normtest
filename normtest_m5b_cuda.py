@@ -182,6 +182,14 @@ thresh = thresh.reshape(nfrm,16)
 flag =   flag.reshape(nfrm,16)
 niter =  niter.reshape(nfrm,16)
 
+del quantl_gpu
+del residl_gpu
+del thresh_gpu
+del flag_gpu
+del niter_gpu
+del dat_gpu
+del ch_mask_gpu
+
 raise SystemExit
 
 #
