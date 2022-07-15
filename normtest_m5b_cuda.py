@@ -14,7 +14,18 @@ import os, sys
 import numpy as np
 import matplotlib.pyplot as pl
 import time
-from pycuda import driver, compiler, gpuarray, tools
+# import pycuda.autoinit
+# from pycuda import driver, compiler, gpuarray, tools
+import pycuda as cu
+
+def kernel_meminfo(kernel):
+    shared=kernel.shared_size_bytes
+    regs=kernel.num_regs
+    local=kernel.local_size_bytes
+    const=kernel.const_size_bytes
+    # mbpt=kernel.max_threads_per_block
+    print("Kernel memory: Local: %dB, Shared: %dB, Registers: %d, Const: %dB\n"
+          % (local,shared,regs,const))
 
 tic = time.time()
 
@@ -128,33 +139,52 @@ for ich in range(1,16):
 with open ("ker_m5b_gauss_test.cu") as fh: kernel_code = fh.read()
 
 # -- initialize the device
-import pycuda.autoinit
+#import pycuda.autoinit
+cu.driver.init()
+
+#
+# GPU information
+#
+(free,total) = cu.driver.mem_get_info()
+print("Global memory occupancy: %5.2f%% free"%(free*100/total))
+
+dev = cu.driver.Device(0)
+attrs=dev.get_attributes()
+# print("%s: %s" % ('MAX_SHARED_MEMORY_PER_BLOCK', str(value)))
+# print("%s: %s" % (str(key), str(value)))
+# print("%s: %s" % (str(key), str(value)))
+# print("%s: %s" % (str(key), str(value)))
 
 #
 # Transfer host (CPU) memory to device (GPU) memory 
 #
-dat_gpu =     gpuarray.to_gpu(dat)
-ch_mask_gpu = gpuarray.to_gpu(ch_mask)
+dat_gpu =     cu.gpuarray.to_gpu(dat)
+ch_mask_gpu = cu.gpuarray.to_gpu(ch_mask)
 
 #
 # Create empty gpu array for the result (C = A * B)
 #
-quantl_gpu = gpuarray.empty((nfrm*16*4,), np.float32)
-residl_gpu = gpuarray.empty((nfrm*16,), np.float32)
-thresh_gpu = gpuarray.empty((nfrm*16,), np.float32)
-flag_gpu = gpuarray.empty((nfrm*16,), np.uint16)
-niter_gpu = gpuarray.empty((nfrm*16,), np.uint16)
+quantl_gpu = cu.gpuarray.empty((nfrm*16*4,), np.float32)
+residl_gpu = cu.gpuarray.empty((nfrm*16,), np.float32)
+thresh_gpu = cu.gpuarray.empty((nfrm*16,), np.float32)
+flag_gpu = cu.gpuarray.empty((nfrm*16,), np.uint16)
+niter_gpu = cu.gpuarray.empty((nfrm*16,), np.uint16)
 
 #
 # Compile the kernel code 
 #
-mod = compiler.SourceModule(kernel_code,
+mod = cu.compiler.SourceModule(kernel_code,
                             options=['-I /home/benkev/Work/normtest/'])
 
 #
 # Get the kernel function from the compiled module
 #
 m5b_gauss_test = mod.get_function("m5b_gauss_test")
+
+#
+# Print the kernem memory information
+#
+kernel_meminfo(m5b_gauss_test)
 
 #
 # Call the kernel on the card
@@ -182,6 +212,9 @@ thresh = thresh.reshape(nfrm,16)
 flag =   flag.reshape(nfrm,16)
 niter =  niter.reshape(nfrm,16)
 
+#
+# Release GPU memory allocated to the large arrays
+#
 del quantl_gpu
 del residl_gpu
 del thresh_gpu
