@@ -54,16 +54,25 @@ if last_frmbytes != 0:
     print("Last incomplete frame size: %d Bytes = %d words." %
           (last_frmbytes, last_frmwords))
 
-# print('GPU GLOBAL_MEM_SIZE: %d\n' % cl.device_info.GLOBAL_MEM_SIZE) #?????
-# ?????????????????????????????????????????????????????????????????????????????
-# bin(cl.device_info.EXTENSIONS)
-# bin(cl.device_info.ADDRESS_BITS)
-# bin(cl.device_info.EXTENSIONS)
-# cl.device_info.COMPUTE_CAPABILITY_MINOR_NV
+plats = cl.get_platforms()
+plat = plats[0]
+devs = plat.get_devices(cl.device_type.GPU)
+dev = devs[0]
 
+print()
+print('GPU: %s, %s' % (plat.name, plat.vendor))
+print('Memory (global): %5.2f GB' % (dev.global_mem_size/2**30))
+print('Memory (local):  %5.1f kB' % (dev.local_mem_size/2**10))
+print('Max compute units %d' % (dev.max_compute_units))
 
+mem = os.popen('free -t -b').readlines()
+mem = mem[1].split()
+tot_ram = float(mem[1]) 
+avl_ram = float(mem[6]) 
 
-
+print()
+print('CPU RAM: total %5.2f GB, available %5.2f GB' % (tot_ram/2**30,
+                                                     avl_ram/2**30))
 
 # sizeof(size_t) = CL_DEVICE_ADDRESS_BITS = 64 here
 
@@ -75,6 +84,7 @@ toc = time.time()
 
 print()
 print("M5B file has been read. Time: %.3f s.\n" % (toc-tic))
+
 
 tic = time.time()
 

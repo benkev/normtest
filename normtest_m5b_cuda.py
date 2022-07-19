@@ -14,7 +14,7 @@ import os, sys
 import numpy as np
 import matplotlib.pyplot as pl
 import time
-# import pycuda.autoinit
+import pycuda.autoinit
 # from pycuda import driver, compiler, gpuarray, tools
 import pycuda as cu
 
