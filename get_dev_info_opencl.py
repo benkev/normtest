@@ -1,12 +1,15 @@
 '''
-Prints relevant information regarding the capabilities of the current OpenCL runtime and devices
-Note that pyopencl has a script that prints all properties in its examples folder
+Prints relevant information regarding the capabilities of the current OpenCL
+runtime and devices.
+Note that pyopencl has a script that prints all properties in its examples
+folder.
 '''
 
 import pyopencl as cl
 
 print('PyOpenCL version: ' + cl.VERSION_TEXT)
-print('OpenCL header version: ' + '.'.join(map(str, cl.get_cl_header_version())) + '\n')
+print('OpenCL header version: ' +
+      '.'.join(map(str, cl.get_cl_header_version())) + '\n')
 
 # Get installed platforms (SDKs)
 print('- Installed platforms (SDKs) and available devices:')
@@ -14,13 +17,14 @@ platforms = cl.get_platforms()
 
 for plat in platforms:
     indent = ''
-
     # Get and print platform info
     print(indent + '{} ({})'.format(plat.name, plat.vendor))
-    indent = '\t'
+
+    # indent = '\t'
+    indent = ''
     print(indent + 'Version: ' + plat.version)
     print(indent + 'Profile: ' + plat.profile)
-    print(indent + 'Extensions: ' + str(plat.extensions.strip().split(' ')))
+    # print(indent + 'Extensions: ' + str(plat.extensions.strip().split(' ')))
 
     # Get and print device info
     devices = plat.get_devices(cl.device_type.ALL)
@@ -30,13 +34,15 @@ for plat in platforms:
         print(indent + '\tNone')
 
     for dev in devices:
-        indent = '\t\t'
+        # indent = '\t\t'
+        indent = '\t'
         print(indent + '{} ({})'.format(dev.name, dev.vendor))
 
-        indent = '\t\t\t'
+        # indent = '\t\t\t'
+        # indent = '\t'
         flags = [('Version', dev.version),
                  ('Type', cl.device_type.to_string(dev.type)),
-                 ('Extensions', str(dev.extensions.strip().split(' '))),
+                 # ('Extensions', str(dev.extensions.strip().split(' '))),
                  ('Memory (global)', str(dev.global_mem_size/2**30)+' GB'),
                  ('Memory (local)', str(dev.local_mem_size/2**10)+' kB'),
                  ('Address bits', str(dev.address_bits)),

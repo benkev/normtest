@@ -17,6 +17,8 @@ import time
 import pycuda.autoinit
 # from pycuda import driver, compiler, gpuarray, tools
 import pycuda as cu
+import pycuda.gpuarray as gpuarray
+import pycuda.compiler as compiler
 
 def kernel_meminfo(kernel):
     shared=kernel.shared_size_bytes
@@ -158,22 +160,22 @@ attrs=dev.get_attributes()
 #
 # Transfer host (CPU) memory to device (GPU) memory 
 #
-dat_gpu =     cu.gpuarray.to_gpu(dat)
-ch_mask_gpu = cu.gpuarray.to_gpu(ch_mask)
+dat_gpu =     gpuarray.to_gpu(dat)
+ch_mask_gpu = gpuarray.to_gpu(ch_mask)
 
 #
 # Create empty gpu array for the result (C = A * B)
 #
-quantl_gpu = cu.gpuarray.empty((nfrm*16*4,), np.float32)
-residl_gpu = cu.gpuarray.empty((nfrm*16,), np.float32)
-thresh_gpu = cu.gpuarray.empty((nfrm*16,), np.float32)
-flag_gpu = cu.gpuarray.empty((nfrm*16,), np.uint16)
-niter_gpu = cu.gpuarray.empty((nfrm*16,), np.uint16)
+quantl_gpu = gpuarray.empty((nfrm*16*4,), np.float32)
+residl_gpu = gpuarray.empty((nfrm*16,), np.float32)
+thresh_gpu = gpuarray.empty((nfrm*16,), np.float32)
+flag_gpu =   gpuarray.empty((nfrm*16,), np.uint16)
+niter_gpu =  gpuarray.empty((nfrm*16,), np.uint16)
 
 #
 # Compile the kernel code 
 #
-mod = cu.compiler.SourceModule(kernel_code,
+mod = compiler.SourceModule(kernel_code,
                             options=['-I /home/benkev/Work/normtest/'])
 
 #
