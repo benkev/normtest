@@ -38,16 +38,18 @@ fname = 'rd1910_wz_268-1811.m5b'
 #
 Nwitem_max = 8 #16 # 1024 # 32  # 256
 
-if len(sys.argv) > 1:
-    Nwitem_max = int(sys.argv[1])
-
 nfrm = np.uint32(100)
 
+print("sys.argv = ", sys.argv)
+
 argc = len(sys.argv)
-if argc > 1:
-    nfrm = np.uint32(sys.argv[1])
-if argc > 2:
-    nwg = np.uint32(sys.argv[2])
+if argc == 1:
+    print('Usage: python normtest_m5b_cuda.py <m5b file name> [<>]')
+    raise SystemExit
+if argc == 2:
+    fname = sys.argv[1]
+if argc == 3:
+    Nwitem_max = int(sys.argv[2])
 
 fmega = pow(1024.,2)
 fgiga = pow(1024.,3)

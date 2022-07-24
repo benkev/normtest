@@ -65,7 +65,7 @@ print('Memory (global): %5.2f GB' % (dev.global_mem_size/2**30))
 print('Memory (local):  %5.1f kB' % (dev.local_mem_size/2**10))
 print('Max compute units %d' % (dev.max_compute_units))
 
-mem = os.popen('free -t -b').readlines()
+mem = os.popen('free -b').readlines()
 mem = mem[1].split()
 tot_ram = float(mem[1]) 
 avl_ram = float(mem[6]) 
