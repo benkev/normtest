@@ -1,3 +1,5 @@
+help_text = \
+'''
 #
 #   normtest_m5b_cuda.py
 # 
@@ -6,9 +8,13 @@
 # Single precision floats.
 #
 # Requires:
-# ker_m5b_gauss_test.cl, OpenCL kernel.
+# ker_m5b_gauss_test.cu, CUDA kernel.
 #
-
+# Usage: python normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>]
+#
+# If # of threads is not specified, the optimal (appearingly) 8 is used.
+#
+'''
 
 import os, sys
 import numpy as np
@@ -26,7 +32,7 @@ def kernel_meminfo(kernel):
     local=kernel.local_size_bytes
     const=kernel.const_size_bytes
     # mbpt=kernel.max_threads_per_block
-    print("Kernel memory: Local: %dB, Shared: %dB, Registers: %d, Const: %dB\n"
+    print("Kernel memory: Local: %dB, Shared: %dB, Registers: %d, Const: %dB"
           % (local,shared,regs,const))
 
 tic = time.time()
@@ -36,20 +42,30 @@ fname = 'rd1910_wz_268-1811.m5b'
 #
 # It looks like 8 threads per block is optimum: 2.245 s to do 1.2 Gb m5b file!
 #
-Nwitem_max = 8 #16 # 1024 # 32  # 256
+Nthreads_max = 8 #16 # 1024 # 32  # 256
 
 nfrm = np.uint32(100)
 
-print("sys.argv = ", sys.argv)
+# print("sys.argv = ", sys.argv)
 
 argc = len(sys.argv)
 if argc == 1:
-    print('Usage: python normtest_m5b_cuda.py <m5b file name> [<>]')
+    print(help_text)
     raise SystemExit
 if argc == 2:
-    fname = sys.argv[1]
+    if sys.argv[1] in {'?', '-h', '--help'}:
+        print(help_text)
+        raise SystemExit
+    else:
+        fname = sys.argv[1]
 if argc == 3:
-    Nwitem_max = int(sys.argv[2])
+    Nthreads_max = int(sys.argv[2])
+if argc > 3:
+    print('Wrong number of arguments.')
+    print('Usage: python normtest_m5b_cuda.py <m5b-file-name> ' \
+          '[<# of threads per block>]')
+    raise SystemExit
+    
 
 fmega = pow(1024.,2)
 fgiga = pow(1024.,3)
@@ -103,25 +119,27 @@ quantl = np.zeros((nfrm*16*4), dtype=np.float32)  # Quantiles
 # Find how many work groups/CUDA blocks and 
 #               work items/CUDA threads per block needed
 #
-quot, rem = divmod(nfrm, Nwitem_max)
+quot, rem = divmod(nfrm, Nthreads_max)
 if quot == 0:
-    Nwgroup = 1
-    Nwitem = rem
+    Nblocks = 1
+    Nthreads = rem
 elif rem == 0:
-    Nwgroup = quot
-    Nwitem = Nwitem_max
-else:            # Both quot and rem != 0: last w-group will be < Nwitem_max 
-    Nwgroup = quot + 1
-    Nwitem = Nwitem_max
+    Nblocks = quot
+    Nthreads = Nthreads_max
+else:            # Both quot and rem != 0: last w-group will be < Nthreads_max 
+    Nblocks = quot + 1
+    Nthreads = Nthreads_max
 
-Nblocks =  int(Nwgroup)
-Nthreads = int(Nwitem)
-    
-# Nproc = Nwitem*Nwgroup
+Nblocks =  int(Nblocks)
+Nthreads = int(Nthreads)
+   
+# Nproc = Nthreads*Nblocks
 
-print("nfrm = {0}: Nwgroup = {1}, Nwitem = {2}, workitems in last group: {3}"
-      .format(nfrm, Nwgroup, Nwitem, rem))
-print("nfrm = {0}: Nblocks = {1}, Nthreads = {2}, threads in last group: {3}"
+# print("nfrm = {0}: Nwgroup = {1}, Nwitem = {2}, workitems in last group: {3}"
+#       .format(nfrm, Nwgroup, Nwitem, rem))
+print('GPU Parameters:')
+print("Processing {0} frames using {1} CUDA blocks, {2} threads in each.\n" \
+      "The last, incomplete block has {3} threads."
       .format(nfrm, Nblocks, Nthreads, rem))
 
 # raise SystemExit
@@ -150,14 +168,8 @@ cu.driver.init()
 # GPU information
 #
 (free,total) = cu.driver.mem_get_info()
-print("Global memory occupancy: %5.2f%% free"%(free*100/total))
-
-dev = cu.driver.Device(0)
-attrs=dev.get_attributes()
-# print("%s: %s" % ('MAX_SHARED_MEMORY_PER_BLOCK', str(value)))
-# print("%s: %s" % (str(key), str(value)))
-# print("%s: %s" % (str(key), str(value)))
-# print("%s: %s" % (str(key), str(value)))
+print("Global memory occupancy: %5.2f%% free of the total %5.2f GB" %
+      (free*100/total, total/fgiga))
 
 #
 # Transfer host (CPU) memory to device (GPU) memory 
@@ -208,7 +220,7 @@ niter =  niter_gpu.get()
 
 toc = time.time()
 
-print("GPU time: %.3f s." % (toc-tic))
+print("\nGPU time: %.3f s." % (toc-tic))
 
 quantl = quantl.reshape(nfrm,16,4)
 residl = residl.reshape(nfrm,16)

@@ -74,12 +74,12 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
 
 
     if (ifrm == 0) {
-        printf("Block size: %d\n", blockDim.x);
+        printf("CUDA block size: %d threads.\n", blockDim.x);
         // printf("Number of threads per block: %d\n", nls);
         // printf("sizeof(uint) = %ld\n", sizeof(uint)); 
     }
     
-    if (ifrm > nfrm) return;  // ======== Ignore extra threads============ >>>
+    if (ifrm > nfrm) return;  // ====== Ignore extra threads ========== >>>
     
     /* 
      * ch_mask[16]:       Channel 2-bit masks
