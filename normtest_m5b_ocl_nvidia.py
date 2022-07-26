@@ -1,3 +1,5 @@
+help_text = \
+'''
 #
 #   normtest_m5b_ocl_nvidia.py
 # 
@@ -8,7 +10,28 @@
 # Requires:
 # ker_m5b_gauss_test.cl, OpenCL kernel.
 #
-
+# Usage: 
+# $ python normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]
+#
+# Or, from IPython:
+#
+# $ ipython --pylab
+# %run normtest_m5b_ocl_nvidia.py <m5b-file-name> [<# of threads per block>] \
+#                                 [-s]
+#
+# If # of threads is not specified, the optimal (appearingly) 8 is used.
+#
+# If "-s" is present at the end of command line the results are saved in text
+# files with names:
+#    thresholds_*.txt
+#    residuals_*.txt
+#    n_iterations_*.txt
+#    flags_*.txt
+#    quantiles_*.txt
+#
+# Note that saving the results files may take long time, 
+#
+'''
 
 import os, sys
 import numpy as np
@@ -18,19 +41,48 @@ import time
 
 tic = time.time()
 
-fname = 'rd1910_wz_268-1811.m5b'
+# fname = 'rd1910_wz_268-1811.m5b'
 
+#
+# It looks like 8 work items (threads) per work group (block) is optimum:
+#
 wgsize = 8  # Work group size (# of work items in group)
 
-nfrm = np.uint32(100)
+argc = len(sys.argv)
+
+saveResults = False   # Do not save the results in files by defauly
+badSaveArg = False
+
+print("sys.argv = ", sys.argv)
 
 argc = len(sys.argv)
-if argc > 1:
-    wgsize = int(sys.argv[1])   # In kernel: get_local_size(0)
-# if argc > 1:
-#     nfrm = np.uint32(sys.argv[1])
-# if argc > 2:
-#     nwg = np.uint32(sys.argv[2])
+if argc == 1:
+    print(help_text)
+    raise SystemExit
+if argc == 2:
+    if sys.argv[1] in {'?', '-h', '--help'}:
+        print(help_text)
+        raise SystemExit
+    else:
+        fname = sys.argv[1]
+if argc == 3:
+    fname = sys.argv[1]
+    wgsize = int(sys.argv[2])
+if argc == 4:
+    fname = sys.argv[1]
+    wgsize = int(sys.argv[2])
+    if sys.argv[3] == '-s':
+        saveResults = True
+    else:
+        badSaveArg = True
+if argc > 4 or badSaveArg:
+    print('Wrong arguments.')
+    print('Usage: python normtest_m5b_cuda.py <m5b-file-name> ' \
+          '[<# of threads per block>] [-s]')
+    raise SystemExit
+    
+
+# raise SystemExit
 
 fmega = pow(1024.,2)
 fgiga = pow(1024.,3)
@@ -74,7 +126,7 @@ print()
 print('CPU RAM: total %5.2f GB, available %5.2f GB' % (tot_ram/2**30,
                                                      avl_ram/2**30))
 
-# sizeof(size_t) = CL_DEVICE_ADDRESS_BITS = 64 here
+# nfrm = np.uint32(100)
 
 nfrm = np.uint32(total_frms); # Uncomment to read in the TOTAL M5B FILE
     
@@ -108,7 +160,14 @@ niter =  np.zeros((nfrm*16), dtype=np.uint16)  # Number of iterations fminbnd()
 # local work size, wgsize (work group size)
 #
 wiglobal = int(wgsize*np.ceil(nfrm/wgsize))   # In kernel: get_global_size(0)
+nwg = wiglobal//wgsize  # Number of work groups
+rem = nfrm % wgsize
 
+print('GPU Parameters:')
+print("Processing %d frames using %d OpenCL work groups, " \
+      "%d work items in each." % (nfrm, nwg, wgsize))
+if rem != 0:
+    print("The last, incomplete work group has %d work items." % (rem))
 
 # raise SystemExit
 
@@ -144,18 +203,39 @@ buf_flag = cl.Buffer(ctx,   mf.WRITE_ONLY, flag.nbytes)
 buf_niter = cl.Buffer(ctx,  mf.WRITE_ONLY, niter.nbytes)
 
 
-# with open ("ker_m5b_gauss_test.cl") as fh: ker = fh.read()
-# print("OpenCL kernel file 'ker_m5b_gauss_test.cl' is used\n")
-
 #
 # Read the kernel code from file into the string "ker"
 #
-#kernel = "ker_m5b_gauss_test_nvidia.cl"
 kernel = "ker_m5b_gauss_test.cl"
 
 with open (kernel) as fh: ker = fh.read()
 
 print("OpenCL kernel file '%s' is used\n" % kernel)
+
+#
+# GPU information
+#
+print('PyOpenCL version: ' + cl.VERSION_TEXT)
+print('OpenCL header version: ' +
+      '.'.join(map(str, cl.get_cl_header_version())) + '\n')
+# Get installed platforms (SDKs)
+print('- Installed platforms (SDKs) and available devices:')
+platforms = cl.get_platforms()
+plat = platforms[0]
+# Get and print platform info
+print('{} ({})'.format(plat.name, plat.vendor))
+devices = plat.get_devices(cl.device_type.GPU)
+dev = devices[0]
+print(dev.name, dev.vendor)
+print('Type: %s' % cl.device_type.to_string(dev.type))
+print('Memory (global): %5.2 GB' % (dev.global_mem_size/2**30))
+print('Memory (local): %5.1 kB' % (dev.local_mem_size/2**10))
+print('Address bits: %d' % (dev.address_bits))
+print('Max compute units %d' % (dev.max_compute_units))
+print('Max work group size: %d' % (dev.max_work_group_size))
+print('Max work item dims: %d' % (dev.max_work_item_dimensions))
+print('Driver version: ', dev.driver_version)
+
 
 prg = cl.Program(ctx, ker).build(options=['-I . -D __nvidia'])
 #prg = cl.Program(ctx, ker).build(options=['-I /home/benkev/Work/normtest'])

@@ -11,8 +11,8 @@
 # Or, from IPython:
 #
 # $ ipython --pylab
-# $ In [1]: %run compile_opencl_kernel.py ker_m5b_gauss_test_amd.cl
-# $ In [2]: %run compile_opencl_kernel.py ker_m5b_gauss_test_nvidia.cl
+# In [1]: %run compile_opencl_kernel.py ker_m5b_gauss_test_amd.cl
+# In [2]: %run compile_opencl_kernel.py ker_m5b_gauss_test_nvidia.cl
 #
 
 import pyopencl as cl

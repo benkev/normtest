@@ -10,9 +10,25 @@ help_text = \
 # Requires:
 # ker_m5b_gauss_test.cu, CUDA kernel.
 #
-# Usage: python normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>]
+# Usage: 
+# $ python normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]
+#
+# Or, from IPython:
+#
+# $ ipython --pylab
+# %run normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]
 #
 # If # of threads is not specified, the optimal (appearingly) 8 is used.
+#
+# If "-s" is present at the end of command line the results are saved in text
+# files with names:
+#    thresholds_*.txt
+#    residuals_*.txt
+#    n_iterations_*.txt
+#    flags_*.txt
+#    quantiles_*.txt
+#
+# Note that saving the results files may take long time, 
 #
 '''
 
@@ -37,16 +53,17 @@ def kernel_meminfo(kernel):
 
 tic = time.time()
 
-fname = 'rd1910_wz_268-1811.m5b'
+# fname = 'rd1910_wz_268-1811.m5b'
 
 #
 # It looks like 8 threads per block is optimum: 2.245 s to do 1.2 Gb m5b file!
 #
 Nthreads_max = 8 #16 # 1024 # 32  # 256
 
-nfrm = np.uint32(100)
+saveResults = False   # Do not save the results in files by defauly
+badSaveArg = False
 
-# print("sys.argv = ", sys.argv)
+print("sys.argv = ", sys.argv)
 
 argc = len(sys.argv)
 if argc == 1:
@@ -59,11 +76,19 @@ if argc == 2:
     else:
         fname = sys.argv[1]
 if argc == 3:
+    fname = sys.argv[1]
     Nthreads_max = int(sys.argv[2])
-if argc > 3:
-    print('Wrong number of arguments.')
+if argc == 4:
+    fname = sys.argv[1]
+    Nthreads_max = int(sys.argv[2])
+    if sys.argv[3] == '-s':
+        saveResults = True
+    else:
+        badSaveArg = True
+if argc > 4 or badSaveArg:
+    print('Wrong arguments.')
     print('Usage: python normtest_m5b_cuda.py <m5b-file-name> ' \
-          '[<# of threads per block>]')
+          '[<# of threads per block>] [-s]')
     raise SystemExit
     
 
@@ -85,10 +110,19 @@ print("M5B file size: %ld bytes = %g MiB = %g GiB" %
       (m5bbytes, m5bbytes/fmega, m5bbytes/fgiga))
 print("Frame size: %d Bytes = %d words." % (frmbytes, nfdat))
 print("Number of whole frames: %d" % total_frms)
-print("Last frame size: %d Bytes = %d words." %
-      (last_frmbytes, last_frmwords))
+if last_frmbytes != 0:
+    print("Last incomplete frame size: %d Bytes = %d words." %
+          (last_frmbytes, last_frmwords))
 
-# sizeof(size_t) = CL_DEVICE_ADDRESS_BITS = 64 here
+mem = os.popen('free -b').readlines()
+mem = mem[1].split()
+tot_ram = float(mem[1]) 
+avl_ram = float(mem[6]) 
+
+print()
+print('CPU RAM: total %5.2f GB, available %5.2f GB' % (tot_ram/2**30,
+                                                     avl_ram/2**30))
+# nfrm = np.uint32(100)
 
 nfrm = np.uint32(total_frms); # Uncomment to read in the TOTAL M5B FILE
     
@@ -138,9 +172,10 @@ Nthreads = int(Nthreads)
 # print("nfrm = {0}: Nwgroup = {1}, Nwitem = {2}, workitems in last group: {3}"
 #       .format(nfrm, Nwgroup, Nwitem, rem))
 print('GPU Parameters:')
-print("Processing {0} frames using {1} CUDA blocks, {2} threads in each.\n" \
-      "The last, incomplete block has {3} threads."
-      .format(nfrm, Nblocks, Nthreads, rem))
+print("Processing %d frames using %d CUDA blocks, %d threads in each." %
+      (nfrm, Nblocks, Nthreads))
+if rem != 0:
+      print("The last, incomplete block has %d threads." % rem)
 
 # raise SystemExit
 
@@ -158,7 +193,11 @@ for ich in range(1,16):
 #
 # Read the kernel code from file into the string "ker"
 #
-with open ("ker_m5b_gauss_test.cu") as fh: kernel_code = fh.read()
+kernel = "ker_m5b_gauss_test.cu"
+
+with open (kernel) as fh: kernel_code = fh.read()
+
+print("OpenCL kernel file '%s' is used\n" % kernel)
 
 # -- initialize the device
 #import pycuda.autoinit
@@ -239,11 +278,13 @@ del niter_gpu
 del dat_gpu
 del ch_mask_gpu
 
-raise SystemExit
+if not saveResults:
+    raise SystemExit
 
 #
 # Save results
 #
+print('\nSaving results started ...')
 
 tic = time.time()
 
