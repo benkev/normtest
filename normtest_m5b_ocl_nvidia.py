@@ -106,16 +106,28 @@ if last_frmbytes != 0:
     print("Last incomplete frame size: %d Bytes = %d words." %
           (last_frmbytes, last_frmwords))
 
+#
+# GPU information
+#
 plats = cl.get_platforms()
 plat = plats[0]
 devs = plat.get_devices(cl.device_type.GPU)
 dev = devs[0]
 
 print()
-print('GPU: %s, %s' % (plat.name, plat.vendor))
+print('GPU Parameters:')
+print('Platform: %s (%s)' % (plat.name, plat.vendor))
+print('GPU:      %s' % (dev.name))
 print('Memory (global): %5.2f GB' % (dev.global_mem_size/2**30))
 print('Memory (local):  %5.1f kB' % (dev.local_mem_size/2**10))
 print('Max compute units %d' % (dev.max_compute_units))
+print('Max work group size: %d' % (dev.max_work_group_size))
+print('Max work item dims: %d' % (dev.max_work_item_dimensions))
+print('Address bits: %d' % (dev.address_bits))
+print('Driver version: ', dev.driver_version)
+print('PyOpenCL version: ' + cl.VERSION_TEXT)
+print('OpenCL header version: ' +
+      '.'.join(map(str, cl.get_cl_header_version())))
 
 mem = os.popen('free -b').readlines()
 mem = mem[1].split()
@@ -163,7 +175,6 @@ wiglobal = int(wgsize*np.ceil(nfrm/wgsize))   # In kernel: get_global_size(0)
 nwg = wiglobal//wgsize  # Number of work groups
 rem = nfrm % wgsize
 
-print('GPU Parameters:')
 print("Processing %d frames using %d OpenCL work groups, " \
       "%d work items in each." % (nfrm, nwg, wgsize))
 if rem != 0:
@@ -212,30 +223,6 @@ with open (kernel) as fh: ker = fh.read()
 
 print("OpenCL kernel file '%s' is used\n" % kernel)
 
-#
-# GPU information
-#
-print('PyOpenCL version: ' + cl.VERSION_TEXT)
-print('OpenCL header version: ' +
-      '.'.join(map(str, cl.get_cl_header_version())) + '\n')
-# Get installed platforms (SDKs)
-print('- Installed platforms (SDKs) and available devices:')
-platforms = cl.get_platforms()
-plat = platforms[0]
-# Get and print platform info
-print('{} ({})'.format(plat.name, plat.vendor))
-devices = plat.get_devices(cl.device_type.GPU)
-dev = devices[0]
-print(dev.name, dev.vendor)
-print('Type: %s' % cl.device_type.to_string(dev.type))
-print('Memory (global): %5.2 GB' % (dev.global_mem_size/2**30))
-print('Memory (local): %5.1 kB' % (dev.local_mem_size/2**10))
-print('Address bits: %d' % (dev.address_bits))
-print('Max compute units %d' % (dev.max_compute_units))
-print('Max work group size: %d' % (dev.max_work_group_size))
-print('Max work item dims: %d' % (dev.max_work_item_dimensions))
-print('Driver version: ', dev.driver_version)
-
 
 prg = cl.Program(ctx, ker).build(options=['-I . -D __nvidia'])
 #prg = cl.Program(ctx, ker).build(options=['-I /home/benkev/Work/normtest'])
@@ -264,7 +251,7 @@ buf_niter.release()
 
 toc = time.time()
 
-print("GPU time: %.3f s." % (toc-tic))
+print("\nGPU time: %.3f s." % (toc-tic))
 
 quantl = quantl.reshape(nfrm,16,4)
 residl = residl.reshape(nfrm,16)
