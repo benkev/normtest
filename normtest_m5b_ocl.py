@@ -1,14 +1,14 @@
 help_text = \
 '''
 #
-#   normtest_m5b_cuda.py
+#   normtest_m5b_ocl.py
 # 
-# Normality (Gaussianity) test for M5B files on Nvidia GPU
-# using PyCUDA package.
+# Normality (Gaussianity) test for M5B files on GPU
+# using PyOpenCL package.
 # Single precision floats.
 #
 # Requires:
-# ker_m5b_gauss_test.cu, CUDA kernel.
+# ker_m5b_gauss_test.cl, OpenCL kernel.
 #
 # Usage: 
 # $ python normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]
@@ -16,7 +16,8 @@ help_text = \
 # Or, from IPython:
 #
 # $ ipython --pylab
-# %run normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]
+# %run normtest_m5b_ocl_.py <m5b-file-name> [<# of threads per block>] \
+#                                 [-s]
 #
 # If # of threads is not specified, the optimal (appearingly) 8 is used.
 #
@@ -35,30 +36,21 @@ help_text = \
 import os, sys
 import numpy as np
 import matplotlib.pyplot as pl
+import pyopencl as cl
 import time
-import pycuda.autoinit
-# from pycuda import driver, compiler, gpuarray, tools
-import pycuda as cu
-import pycuda.gpuarray as gpuarray
-import pycuda.compiler as compiler
-
-def kernel_meminfo(kernel):
-    shared=kernel.shared_size_bytes
-    regs=kernel.num_regs
-    local=kernel.local_size_bytes
-    const=kernel.const_size_bytes
-    # mbpt=kernel.max_threads_per_block
-    print("Kernel memory: Local: %dB, Shared: %dB, Registers: %d, Const: %dB"
-          % (local,shared,regs,const))
 
 tic = time.time()
+
+
 
 # fname = 'rd1910_wz_268-1811.m5b'
 
 #
-# It looks like 8 threads per block is optimum: 2.245 s to do 1.2 Gb m5b file!
+# It looks like 8 work items (threads) per work group (block) is optimum:
 #
-Nthreads_max = 8 #16 # 1024 # 32  # 256
+wgsize = 8  # Work group size (# of work items in group)
+
+argc = len(sys.argv)
 
 saveResults = False   # Do not save the results in files by defauly
 badSaveArg = False
@@ -77,10 +69,10 @@ if argc == 2:
         fname = sys.argv[1]
 if argc == 3:
     fname = sys.argv[1]
-    Nthreads_max = int(sys.argv[2])
+    wgsize = int(sys.argv[2])
 if argc == 4:
     fname = sys.argv[1]
-    Nthreads_max = int(sys.argv[2])
+    wgsize = int(sys.argv[2])
     if sys.argv[3] == '-s':
         saveResults = True
     else:
@@ -91,6 +83,8 @@ if argc > 4 or badSaveArg:
           '[<# of threads per block>] [-s]')
     raise SystemExit
     
+
+# raise SystemExit
 
 fmega = pow(1024.,2)
 fgiga = pow(1024.,3)
@@ -114,6 +108,29 @@ if last_frmbytes != 0:
     print("Last incomplete frame size: %d Bytes = %d words." %
           (last_frmbytes, last_frmwords))
 
+#
+# Platform and GPU information
+#
+plats = cl.get_platforms()
+plat = plats[0]
+devs = plat.get_devices(cl.device_type.GPU)
+dev = devs[0]
+
+print()
+print('GPU Parameters:')
+print('Platform: %s (%s)' % (plat.name, plat.vendor))
+print('GPU:      %s' % (dev.name))
+print('Memory (global): %5.2f GB' % (dev.global_mem_size/2**30))
+print('Memory (local):  %5.1f kB' % (dev.local_mem_size/2**10))
+print('Max compute units %d' % (dev.max_compute_units))
+print('Max work group size: %d' % (dev.max_work_group_size))
+print('Max work item dims: %d' % (dev.max_work_item_dimensions))
+print('Address bits: %d' % (dev.address_bits))
+print('Driver version: ', dev.driver_version)
+print('PyOpenCL version: ' + cl.VERSION_TEXT)
+print('OpenCL header version: ' +
+      '.'.join(map(str, cl.get_cl_header_version())))
+
 mem = os.popen('free -b').readlines()
 mem = mem[1].split()
 tot_ram = float(mem[1]) 
@@ -122,6 +139,24 @@ avl_ram = float(mem[6])
 print()
 print('CPU RAM: total %5.2f GB, available %5.2f GB' % (tot_ram/2**30,
                                                      avl_ram/2**30))
+
+#
+# Determine which OpenCL platform is installed: NVIDIA or AMD,
+# and set appropriate kernel compilation options (ker_opts)
+#
+platname = plat.name
+platname = platname.split()[0] # Get the first word
+
+if platname == 'NVIDIA':
+    ker_opts = ['-I . -D __nvidia']
+elif platname == 'AMD':
+    ker_opts = ['-I . -D __amd']
+else:
+    print('Platform "%s" is not supported. Exiting.' % ker_opts)
+    raise SystemExit
+
+
+
 # nfrm = np.uint32(100)
 
 nfrm = np.uint32(total_frms); # Uncomment to read in the TOTAL M5B FILE
@@ -130,7 +165,9 @@ dat = np.fromfile(fname, dtype=np.uint32, count=frmwords*nfrm)
 
 toc = time.time()
 
-print("M5B file has been read. Time: %7.3f s.\n" % (toc-tic))
+print()
+print("M5B file has been read. Time: %.3f s.\n" % (toc-tic))
+
 
 tic = time.time()
 
@@ -144,38 +181,23 @@ tic = time.time()
 #
 ch_mask = np.zeros(16, dtype=np.uint32)           # Channel 2-bit masks
 quantl = np.zeros((nfrm*16*4), dtype=np.float32)  # Quantiles
-# residl = np.zeros((nfrm*16), dtype=np.float32)    # Residuals
-# thresh = np.zeros((nfrm*16), dtype=np.float32)    # Thresholds
-# flag =   np.zeros((nfrm*16), dtype=np.uint16)     # Flags
-# niter =  np.zeros((nfrm*16), dtype=np.uint16) # Number of iterations fminbnd()
+residl = np.zeros((nfrm*16), dtype=np.float32)    # Residuals
+thresh = np.zeros((nfrm*16), dtype=np.float32)    # Thresholds
+flag =   np.zeros((nfrm*16), dtype=np.uint16)     # Flags
+niter =  np.zeros((nfrm*16), dtype=np.uint16)  # Number of iterations fminbnd()
 
 #
-# Find how many work groups/CUDA blocks and 
-#               work items/CUDA threads per block needed
+# Find wiglobal >= nfrm, the total number of work items divisable by the
+# local work size, wgsize (work group size)
 #
-quot, rem = divmod(nfrm, Nthreads_max)
-if quot == 0:
-    Nblocks = 1
-    Nthreads = rem
-elif rem == 0:
-    Nblocks = quot
-    Nthreads = Nthreads_max
-else:            # Both quot and rem != 0: last w-group will be < Nthreads_max 
-    Nblocks = quot + 1
-    Nthreads = Nthreads_max
+wiglobal = int(wgsize*np.ceil(nfrm/wgsize))   # In kernel: get_global_size(0)
+nwg = wiglobal//wgsize  # Number of work groups
+rem = nfrm % wgsize
 
-Nblocks =  int(Nblocks)
-Nthreads = int(Nthreads)
-   
-# Nproc = Nthreads*Nblocks
-
-# print("nfrm = {0}: Nwgroup = {1}, Nwitem = {2}, workitems in last group: {3}"
-#       .format(nfrm, Nwgroup, Nwitem, rem))
-print('GPU Parameters:')
-print("Processing %d frames using %d CUDA blocks, %d threads in each." %
-      (nfrm, Nblocks, Nthreads))
+print("Processing %d frames using %d OpenCL work groups, " \
+      "%d work items in each." % (nfrm, nwg, wgsize))
 if rem != 0:
-      print("The last, incomplete block has %d threads." % rem)
+    print("The last, incomplete work group has %d work items." % (rem))
 
 # raise SystemExit
 
@@ -190,72 +212,58 @@ for ich in range(1,16):
 # for ich in range(16):
 #   print("ch_mask[{0:>2}] = 0x{1:>08x} = 0b{1:032b}".format(ich, ch_mask[ich]))
 
+
+mf = cl.mem_flags
+
+ctx = cl.create_some_context()
+queue = cl.CommandQueue(ctx)
+
+#
+# Create input () and output ()
+# buffers in the GPU memory. The mf.COPY_HOST_PTR flag forces copying from
+# the host buffer, , to the device buffer (referred as buf_)
+# in the GPU memory.
+#
+buf_ch_mask = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=ch_mask)
+buf_dat = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=dat)
+buf_quantl = cl.Buffer(ctx, mf.WRITE_ONLY, quantl.nbytes)
+buf_residl = cl.Buffer(ctx, mf.WRITE_ONLY, residl.nbytes)
+buf_thresh = cl.Buffer(ctx, mf.WRITE_ONLY, thresh.nbytes)
+buf_flag = cl.Buffer(ctx,   mf.WRITE_ONLY, flag.nbytes)
+buf_niter = cl.Buffer(ctx,  mf.WRITE_ONLY, niter.nbytes)
+
+
 #
 # Read the kernel code from file into the string "ker"
 #
-kernel = "ker_m5b_gauss_test.cu"
+kernel = "ker_m5b_gauss_test.cl"
 
-with open (kernel) as fh: kernel_code = fh.read()
+with open (kernel) as fh: ker = fh.read()
 
 print("OpenCL kernel file '%s' is used\n" % kernel)
 
-# -- initialize the device
-#import pycuda.autoinit
-cu.driver.init()
+prg = cl.Program(ctx, ker).build(options=ker_opts)
 
-#
-# GPU information
-#
-(free,total) = cu.driver.mem_get_info()
-print("Global memory occupancy: %5.2f%% free of the total %5.2f GB" %
-      (free*100/total, total/fgiga))
+prg.m5b_gauss_test(queue, (wiglobal,), (wgsize,),
+                 buf_dat, buf_ch_mask,  buf_quantl, buf_residl, 
+                 buf_thresh,  buf_flag, buf_niter,  nfrm).wait()
 
-#
-# Transfer host (CPU) memory to device (GPU) memory 
-#
-dat_gpu =     gpuarray.to_gpu(dat)
-ch_mask_gpu = gpuarray.to_gpu(ch_mask)
+cl.enqueue_copy(queue, quantl, buf_quantl)
+cl.enqueue_copy(queue, residl, buf_residl)
+cl.enqueue_copy(queue, thresh, buf_thresh)
+cl.enqueue_copy(queue, flag, buf_flag)
+cl.enqueue_copy(queue, niter, buf_niter)
 
-#
-# Create empty gpu array for the result (C = A * B)
-#
-quantl_gpu = gpuarray.empty((nfrm*16*4,), np.float32)
-residl_gpu = gpuarray.empty((nfrm*16,), np.float32)
-thresh_gpu = gpuarray.empty((nfrm*16,), np.float32)
-flag_gpu =   gpuarray.empty((nfrm*16,), np.uint16)
-niter_gpu =  gpuarray.empty((nfrm*16,), np.uint16)
+queue.flush()
+queue.finish()
 
-#
-# Compile the kernel code 
-#
-mod = compiler.SourceModule(kernel_code,
-                            options=['-I /home/benkev/Work/normtest/'])
-
-#
-# Get the kernel function from the compiled module
-#
-m5b_gauss_test = mod.get_function("m5b_gauss_test")
-
-#
-# Print the kernem memory information
-#
-kernel_meminfo(m5b_gauss_test)
-
-#
-# Call the kernel on the card
-#
-m5b_gauss_test(dat_gpu, ch_mask_gpu,  quantl_gpu, residl_gpu, 
-               thresh_gpu,  flag_gpu, niter_gpu,  nfrm,
-               block = (Nthreads, 1, 1), grid = (Nblocks, 1))
-#               block = (int(nfrm), 1, 1))
-#               block=(nthreads,1,1), grid=(nblk,1)
-
-
-quantl = quantl_gpu.get()
-residl = residl_gpu.get()
-thresh = thresh_gpu.get()
-flag =   flag_gpu.get()
-niter =  niter_gpu.get()
+buf_ch_mask.release()
+buf_dat.release()
+buf_quantl.release()
+buf_residl.release()
+buf_thresh.release()
+buf_flag.release()
+buf_niter.release()
 
 toc = time.time()
 
@@ -264,19 +272,8 @@ print("\nGPU time: %.3f s." % (toc-tic))
 quantl = quantl.reshape(nfrm,16,4)
 residl = residl.reshape(nfrm,16)
 thresh = thresh.reshape(nfrm,16)
-flag =   flag.reshape(nfrm,16)
-niter =  niter.reshape(nfrm,16)
-
-#
-# Release GPU memory allocated to the large arrays
-#
-del quantl_gpu
-del residl_gpu
-del thresh_gpu
-del flag_gpu
-del niter_gpu
-del dat_gpu
-del ch_mask_gpu
+flag = flag.reshape(nfrm,16)
+niter = niter.reshape(nfrm,16)
 
 if not saveResults:
     raise SystemExit
@@ -284,14 +281,13 @@ if not saveResults:
 #
 # Save results
 #
-print('\nSaving results started ...')
 
 tic = time.time()
 
 basefn = fname.split('.')[0]
 cnfrm = str(nfrm)
 tstamp = str(np.round(tic % 1000, 3))
-fntail = basefn + '_cuda_' + cnfrm + '_frames' + '_t' + tstamp + '.txt'
+fntail = basefn + '_ocl_' + cnfrm + '_frames' + '_t' + tstamp + '.txt'
 
 with open('result/thresholds_' + fntail, 'w') as fh:
     for ifrm in range(nfrm):
@@ -305,7 +301,7 @@ with open('result/residuals_' + fntail, 'w') as fh:
             fh.write('%12g ' % residl[ifrm,ich])
         fh.write('\n')
 
-with open('n_iterations_' + fntail, 'w') as fh:
+with open('result/n_iterations_' + fntail, 'w') as fh:
     for ifrm in range(nfrm):
         for ich in range(16):
             fh.write('%2hu ' % niter[ifrm,ich])

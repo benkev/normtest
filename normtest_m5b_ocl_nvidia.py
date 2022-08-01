@@ -259,7 +259,8 @@ thresh = thresh.reshape(nfrm,16)
 flag = flag.reshape(nfrm,16)
 niter = niter.reshape(nfrm,16)
 
-raise SystemExit
+if not saveResults:
+    raise SystemExit
 
 #
 # Save results
