@@ -213,6 +213,8 @@ int main() {
          *
          * Here there is no difference since the either are converted to 
          * single word pointers, (float *), to be assigned to pqua.
+         * 
+         * This is a sequence of words only intended to check the auto-fill mode for comments
          */
 
         /* Zeroize the quantiles for current frame: all channels: */
