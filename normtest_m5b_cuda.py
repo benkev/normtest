@@ -143,7 +143,7 @@ tic = time.time()
 # niter[nfrm,16]:    Number of fminbnd() iterations 
 #
 ch_mask = np.zeros(16, dtype=np.uint32)           # Channel 2-bit masks
-quantl = np.zeros((nfrm*16*4), dtype=np.float32)  # Quantiles
+# quantl = np.zeros((nfrm*16*4), dtype=np.float32)  # Quantiles
 # residl = np.zeros((nfrm*16), dtype=np.float32)    # Residuals
 # thresh = np.zeros((nfrm*16), dtype=np.float32)    # Thresholds
 # flag =   np.zeros((nfrm*16), dtype=np.uint16)     # Flags

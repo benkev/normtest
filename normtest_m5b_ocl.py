@@ -152,7 +152,7 @@ if platname == 'NVIDIA':
 elif platname == 'AMD':
     ker_opts = ['-I . -D __amd']
 else:
-    print('Platform "%s" is not supported. Exiting.' % ker_opts)
+    print('Platform "%s" is not supported. Exiting.' % platname)
     raise SystemExit
 
 
@@ -214,7 +214,6 @@ for ich in range(1,16):
 
 
 mf = cl.mem_flags
-
 ctx = cl.create_some_context()
 queue = cl.CommandQueue(ctx)
 

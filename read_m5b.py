@@ -1,11 +1,9 @@
-import baseband
-import numpy as np
-import matplotlib.pyplot as pl
-import astropy.units as u  
-
-print(baseband.file_info('rd1910_wz_268-1811.m5b', nchan=8))
-
-
-
-
-
+def read_chunk(fileobj, chunksize=None):
+    """
+     A generator to read a file piece by piece.
+    """
+    while True:
+        data = fileobj.read(chunksize)
+        if not data:
+            break
+        yield data
