@@ -1,4 +1,4 @@
-import pycuda.autoinit
+# import pycuda.autoinit
 import pycuda as cu
 
 for devnum in range(cu.driver.Device.count()):
