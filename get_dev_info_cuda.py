@@ -45,11 +45,14 @@ print("clock_rate = %.3f mhz" %
       (dev.clock_rate/1e6))
 print("memory_clock_rate = %.3f mhz" %
       (dev.memory_clock_rate/1e6))
-print("total_constant_memory = %.1f kb" %
+print("total_constant_memory = %.1f kB" %
       (dev.total_constant_memory/2**10))
-print("max_shared_memory_per_block = %.1f kb" %
+print("max_shared_memory_per_block = %.1f kB" %
       (dev.max_shared_memory_per_block/2**10))
-
+print()
+print("dev.name() = %s" % dev.name())
+print("dev.compute_capability() = %d.%d" % dev.compute_capability())
+print("dev.total_memory = %.2f GB" %  (dev.total_memory()/2**30))
 
 
 
@@ -61,6 +64,6 @@ print("max_shared_memory_per_block = %.1f kb" %
 print()
 print("Global memory free:  %5.2f GB" % (free/2**30))
 print("Global memory total: %5.2f GB" % (total/2**30))
-print("Global memory occupancy: %f%% free" % (free*100/total))
+print("Global memory occupancy: %5.2f%% free" % (free*100/total))
 
 
