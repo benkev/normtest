@@ -14,12 +14,14 @@ class normtest:
     #
     # In case both are installed, prefer PyCUDA since it is ~1.5 times faster
     #
-    use_pycyda = False
-    use_pyopencl = False
+    # use_pycyda = False
+    # use_pyopencl = False
+    
+    gpu_framework = ""
     if pycuda_installed:
-        use_pycyda = True     # Use PyCUDA even if PyOpenCL installed
+        gpu_framework = "cuda"     # Use PyCUDA even if PyOpenCL installed
     elif pyopencl_installed:
-        use_pyopencl = True   # Use PyOpenCL if PyCUDA not installed
+        gpu_framework = "opencl"   # Use PyOpenCL if PyCUDA not installed
     else:
         sys.exit("Neither PyCUDA nor PyOpenCL are installed. Exiting.")
 
@@ -33,7 +35,7 @@ class normtest:
 
 
 
-    if use_pycyda:
+    if gpu_framework == "cuda":
         import pycuda as cu
         import pycuda.autoinit
         import pycuda.compiler as compiler
@@ -51,27 +53,23 @@ class normtest:
         #
         # Read the kernel code from file into the string "ker"
         #
-        kernel = "ker_m5b_gauss_test.cu"
-        with open (kernel) as fh: kernel_code = fh.read()
-        print("CUDA kernel file '%s' is used\n" % kernel)
+        ker_filename = "ker_m5b_gauss_test.cu"
+        with open (ker_filename) as fh: ker_source_code = fh.read()
+        print("CUDA kernel file '%s' is used\n" % ker_filename)
 
         #
         # Compile the kernel code 
         #
-        mod = compiler.SourceModule(kernel_code,
+        prog_cuda = compiler.SourceModule(ker_source_code,
                                     options=['-I /home/benkev/Work/normtest/'])
         #
         # Get the kernel function from the compiled module
         #
-        m5b_gauss_test = mod.get_function("m5b_gauss_test")
+        m5b_gauss_test_cuda = prog_cuda.get_function("m5b_gauss_test")
 
 
 
-
-
-        
-
-    if use_pyopencl:
+    if gpu_framework == "opencl":
         import pyopencl as cl
 
         #
@@ -104,14 +102,14 @@ class normtest:
         #
         # Read the kernel code from file into the string "ker"
         #
-        kernel = "ker_m5b_gauss_test.cl"
-        with open (kernel) as fh: ker = fh.read()
-        print("OpenCL kernel file '%s' is used\n" % kernel)
+        ker_filename = "ker_m5b_gauss_test.cl"
+        with open (ker_filename) as fh: ker_source_code = fh.read()
+        print("OpenCL kernel file '%s' is used\n" % ker_filename)
         #
         # Compile the kernel code 
         #
-        prg = cl.Program(ctx, ker).build(options=ker_opts)
-
+        prog_opencl = cl.Program(ctx, ker_source_code).build(options=ker_opts)
+        m5b_gauss_test_ocl = prog_opencl.m5b_gauss_test
 
 
 
@@ -123,11 +121,20 @@ class normtest:
 
 
 
-
         
     @classmethod
     def do_m5b(cls, fname):
-        return cls.name
+
+        if gpu_framework == "cuda":
+            m5b_gauss_test(dat_gpu, ch_mask_gpu,  quantl_gpu, residl_gpu, 
+                           thresh_gpu,  flag_gpu, niter_gpu,  nfrm,
+                           block = (Nthreads, 1, 1), grid = (Nblocks, 1))
+
+        if gpu_framework == "opencl":
+            m5b_gauss_test(queue, (wiglobal,), (wgsize,),
+                           buf_dat, buf_ch_mask,  buf_quantl, buf_residl, 
+                           buf_thresh,  buf_flag, buf_niter,  nfrm).wait()
+        
             
     
     # def __init__(self, a, b):
