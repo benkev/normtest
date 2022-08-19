@@ -197,7 +197,7 @@ kernel = "ker_m5b_gauss_test.cu"
 
 with open (kernel) as fh: kernel_code = fh.read()
 
-print("OpenCL kernel file '%s' is used\n" % kernel)
+print("CUDA kernel file '%s' is used\n" % kernel)
 
 # -- initialize the device
 #import pycuda.autoinit

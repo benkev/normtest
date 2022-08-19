@@ -1,9 +1,9 @@
 import importlib
 import sys
 
-class gpu_m5b:
+class normtest:
 
-    name = 'gpu_m5b'
+    name = 'normtest'
 
     #
     # Determine if PyCUDA or/and PyOpenCL are installed
@@ -30,18 +30,44 @@ class gpu_m5b:
     mem_cpu_used = mem.used
     mem_cpu = mem_cpu_total  # Use total of CPU memory
     sz_cpu = mem_cpu_total   # Use total of CPU memory
-        
+
+
+
     if use_pycyda:
         import pycuda as cu
         import pycuda.autoinit
+        import pycuda.compiler as compiler
+        import pycuda.gpuarray as gpuarray
         
         cu_dev = cu.driver.Device(0)
         # dev_name = cu_dev.name()
         # mem_gpu_total = dev.total_memory()   # /2**30 GB
         
         (mem_gpu_free, mem_gpu_total) = cu.driver.mem_get_info()
-        mem_gpu = mem_gpu_free # Use all the available GPU global memory
-        sz_gpu = mem_gpu_free  # Only use the available GPU global memory
+        # mem_gpu = mem_gpu_free # Use all the available GPU global memory
+        # sz_gpu = mem_gpu_free  # Only use the available GPU global memory
+        sz_gpu = mem_gpu_total   # Use all the available GPU global memory
+
+        #
+        # Read the kernel code from file into the string "ker"
+        #
+        kernel = "ker_m5b_gauss_test.cu"
+        with open (kernel) as fh: kernel_code = fh.read()
+        print("CUDA kernel file '%s' is used\n" % kernel)
+
+        #
+        # Compile the kernel code 
+        #
+        mod = compiler.SourceModule(kernel_code,
+                                    options=['-I /home/benkev/Work/normtest/'])
+        #
+        # Get the kernel function from the compiled module
+        #
+        m5b_gauss_test = mod.get_function("m5b_gauss_test")
+
+
+
+
 
         
 
@@ -72,17 +98,42 @@ class gpu_m5b:
         mem_gpu_total = ocl_dev.global_mem_size 
         sz_gpu = mem_gpu_total   # Use all the available GPU global memory
         # sz_gpu = mem_gpu_free  # Only use the available GPU global memory ???
-        
+    
+        mf = cl.mem_flags
+        ctx = cl.create_some_context()
+        #
+        # Read the kernel code from file into the string "ker"
+        #
+        kernel = "ker_m5b_gauss_test.cl"
+        with open (kernel) as fh: ker = fh.read()
+        print("OpenCL kernel file '%s' is used\n" % kernel)
+        #
+        # Compile the kernel code 
+        #
+        prg = cl.Program(ctx, ker).build(options=ker_opts)
+
+
+
+
+    #
+    # Select processing mode
+    #
+    # Dependent on relation sz_m5b ~ sz_cpu ~ sz_gpu
+    #
+
+
+
+
         
     @classmethod
     def do_m5b(cls, fname):
         return cls.name
             
     
-    def __init__(self, a, b):
-        self.a = a
-        self.b = b 
+    # def __init__(self, a, b):
+    #     self.a = a
+    #     self.b = b 
     
-    @classmethod
-    def info(cls):
-        return cls.name
+    # @classmethod
+    # def info(cls):
+    #     return cls.name
