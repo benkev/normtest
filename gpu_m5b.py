@@ -1,9 +1,21 @@
 import importlib
-import sys
+import os, sys
 
 class normtest:
 
     name = 'normtest'
+    fmega = pow(1024.,2)
+    fgiga = pow(1024.,3)
+
+    
+
+    #
+    # M5B file parameters
+    #
+    frmwords = 2504;   # 32-bit words in one frame including the 4-word header
+    frmbytes = 2504*4  # Bytes in a frame
+    nfdat = 2500;      # 32-bit words of data in one frame
+
 
     #
     # Determine if PyCUDA or/and PyOpenCL are installed
@@ -112,18 +124,31 @@ class normtest:
         m5b_gauss_test_ocl = prog_opencl.m5b_gauss_test
 
 
-
-    #
-    # Select processing mode
-    #
-    # Dependent on relation sz_m5b ~ sz_cpu ~ sz_gpu
-    #
-
-
-
         
     @classmethod
-    def do_m5b(cls, fname):
+    def do_m5b(cls, fname_m5b):
+
+        m5bbytes = os.path.getsize(fname_m5b)
+        zs_m5b = m5bbytes
+        
+        '''
+        Select processing mode dependent on relation sz_m5b ~ sz_cpu ~ sz_gpu
+        
+        If f == sz_m5b  (M5B file size),
+           c == sz_cpu  (CPU memory size),
+           g == sz_gpu  (GPU memory size),
+        then there are 6 = 3! options:
+          f < c < g
+          f < g < c
+          c < f < g
+          g < f < c
+          g < c < f
+          c < g < f
+        
+        
+        
+
+        '''
 
         if gpu_framework == "cuda":
             m5b_gauss_test(dat_gpu, ch_mask_gpu,  quantl_gpu, residl_gpu, 
