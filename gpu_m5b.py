@@ -129,8 +129,8 @@ class normtest:
     def do_m5b(cls, fname_m5b):
 
         m5bbytes = os.path.getsize(fname_m5b)
-        zs_m5b = m5bbytes
-        
+        sz_m5b = m5bbytes
+
         '''
         Select processing mode dependent on relation sz_m5b ~ sz_cpu ~ sz_gpu
         
@@ -143,20 +143,27 @@ class normtest:
           c < f < g
           g < f < c
           g < c < f
-          c < g < f
-        
-        
-        
+          c < g < f        
 
         '''
+        f = sz_m5b
+        c = cls.sz_cpu
+        g = cls.sz_gpu
 
-        if gpu_framework == "cuda":
-            m5b_gauss_test(dat_gpu, ch_mask_gpu,  quantl_gpu, residl_gpu, 
-                           thresh_gpu,  flag_gpu, niter_gpu,  nfrm,
-                           block = (Nthreads, 1, 1), grid = (Nblocks, 1))
+        if (f < c) and (f < g):
+            m5b_small = True
+        
+        if f < g < c:
+            pass
+
+        if cls.gpu_framework == "cuda":
+            cls.m5b_gauss_test_cuda(dat_gpu, ch_mask_gpu,
+                            quantl_gpu, residl_gpu, 
+                            thresh_gpu,  flag_gpu, niter_gpu,  nfrm,
+                            block = (Nthreads, 1, 1), grid = (Nblocks, 1))
 
         if gpu_framework == "opencl":
-            m5b_gauss_test(queue, (wiglobal,), (wgsize,),
+            cls.m5b_gauss_test_ocl(queue, (wiglobal,), (wgsize,),
                            buf_dat, buf_ch_mask,  buf_quantl, buf_residl, 
                            buf_thresh,  buf_flag, buf_niter,  nfrm).wait()
         
