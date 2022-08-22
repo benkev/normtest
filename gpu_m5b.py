@@ -183,7 +183,7 @@ class normtest:
                             thresh_gpu,  flag_gpu, niter_gpu,  nfrm,
                             block = (Nthreads, 1, 1), grid = (Nblocks, 1))
 
-        if gpu_framework == "opencl":
+        if cls.gpu_framework == "opencl":
             cls.m5b_gauss_test_ocl(queue, (wiglobal,), (wgsize,),
                            buf_dat, buf_ch_mask,  buf_quantl, buf_residl, 
                            buf_thresh,  buf_flag, buf_niter,  nfrm).wait()
