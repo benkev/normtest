@@ -1,3 +1,4 @@
+import numpy as np
 import importlib
 import os, sys
 
@@ -6,7 +7,6 @@ class normtest:
     name = 'normtest'
     fmega = pow(1024.,2)
     fgiga = pow(1024.,3)
-
     
 
     #
@@ -16,6 +16,7 @@ class normtest:
     frmbytes = 2504*4  # Bytes in a frame
     nfdat = 2500;      # 32-bit words of data in one frame
 
+    qdat = 0.95  # Quota of dat array in overall GPU data (approx)
 
     #
     # Determine if PyCUDA or/and PyOpenCL are installed
@@ -59,8 +60,8 @@ class normtest:
         
         (mem_gpu_free, mem_gpu_total) = cu.driver.mem_get_info()
         # mem_gpu = mem_gpu_free # Use all the available GPU global memory
-        # sz_gpu = mem_gpu_free  # Only use the available GPU global memory
-        sz_gpu = mem_gpu_total   # Use all the available GPU global memory
+        sz_gpu = mem_gpu_free  # Only use the available GPU global memory
+        #sz_gpu = mem_gpu_total   # Use all the available GPU global memory
 
         #
         # Read the kernel code from file into the string "ker"
@@ -127,10 +128,13 @@ class normtest:
         
     @classmethod
     def do_m5b(cls, fname_m5b):
-
+        
         m5bbytes = os.path.getsize(fname_m5b)
-        sz_m5b = m5bbytes
-
+        cls.sz_m5b = m5bbytes
+        whole_frms = m5bbytes // cls.frmbytes
+        whole_words = cls.frmwords*whole_frms
+        last_frmbytes = m5bbytes % cls.frmbytes
+        last_frmwords = last_frmbytes // 4
         '''
         Select processing mode dependent on relation sz_m5b ~ sz_cpu ~ sz_gpu
         
@@ -146,16 +150,33 @@ class normtest:
           c < g < f        
 
         '''
-        f = sz_m5b
-        c = cls.sz_cpu
-        g = cls.sz_gpu
+        f = sz_m5b = cls.sz_m5b
+        c = sz_cpu = cls.sz_cpu
+        g = sz_gpu = cls.sz_gpu
 
-        if (f < c) and (f < g):
-            m5b_small = True
-        
-        if f < g < c:
-            pass
+        fitsBoth = (f < c) and (f < g) # M5B file fits both CPU and GPU
+        fitsNone = (f > c) and (f > g) # M5B file fits neither CPU nor GPU
+        fitsCPUnotGPU = g < f < с      # M5B file does not fit CPU but fits GPU
+        fitsGPUnotCPU = c < f < g      # M5B file does not fit GPU but fits CPU
 
+        cls.fitsBoth = fitsBoth
+        cls.fitsNone = fitsNone
+        cls.fitsGPUnotCPU = fitsGPUnotCPU   # WE DO NOT USE IT
+        cls.fitsCPUnotGPU = fitsCPUnotGPU
+
+        #
+        # Assume the file buffer is ~95% of available GPU memory
+        #
+        sz_dat = int(cls.qdat*sz_gpu) # dat size to fit GPU with other arrays 
+        nfrm = sz_dat//cls.frmbytes   # Whole frames in GPU memory
+        nwords = nfrm*cls.frmwords    # Size of the file chunk to read at once
+        nreads = whole_words//nwords
+        offs = 0
+
+        if fitsBoth or fitsCPUnotGPU:
+            cls.dat = np.fromfile(fname_m5b, dtype=np.uint32,
+                                  count=nwords, offset=offs)
+            
         if cls.gpu_framework == "cuda":
             cls.m5b_gauss_test_cuda(dat_gpu, ch_mask_gpu,
                             quantl_gpu, residl_gpu, 
@@ -176,3 +197,19 @@ class normtest:
     # @classmethod
     # def info(cls):
     #     return cls.name
+
+
+        # if (f < c) and (f < g):   # M5B file fits both CPU and GPU
+        #     cls.dat = np.fromfile(fname_m5b, dtype=np.uint32,
+        #                       count=cls.frmwords*total_frms)
+        
+        # if c < f < g:   # M5B file does not fit GPU but fits CPU
+        #     pass
+
+        # if g < f < с:   # M5B file does not fit CPU but fits GPU
+        #     pass
+
+        # if (f > c) and (f > g):   # M5B file fits neither CPU nor GPU
+        #     pass
+            
+    
