@@ -165,7 +165,7 @@ class normtest:
         cls.fitsCPUnotGPU = fitsCPUnotGPU
 
         #
-        # Assume the file buffer is ~95% of available GPU memory
+        # Assume the file buffer is ~95% of available GPU memory (qdat = .95)
         #
         sz_dat = int(cls.qdat*sz_gpu) # dat size to fit GPU with other arrays 
         nfrm = sz_dat//cls.frmbytes   # Whole frames in GPU memory
