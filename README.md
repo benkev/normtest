@@ -93,7 +93,23 @@ $ python normtest_m5b_ocl.py rd1910_wz_268-1811.m5b 8 -s
 Note that saving the result files may take long time.
 
 
+3. gpu_m5b.py:
+   
+This module contains class normtest. It is not intended to create multiple
+class instances (althoug it is surely possible). When imported, it 
+probes the system to find what GPU frameworks are installed. It chooses
+automatically between PyCUDA and OpenCL and initializes the relevant 
+data structures.
 
+The normtest class provides a "class method" do_m5b(m5b_filename),
+which runs the normality test on the available GPU and the software
+framework selected. 
+   
+Example:
+   
+from gpu_m5b import normtest as nt
+
+thres, resid, n_iter, flag, quantl = nt.do_m5b("rd1910_wz_268-1811.m5b")
 
 
 
