@@ -13,11 +13,11 @@ class normtest:
     #
     # M5B file parameters
     #
-    frmwords = 2504;   # 32-bit words in one frame including the 4-word header
-    frmbytes = 2504*4  # Bytes in a frame
-    nfdat = 2500;      # 32-bit words of data in one frame
+    n_frmwords = 2504;   # 32-bit words in one frame including the 4-word header
+    n_frmbytes = 2504*4  # Bytes in a frame
+    n_frmdatwords = 2500; # 32-bit words of data in one frame
 
-    qdat = 0.95  # Quota of dat array in overall GPU data (approx)
+    quota_dat = 0.95  # Quota of dat array in overall GPU data (approx)
 
     #
     # Determine if PyCUDA or/and PyOpenCL are installed
@@ -130,12 +130,13 @@ class normtest:
     @classmethod
     def do_m5b(cls, fname_m5b):
         
-        m5bbytes = os.path.getsize(fname_m5b)
-        cls.sz_m5b = m5bbytes
-        whole_frms = m5bbytes // cls.frmbytes
-        whole_words = cls.frmwords*whole_frms
-        last_frmbytes = m5bbytes % cls.frmbytes
-        last_frmwords = last_frmbytes // 4
+        n_m5bbytes = os.path.getsize(fname_m5b)
+        n_m5bwords = n_m5bbytes // 4
+        cls.sz_m5b = n_m5bbytes
+        n_whole_frms = n_m5bbytes // cls.n_frmbytes
+        n_whole_words = cls.n_frmwords*n_whole_frms
+        n_last_frmbytes = n_m5bbytes % cls.n_frmbytes
+        n_last_frmwords = n_last_frmbytes // 4
         '''
         Select processing mode dependent on relation sz_m5b ~ sz_cpu ~ sz_gpu
         
@@ -166,28 +167,84 @@ class normtest:
         cls.fitsCPUnotGPU = fitsCPUnotGPU
 
         #
-        # Assume the file buffer is ~95% of available GPU memory (qdat = .95)
+        # Determine the M5B file partitioning: how many frames it contains,
+        # how many whole frames. How many whole frames fit a chunk size to read
+        # and process in one read. What is the size of the last, incomplete
+        # chunk (if there is one). What are the chunk and read offsetts sizes
+        # in uint32 words.
         #
-        sz_dat = int(cls.qdat*sz_gpu) # dat size to fit GPU with other arrays 
-        nfrm = sz_dat//cls.frmbytes   # Whole frames in GPU memory
-        nwords = nfrm*cls.frmwords    # Size of the file chunk to read at once
-        nreads = whole_words//nwords
-        offs = 0
+        # Assume the file chunk to read into dat array is ~95% of available
+        # GPU memory (quota_dat = .95)
+        #
+        # Maximum dat array size (bytes) to fit GPU along with other arrays 
+        sz_dat_max = int(cls.quota_dat*sz_gpu)
+        # Number of the whole frames in a chunk to read at once
+        # to fit GPU memory
+        n_frms_chunk = sz_dat_max // cls.n_frmbytes
+        # The size (bytes) of dat array composed of whole frames to fit GPU
+        # along with other arrays
+        sz_dat = n_frms_chunk*cls.n_frmbytes
+        # Size of the file chunk of whole frames to read at once in 32bit words
+        n_words_chunk = n_frms_chunk*cls.n_frmwords
+        # Number of whole chunks (each having n_frms_chunk of whole frames) in
+        # the entire m5b file
+        n_m5b_whole_chunks = n_m5bwords // n_words_chunk
+        # Number of uint32 words in the last, incomplete chunk of the m5b file
+        n_words_last_chunk = n_m5bwords % n_words_chunk
+        # Determine how many whole frames the last chunk has
+        n_frms_last_chunk = n_words_last_chunk // cls.n_frmwords
+        # Number of words in the last (incomplete?) chunk to make a whole
+        # number of frames
+        n_words_last_chunk_whole_frms = n_frms_last_chunk*cls.n_frmwords
 
-        if fitsBoth or fitsCPUnotGPU:
-            cls.dat = np.fromfile(fname_m5b, dtype=np.uint32,
-                                  count=nwords, offset=offs)
+        #
+        # Create the lists of all chunk sizes and all the corresponding
+        # offsetts to read them one by one from the m5b file
+        #
+        chunk_size_words = [n_words_chunk for i in range(n_m5b_whole_chunks)]
+        n_m5b_chunks = n_m5b_whole_chunks  # Assume all chunks are whole 
+        if n_words_last_chunk_whole_frms != 0:
+            chunk_size_words += [n_words_last_chunk_whole_frms]
+            n_m5b_chunks = n_m5b_whole_chunks + 1 # Include the incomplete chunk
+        chunk_offs_words = [i*n_words_chunk for i in range(n_m5b_chunks)]
             
-        if cls.gpu_framework == "cuda":
-            cls.m5b_gauss_test_cuda(dat_gpu, ch_mask_gpu,
-                            quantl_gpu, residl_gpu, 
-                            thresh_gpu,  flag_gpu, niter_gpu,  nfrm,
-                            block = (Nthreads, 1, 1), grid = (Nblocks, 1))
 
-        if cls.gpu_framework == "opencl":
-            cls.m5b_gauss_test_ocl(queue, (wiglobal,), (wgsize,),
-                           buf_dat, buf_ch_mask,  buf_quantl, buf_residl, 
-                           buf_thresh,  buf_flag, buf_niter,  nfrm).wait()
+        #
+        # Main loop =====================================================
+        #
+
+
+        print("n_m5bbytes = ", n_m5bbytes, ", n_m5bwords = ", n_m5bwords)
+        print("n_words_chunk = ", n_words_chunk)
+        print("n_frms_chunk = ", n_frms_chunk)
+        print("chunk_size_words = ", chunk_size_words)
+        print("chunk_offs_words = ", chunk_offs_words)
+
+        
+        for i_chunk in range(n_m5b_chunks):
+            
+            cls.dat = np.fromfile(fname_m5b, dtype=np.uint32,
+                                  count=chunk_size_words[i_chunk],
+                                  offset=chunk_offs_words[i_chunk])
+            print("chunk_size_words[i_chunk] = ", chunk_size_words[i_chunk])
+            print("chunk_offs_words[i_chunk] = ", chunk_offs_words[i_chunk])
+        
+        
+
+        # if fitsBoth or fitsCPUnotGPU:
+        #     cls.dat = np.fromfile(fname_m5b, dtype=np.uint32,
+        #                           count=n_chunkwords, offset=offs)
+            
+        # if cls.gpu_framework == "cuda":
+        #     cls.m5b_gauss_test_cuda(dat_gpu, ch_mask_gpu,
+        #                     quantl_gpu, residl_gpu, 
+        #                     thresh_gpu,  flag_gpu, niter_gpu,  n_frms,
+        #                     block = (Nthreads, 1, 1), grid = (Nblocks, 1))
+
+        # if cls.gpu_framework == "opencl":
+        #     cls.m5b_gauss_test_ocl(queue, (wiglobal,), (wgsize,),
+        #                    buf_dat, buf_ch_mask,  buf_quantl, buf_residl, 
+        #                    buf_thresh,  buf_flag, buf_niter,  n_frms).wait()
         
             
     
@@ -202,7 +259,7 @@ class normtest:
 
         # if (f < c) and (f < g):   # M5B file fits both CPU and GPU
         #     cls.dat = np.fromfile(fname_m5b, dtype=np.uint32,
-        #                       count=cls.frmwords*total_frms)
+        #                       count=cls.n_frmwords*total_frms)
         
         # if c < f < g:   # M5B file does not fit GPU but fits CPU
         #     pass
