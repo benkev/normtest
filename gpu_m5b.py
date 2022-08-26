@@ -130,11 +130,12 @@ class normtest:
     @classmethod
     def do_m5b(cls, fname_m5b):
         
-        n_m5bbytes = os.path.getsize(fname_m5b)
+        n_m5bbytes = os.path.getsize(fname_m5b) * 10
         n_m5bwords = n_m5bbytes // 4
         cls.sz_m5b = n_m5bbytes
         n_whole_frms = n_m5bbytes // cls.n_frmbytes
-        n_whole_words = cls.n_frmwords*n_whole_frms
+        n_whole_frm_words = cls.n_frmwords*n_whole_frms
+        n_whole_frm_bytes = cls.n_frmbytes*n_whole_frms
         n_last_frmbytes = n_m5bbytes % cls.n_frmbytes
         n_last_frmwords = n_last_frmbytes // 4
         '''
@@ -158,7 +159,7 @@ class normtest:
 
         fitsBoth = (f < c) and (f < g) # M5B file fits both CPU and GPU
         fitsNone = (f > c) and (f > g) # M5B file fits neither CPU nor GPU
-        fitsCPUnotGPU = g < f < с      # M5B file does not fit CPU but fits GPU
+        fitsCPUnotGPU = g < f < c      # M5B file does not fit CPU but fits GPU
         fitsGPUnotCPU = c < f < g      # M5B file does not fit GPU but fits CPU
 
         cls.fitsBoth = fitsBoth
@@ -173,17 +174,33 @@ class normtest:
         # chunk (if there is one). What are the chunk and read offsetts sizes
         # in uint32 words.
         #
-        # Assume the file chunk to read into dat array is ~95% of available
+        # Assume the file chunk to read into dat array can be ~95% of available
         # GPU memory (quota_dat = .95)
         #
         # Maximum dat array size (bytes) to fit GPU along with other arrays 
-        sz_dat_max = int(cls.quota_dat*sz_gpu)
-        # Number of the whole frames in a chunk to read at once
+        sz_dat_max_rough = int(cls.quota_dat*sz_gpu)
+        # Maximum number of the whole frames in a chunk to read at once
         # to fit GPU memory
-        n_frms_chunk = sz_dat_max // cls.n_frmbytes
-        # The size (bytes) of dat array composed of whole frames to fit GPU
+        n_frms_chunk_max = sz_dat_max_rough // cls.n_frmbytes
+        # Maximum  size (bytes) of dat array made of whole frames to fit GPU
         # along with other arrays
-        sz_dat = n_frms_chunk*cls.n_frmbytes
+        sz_dat_max = n_frms_chunk_max*cls.n_frmbytes
+
+        #
+        # If the actual file size less than the maximum allowed, the whole
+        # file fits the memory, and the dat array size should be put to the
+        # file size in whole frames. The whole file will be read at once.
+        # Otherwise the file does not fit the memory and will be read by
+        # chunks of the maximum allowed length.
+        #
+        if n_whole_frms > n_frms_chunk_max: # The m5b file does not fit memory
+            sz_dat = sz_dat_max
+            n_frms_chunk = n_frms_chunk_max
+        else:                               # The m5b file fits memory
+            sz_dat = n_whole_frm_bytes
+            n_frms_chunk = n_whole_frms
+
+        
         # Size of the file chunk of whole frames to read at once in 32bit words
         n_words_chunk = n_frms_chunk*cls.n_frmwords
         # Number of whole chunks (each having n_frms_chunk of whole frames) in
@@ -215,10 +232,31 @@ class normtest:
 
 
         print("n_m5bbytes = ", n_m5bbytes, ", n_m5bwords = ", n_m5bwords)
+        print("n_whole_frms = ", n_whole_frms)
+        print("n_whole_frm_bytes = ", n_whole_frm_bytes)
+        print("n_whole_frm_words = ", n_whole_frm_words)
+        print("n_last_frmbytes = ", n_last_frmbytes)
+        print("n_last_frmwords = ", n_last_frmwords)
+        print("sz_gpu = ", sz_gpu)
+        print("sz_dat_max = ", sz_dat_max)
+        print("sz_dat = ", sz_dat)
         print("n_words_chunk = ", n_words_chunk)
+        print("n_frms_chunk_max = ", n_frms_chunk_max)
         print("n_frms_chunk = ", n_frms_chunk)
+        print("n_m5b_whole_chunks = ", n_m5b_whole_chunks)
+        print("n_m5b_chunks = ", n_m5b_chunks)
+        print("n_words_last_chunk = ", n_words_last_chunk)
+        print("n_frms_last_chunk = ", n_frms_last_chunk)
+        print("n_words_last_chunk_whole_frms = ", n_words_last_chunk_whole_frms)
+        print(" = ", )
         print("chunk_size_words = ", chunk_size_words)
         print("chunk_offs_words = ", chunk_offs_words)
+        print(" = ", )
+        print(" = ", )
+        print(" = ", )
+        print(" = ", )
+        print(" = ", )
+        print(" = ", )
 
         
         for i_chunk in range(n_m5b_chunks):
@@ -226,8 +264,9 @@ class normtest:
             cls.dat = np.fromfile(fname_m5b, dtype=np.uint32,
                                   count=chunk_size_words[i_chunk],
                                   offset=chunk_offs_words[i_chunk])
-            print("chunk_size_words[i_chunk] = ", chunk_size_words[i_chunk])
-            print("chunk_offs_words[i_chunk] = ", chunk_offs_words[i_chunk])
+            print("chunk_size_words[%d] = %d, chunk_offs_words[%d] = %d" %
+                  (i_chunk, chunk_size_words[i_chunk],
+                   i_chunk, chunk_offs_words[i_chunk]))
         
         
 
