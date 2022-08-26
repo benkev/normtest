@@ -56,7 +56,8 @@ tic = time.time()
 # fname = 'rd1910_wz_268-1811.m5b'
 
 #
-# It looks like 8 threads per block is optimum: 2.245 s to do 1.2 Gb m5b file!
+# It looks like 8 threads per block is the
+# optimum: 2.245 s to do 1.2 Gb m5b file!
 #
 Nthreads_max = 8 #16 # 1024 # 32  # 256
 
@@ -142,7 +143,7 @@ tic = time.time()
 # flag[nfrm,16]:     Flags
 # niter[nfrm,16]:    Number of fminbnd() iterations 
 #
-ch_mask = np.zeros(16, dtype=np.uint32)           # Channel 2-bit masks
+# ch_mask = np.zeros(16, dtype=np.uint32)           # Channel 2-bit masks
 # quantl = np.zeros((nfrm*16*4), dtype=np.float32)  # Quantiles
 # residl = np.zeros((nfrm*16), dtype=np.float32)    # Residuals
 # thresh = np.zeros((nfrm*16), dtype=np.float32)    # Thresholds
@@ -182,6 +183,7 @@ if rem != 0:
 #
 # Create 16 2-bit masks for 16 channels in ch_mask
 #
+ch_mask = np.zeros(16, dtype=np.uint32)           # Channel 2-bit masks
 ch_mask[0] = 0x00000003;  # Mask for ch 0: 0b00000000000000000000000000000011
 for ich in range(1,16):
     ch_mask[ich] = ch_mask[ich-1] << 2;
@@ -217,7 +219,7 @@ dat_gpu =     gpuarray.to_gpu(dat)
 ch_mask_gpu = gpuarray.to_gpu(ch_mask)
 
 #
-# Create empty gpu array for the result (C = A * B)
+# Create empty gpu array for the result
 #
 quantl_gpu = gpuarray.empty((nfrm*16*4,), np.float32)
 residl_gpu = gpuarray.empty((nfrm*16,), np.float32)
@@ -242,7 +244,7 @@ m5b_gauss_test = mod.get_function("m5b_gauss_test")
 kernel_meminfo(m5b_gauss_test)
 
 #
-# Call the kernel on the card
+# Call the kernel on the GPU card
 #
 m5b_gauss_test(dat_gpu, ch_mask_gpu,  quantl_gpu, residl_gpu, 
                thresh_gpu,  flag_gpu, niter_gpu,  nfrm,
