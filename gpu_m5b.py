@@ -254,8 +254,7 @@ class normtest:
         n_threads_max = 8 #16 # 1024 # 32  # 256
 
         #
-        # Find how many work groups/CUDA blocks and 
-        #               work items/CUDA threads per block needed
+        # Find how many CUDA blocks and CUDA threads per block needed
         #
         quot, rem = divmod(nfrm, n_threads_max)
         if quot == 0:
@@ -331,6 +330,8 @@ class normtest:
             # Number of frames in the current file chunk and in dat array
             n_frms = np.uint32(chunk_size_words[i_chunk] // cls.n_frmwords)
 
+            tic = time.time()
+            
             #
             # Transfer host (CPU) memory to device (GPU) memory 
             #
