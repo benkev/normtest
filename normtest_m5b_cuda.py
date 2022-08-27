@@ -219,7 +219,7 @@ dat_gpu =     gpuarray.to_gpu(dat)
 ch_mask_gpu = gpuarray.to_gpu(ch_mask)
 
 #
-# Create empty gpu array for the result
+# Create empty gpu arrays for the result
 #
 quantl_gpu = gpuarray.empty((nfrm*16*4,), np.float32)
 residl_gpu = gpuarray.empty((nfrm*16,), np.float32)

@@ -138,7 +138,19 @@ class normtest:
         
     @classmethod
     def do_m5b(cls, fname_m5b):
+
+        #
+        # Find components of the m5b file name
+        #
+        # fname_full = os.path.expanduser(fname_m5b)
+        bsname_m5b = os.path.basename(fname_m5b) # Like "rd1910_wz_268-1811.m5b"
+        bsname = os.path.splitext(bsname_m5b)[0] # Like "rd1910_wz_268-1811"
+        # Normtest result file name prefix
+        ntres_prefix = "normtest_" + bsname + "_"
         
+        #
+        # Accounting
+        #
         n_m5bbytes = os.path.getsize(fname_m5b) * 10
         n_m5bwords = n_m5bbytes // 4
         cls.sz_m5b = n_m5bbytes
@@ -179,12 +191,13 @@ class normtest:
         #
         # Determine the M5B file partitioning: how many frames it contains,
         # how many whole frames. How many whole frames fit a chunk size to read
-        # and process in one read. What is the size of the last, incomplete
-        # chunk (if there is one). What are the chunk and read offsetts sizes
-        # in uint32 words.
+        # into the dat array and process in one go. What is the size of the
+        # last, incomplete chunk (if there is one). What are the sizes of
+        # chunks and what are the read offsetts sizes in uint32 words.
         #
         # Assume the file chunk to read into dat array can be ~95% of available
-        # GPU memory (quota_dat = .95)
+        # GPU memory (quota_dat = .95). The rest, ~5%, will contain the work
+        # variables and the result arrays.
         #
         # Maximum dat array size (bytes) to fit GPU along with other arrays 
         sz_dat_max_rough = int(cls.quota_dat*sz_gpu)
@@ -291,7 +304,15 @@ class normtest:
         print(" = ", )
         print(" = ", )
 
-        
+        #
+        # Open binary files to save the results into
+        #
+        f_quantl = open(bsname + "cuda_quantl.bin", "wb")
+        f_residl = open(bsname + "cuda_residl.bin", "wb")
+        f_thresh = open(bsname + "cuda_thresh.bin", "wb")
+        f_flag =   open(bsname + "cuda_flag.bin",   "wb")
+        f_niter =  open(bsname + "cuda_niter.bin",  "wb")
+                        
         #
         # Main loop =====================================================
         #
@@ -306,7 +327,10 @@ class normtest:
             print("chunk_size_words[%d] = %d, chunk_offs_words[%d] = %d" %
                   (i_chunk, chunk_size_words[i_chunk],
                    i_chunk, chunk_offs_words[i_chunk]))
-        
+
+            # Number of frames in the current file chunk and in dat array
+            n_frms = np.uint32(chunk_size_words[i_chunk] // cls.n_frmwords)
+
             #
             # Transfer host (CPU) memory to device (GPU) memory 
             #
@@ -314,19 +338,19 @@ class normtest:
             ch_mask_gpu = gpuarray.to_gpu(ch_mask)
 
             #
-            # Create empty gpu array for the results
+            # Create empty gpu arrays for the results
             #
-            quantl_gpu = gpuarray.empty((nfrm*16*4,), np.float32)
-            residl_gpu = gpuarray.empty((nfrm*16,), np.float32)
-            thresh_gpu = gpuarray.empty((nfrm*16,), np.float32)
-            flag_gpu =   gpuarray.empty((nfrm*16,), np.uint16)
-            niter_gpu =  gpuarray.empty((nfrm*16,), np.uint16)
+            quantl_gpu = gpuarray.empty((n_frms*16*4,), np.float32)
+            residl_gpu = gpuarray.empty((n_frms*16,), np.float32)
+            thresh_gpu = gpuarray.empty((n_frms*16,), np.float32)
+            flag_gpu =   gpuarray.empty((n_frms*16,), np.uint16)
+            niter_gpu =  gpuarray.empty((n_frms*16,), np.uint16)
 
             #
             # Call the kernel on the CUDA GPU card
             #
             m5b_gauss_test_cuda(dat_gpu, ch_mask_gpu,  quantl_gpu, residl_gpu, 
-                           thresh_gpu,  flag_gpu, niter_gpu,  nfrm,
+                           thresh_gpu,  flag_gpu, niter_gpu,  n_frms,
                            block = (n_threads, 1, 1), grid = (Nblocks, 1))
 
             quantl = quantl_gpu.get()
@@ -335,26 +359,44 @@ class normtest:
             flag =   flag_gpu.get()
             niter =  niter_gpu.get()
 
+            #
+            # Save the results in binary files.
+            # If several m5b file chunks are processed, this
+            # appends the files with the results for current chunk
+            #
+            quantl.tofile(f_quantl)
+            residl.tofile(f_residl)
+            thresh.tofile(f_thresh)
+            flag.tofile(f_flag)
+            niter.tofile(f_niter)
+            
             toc = time.time()
 
             print("\nGPU time: %.3f s." % (toc-tic))
 
-            quantl = quantl.reshape(nfrm,16,4)
-            residl = residl.reshape(nfrm,16)
-            thresh = thresh.reshape(nfrm,16)
-            flag =   flag.reshape(nfrm,16)
-            niter =  niter.reshape(nfrm,16)
+            # quantl = quantl.reshape(n_frms,16,4)
+            # residl = residl.reshape(n_frms,16)
+            # thresh = thresh.reshape(n_frms,16)
+            # flag =     flag.reshape(n_frms,16)
+            # niter =   niter.reshape(n_frms,16)
 
-            #
-            # Release GPU memory allocated to the large arrays
-            #
-            # del quantl_gpu
-            # del residl_gpu
-            # del thresh_gpu
-            # del flag_gpu
-            # del niter_gpu
-            # del dat_gpu
-            # del ch_mask_gpu
+        f_quantl.close()
+        f_residl.close()
+        f_thresh.close()
+        f_flag.close()
+        f_niter.close()
+        
+
+        #
+        # Release GPU memory allocated to the large arrays
+        #
+        # del dat_gpu
+        # del quantl_gpu
+        # del residl_gpu
+        # del thresh_gpu
+        # del flag_gpu
+        # del niter_gpu
+        # del ch_mask_gpu
 
 
 
