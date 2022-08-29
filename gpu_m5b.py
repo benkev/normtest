@@ -1,7 +1,7 @@
 import numpy as np
 import importlib
 import os, sys
-# import time
+import time
 
 class normtest:
 
@@ -17,7 +17,14 @@ class normtest:
     n_frmbytes = 2504*4  # Bytes in a frame
     n_frmdatwords = 2500; # 32-bit words of data in one frame
 
-    quota_dat = 0.95  # Quota of dat array in overall GPU data (approx)
+    #quota_dat = 0.95  # Quota of dat array in overall GPU data (approx)
+    quota_dat = 0.75  # Quota of dat array in overall GPU data (approx)
+
+    #
+    # It looks like 8 threads per block is
+    # the optimum: 2.245 s to do 1.2 Gb m5b file!
+    #
+    n_threads_max = 8 #16 # 1024 # 32  # 256
 
     #
     # Determine if PyCUDA or/and PyOpenCL are installed
@@ -62,7 +69,6 @@ class normtest:
         import pycuda as cu
         import pycuda.autoinit
         import pycuda.compiler as compiler
-        import pycuda.gpuarray as gpuarray
         
         cu_dev = cu.driver.Device(0)
         # dev_name = cu_dev.name()
@@ -151,7 +157,7 @@ class normtest:
         #
         # Accounting
         #
-        n_m5bbytes = os.path.getsize(fname_m5b) * 10
+        n_m5bbytes = os.path.getsize(fname_m5b)
         n_m5bwords = n_m5bbytes // 4
         cls.sz_m5b = n_m5bbytes
         n_whole_frms = n_m5bbytes // cls.n_frmbytes
@@ -185,7 +191,8 @@ class normtest:
 
         cls.fitsBoth = fitsBoth
         cls.fitsNone = fitsNone
-        cls.fitsGPUnotCPU = fitsGPUnotCPU   # WE DO NOT USE IT
+        cls.fitsGPUnotCPU = fitsGPUnotCPU
+        # cls.fitsGPUnotCPU = fitsGPUnotCPU   # WE DO NOT USE IT
         cls.fitsCPUnotGPU = fitsCPUnotGPU
 
         #
@@ -247,35 +254,6 @@ class normtest:
             n_m5b_chunks = n_m5b_whole_chunks + 1 # Include the incomplete chunk
         chunk_offs_words = [i*n_words_chunk for i in range(n_m5b_chunks)]
             
-        #
-        # It looks like 8 threads per block is the
-        #optimum: 2.245 s to do 1.2 Gb m5b file!
-        #
-        n_threads_max = 8 #16 # 1024 # 32  # 256
-
-        #
-        # Find how many CUDA blocks and CUDA threads per block needed
-        #
-        quot, rem = divmod(nfrm, n_threads_max)
-        if quot == 0:
-            Nblocks = 1
-            n_threads = rem
-        elif rem == 0:
-            Nblocks = quot
-            n_threads = n_threads_max
-        else:   # Both quot and rem != 0: last w-group will be < n_threads_max 
-            Nblocks = quot + 1
-            n_threads = n_threads_max
-
-        Nblocks =  int(Nblocks)
-        n_threads = int(n_threads)
-
-        print('CUDA GPU Process Parameters:')
-        print("Processing %d frames using %d CUDA blocks, %d threads in each." %
-              (nfrm, Nblocks, n_threads))
-        if rem != 0:
-              print("The last, incomplete block has %d threads." % rem)
-
         print("n_m5bbytes = ", n_m5bbytes, ", n_m5bwords = ", n_m5bwords)
         print("n_whole_frms = ", n_whole_frms)
         print("n_whole_frm_bytes = ", n_whole_frm_bytes)
@@ -283,6 +261,7 @@ class normtest:
         print("n_last_frmbytes = ", n_last_frmbytes)
         print("n_last_frmwords = ", n_last_frmwords)
         print("sz_gpu = ", sz_gpu)
+        print("sz_dat_max_rough = ", sz_dat_max_rough)
         print("sz_dat_max = ", sz_dat_max)
         print("sz_dat = ", sz_dat)
         print("n_words_chunk = ", n_words_chunk)
@@ -303,6 +282,20 @@ class normtest:
         print(" = ", )
         print(" = ", )
 
+        # Number of frames in a whole file chunk and in dat array
+        n_frms_whole = np.uint32(n_words_chunk // cls.n_frmwords)
+        #
+        # Create empty gpu arrays for the results
+        #
+        import pycuda.gpuarray as gpuarray
+        
+        quantl_gpu = gpuarray.empty((n_frms_whole*16*4,), np.float32)
+        residl_gpu = gpuarray.empty((n_frms_whole*16,), np.float32)
+        thresh_gpu = gpuarray.empty((n_frms_whole*16,), np.float32)
+        flag_gpu =   gpuarray.empty((n_frms_whole*16,), np.uint16)
+        niter_gpu =  gpuarray.empty((n_frms_whole*16,), np.uint16)
+
+        
         #
         # Open binary files to save the results into
         #
@@ -330,41 +323,86 @@ class normtest:
             # Number of frames in the current file chunk and in dat array
             n_frms = np.uint32(chunk_size_words[i_chunk] // cls.n_frmwords)
 
-            tic = time.time()
-            
+            #
+            # Find how many CUDA blocks and CUDA threads per block needed
+            #
+            quot, rem = divmod(n_frms, cls.n_threads_max)
+            if quot == 0:
+                n_blocks = 1
+                n_threads = rem
+            elif rem == 0:
+                n_blocks = quot
+                n_threads = cls.n_threads_max
+            else:   # Both quot and rem != 0:
+                    # the last thread block will be < cls.n_threads_max 
+                n_blocks = quot + 1
+                n_threads = cls.n_threads_max
+
+            n_blocks =  int(n_blocks)
+            n_threads = int(n_threads)
+
+            print('CUDA GPU Process Parameters:')
+            print("Processing %d frames using %d CUDA blocks, "
+                  "%d threads in each." % (n_frms, n_blocks, n_threads))
+            if rem != 0:
+                  print("The last, incomplete block has %d threads." % rem)
+                  
+            tic = time.time()           
+
             #
             # Transfer host (CPU) memory to device (GPU) memory 
             #
-            dat_gpu =     gpuarray.to_gpu(dat)
-            ch_mask_gpu = gpuarray.to_gpu(ch_mask)
+            dat_gpu =     gpuarray.to_gpu(cls.dat)
+            ch_mask_gpu = gpuarray.to_gpu(cls.ch_mask)
 
             #
-            # Create empty gpu arrays for the results
+            # For the last, incomplete file chunk
+            # create new empty gpu arrays for the results
             #
-            quantl_gpu = gpuarray.empty((n_frms*16*4,), np.float32)
-            residl_gpu = gpuarray.empty((n_frms*16,), np.float32)
-            thresh_gpu = gpuarray.empty((n_frms*16,), np.float32)
-            flag_gpu =   gpuarray.empty((n_frms*16,), np.uint16)
-            niter_gpu =  gpuarray.empty((n_frms*16,), np.uint16)
+            if n_frms != n_frms_whole:
+                del quantl_gpu
+                del residl_gpu
+                del thresh_gpu
+                del flag_gpu
+                del niter_gpu
+
+                quantl_gpu = gpuarray.empty((n_frms*16*4,), np.float32)
+                residl_gpu = gpuarray.empty((n_frms*16,), np.float32)
+                thresh_gpu = gpuarray.empty((n_frms*16,), np.float32)
+                flag_gpu =   gpuarray.empty((n_frms*16,), np.uint16)
+                niter_gpu =  gpuarray.empty((n_frms*16,), np.uint16)
 
             #
             # Call the kernel on the CUDA GPU card
             #
-            m5b_gauss_test_cuda(dat_gpu, ch_mask_gpu,  quantl_gpu, residl_gpu, 
-                           thresh_gpu,  flag_gpu, niter_gpu,  n_frms,
-                           block = (n_threads, 1, 1), grid = (Nblocks, 1))
+            # print("cls.m5b_gauss_test_cuda() started ...")
+            
+            cls.m5b_gauss_test_cuda(dat_gpu, ch_mask_gpu,
+                            quantl_gpu, residl_gpu, thresh_gpu, flag_gpu,
+                            niter_gpu, n_frms,
+                            block = (n_threads, 1, 1), grid = (n_blocks, 1))
 
+            # print("cls.m5b_gauss_test_cuda() ended")
+            
             quantl = quantl_gpu.get()
             residl = residl_gpu.get()
             thresh = thresh_gpu.get()
             flag =   flag_gpu.get()
             niter =  niter_gpu.get()
 
+            del dat_gpu # Release GPU memory for another data from file chunk
+
+            toc = time.time()
+            print("\nGPU time: %.3f s." % (toc-tic))
+            
+
             #
             # Save the results in binary files.
             # If several m5b file chunks are processed, this
             # appends the files with the results for current chunk
             #
+            tic = time.time()
+
             quantl.tofile(f_quantl)
             residl.tofile(f_residl)
             thresh.tofile(f_thresh)
@@ -372,14 +410,7 @@ class normtest:
             niter.tofile(f_niter)
             
             toc = time.time()
-
-            print("\nGPU time: %.3f s." % (toc-tic))
-
-            # quantl = quantl.reshape(n_frms,16,4)
-            # residl = residl.reshape(n_frms,16)
-            # thresh = thresh.reshape(n_frms,16)
-            # flag =     flag.reshape(n_frms,16)
-            # niter =   niter.reshape(n_frms,16)
+            print('Saving a chunk of results in files: %.3f s.' % (toc-tic))
 
         f_quantl.close()
         f_residl.close()
@@ -387,17 +418,15 @@ class normtest:
         f_flag.close()
         f_niter.close()
         
-
         #
         # Release GPU memory allocated to the large arrays
         #
-        # del dat_gpu
-        # del quantl_gpu
-        # del residl_gpu
-        # del thresh_gpu
-        # del flag_gpu
-        # del niter_gpu
-        # del ch_mask_gpu
+        del quantl_gpu
+        del residl_gpu
+        del thresh_gpu
+        del flag_gpu
+        del niter_gpu
+        del ch_mask_gpu
 
 
 
@@ -419,7 +448,7 @@ class normtest:
         #     cls.m5b_gauss_test_cuda(dat_gpu, ch_mask_gpu,
         #                     quantl_gpu, residl_gpu, 
         #                     thresh_gpu,  flag_gpu, niter_gpu,  n_frms,
-        #                     block = (n_threads, 1, 1), grid = (Nblocks, 1))
+        #                     block = (n_threads, 1, 1), grid = (n_blocks, 1))
 
         # if cls.gpu_framework == "opencl":
         #     cls.m5b_gauss_test_ocl(queue, (wiglobal,), (wgsize,),
@@ -433,7 +462,7 @@ class normtest:
     #     self.b = b 
     
     # @classmethod
-    # def info(cls):
+    # def info(cls):259
     #     return cls.name
 
 
