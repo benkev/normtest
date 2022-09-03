@@ -371,8 +371,8 @@ class normtest:
                 # create new empty gpu arrays for the results
                 #
                 if n_frms != n_frms_whole:
-                    del quantl_gpu
-                    del residl_gpu
+                    del quantl_gpu  ########## WHY DEL???
+                    del residl_gpu  ### gpuarray.empty() dels and creates new
                     del thresh_gpu
                     del flag_gpu
                     del niter_gpu
