@@ -142,17 +142,21 @@ class normtest:
         m5b_gauss_test_ocl = prog_opencl.m5b_gauss_test
 
 
-    # ##########@classmethod
-    # def do_m5b_cuda(cls):
-    #     print("\n\nCUDA")
-
-
         
     @classmethod
     def do_m5b(cls, fname_m5b):
 
         ticg = time.time()
 
+        #
+        # Find components of the m5b file name
+        #
+        # fname_full = os.path.expanduser(fname_m5b)
+        bsname_m5b = os.path.basename(fname_m5b) # Like "rd1910_wz_268-1811.m5b"
+        bsname = os.path.splitext(bsname_m5b)[0] # Like "rd1910_wz_268-1811"
+        # Normtest result file name prefix
+        ntres_prefix = "normtest_" + bsname + "_"
+        
         #
         # Accounting
         #
@@ -289,45 +293,23 @@ class normtest:
         print(" = ", )
         print(" = ", )
 
-        cls.do_m5b_cuda(cls)
 
         sys.exit("........... STOP .............")
         
-
-
         
-    def form_fout_basefn(fname_m5b):
-        '''
-        Find components of the m5b file name to form the basename of
-        the output files with results
-        '''
-        # fname_full = os.path.expanduser(fname_m5b)
-        basefn_m5b = os.path.basename(fname_m5b) # Like "rd1910_wz_268-1811.m5b"
-        basefn = os.path.splitext(bsname_m5b)[0] # Like "rd1910_wz_268-1811"
-
-        t_stamp = str(np.round(time.time() % 1000, 3))
-
-        return basefn
-
-
-
-
-        
-
-
-    def do_m5b_cuda(cls, fname_m5b, n_frms_chunk, n_frms_last_chunk):
-        # print("\n\nCUDA: cls.gpu_framework = ", cls.gpu_framework)
-
         #
         # Create empty gpu arrays for the results
         #
-        gpuarray = cls.gpuarray
-        quantl_gpu = gpuarray.empty((n_frms_chunk*16*4,), np.float32)
-        residl_gpu = gpuarray.empty((n_frms_chunk*16,), np.float32)
-        thresh_gpu = gpuarray.empty((n_frms_chunk*16,), np.float32)
-        flag_gpu =   gpuarray.empty((n_frms_chunk*16,), np.uint16)
-        niter_gpu =  gpuarray.empty((n_frms_chunk*16,), np.uint16)
+        if cls.gpu_framework == "cuda":
+            
+            gpuarray = cls.gpuarray
+            quantl_gpu = gpuarray.empty((n_frms_chunk*16*4,), np.float32)
+            residl_gpu = gpuarray.empty((n_frms_chunk*16,), np.float32)
+            thresh_gpu = gpuarray.empty((n_frms_chunk*16,), np.float32)
+            flag_gpu =   gpuarray.empty((n_frms_chunk*16,), np.uint16)
+            niter_gpu =  gpuarray.empty((n_frms_chunk*16,), np.uint16)
 
+        
         #
         # Open binary files to save the results into
         #
@@ -346,9 +328,6 @@ class normtest:
             # Read a file chunk into the dat array
             #
             tic = time.time()
-
-            n_words =  cls.n_frmwords
-            
             cls.dat = np.fromfile(fname_m5b, dtype=np.uint32,
                                   count=chunk_size_words[i_chunk],
                                   offset=chunk_offs_words[i_chunk])
@@ -489,7 +468,10 @@ class normtest:
         tocg = time.time()
         print("\nTotal time: %.3f s." % (tocg-ticg))
 
-        
+
+
+    #def do_m5b_cuda():
+
 
 
         
