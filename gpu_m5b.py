@@ -289,25 +289,27 @@ class normtest:
         print(" = ", )
         print(" = ", )
 
-        cls.do_m5b_cuda(cls)
+        cls.do_m5b_cuda(cls, fname_m5b, n_frms_chunk, n_frms_last_chunk)
 
         sys.exit("........... STOP .............")
         
 
 
         
-    def form_fout_basefn(fname_m5b):
+    def form_fout_name(fname_m5b):
         '''
         Find components of the m5b file name to form the basename of
-        the output files with results
+        the output files with results and the time stamp
         '''
         # fname_full = os.path.expanduser(fname_m5b)
         basefn_m5b = os.path.basename(fname_m5b) # Like "rd1910_wz_268-1811.m5b"
         basefn = os.path.splitext(bsname_m5b)[0] # Like "rd1910_wz_268-1811"
 
-        t_stamp = str(np.round(time.time() % 1000, 3))
+        t_stamp = str(time.strftime("%H%M%S")) + \
+            ".%03d" % (1000*modf(time.time())[0])
 
-        return basefn
+
+        return basefn, t_stamp
 
 
 
