@@ -151,7 +151,7 @@ class normtest:
     @classmethod
     def do_m5b(cls, fname_m5b):
 
-        ticg = time.time()
+        # ticg = time.time()
 
         #
         # Accounting
@@ -256,6 +256,10 @@ class normtest:
             chunk_size_words += [n_words_last_chunk]
             n_m5b_chunks = n_m5b_whole_chunks + 1 # Include the incomplete chunk
         chunk_offs_words = [i*n_words_chunk for i in range(n_m5b_chunks)]
+
+        cls.n_m5b_chunks = n_m5b_chunks
+        cls.chunk_size_words = chunk_size_words
+        cls.chunk_offs_words = chunk_offs_words
             
         # Number of frames in a whole file chunk and in dat array
         # n_frms_whole = np.uint32(n_words_chunk // cls.n_frmwords)
@@ -291,7 +295,7 @@ class normtest:
 
         cls.do_m5b_cuda(cls, fname_m5b, n_frms_chunk, n_frms_last_chunk)
 
-        sys.exit("........... STOP .............")
+        # sys.exit("........... STOP .............")
         
 
 
@@ -303,10 +307,11 @@ class normtest:
         '''
         # fname_full = os.path.expanduser(fname_m5b)
         basefn_m5b = os.path.basename(fname_m5b) # Like "rd1910_wz_268-1811.m5b"
-        basefn = os.path.splitext(bsname_m5b)[0] # Like "rd1910_wz_268-1811"
+        basefn = os.path.splitext(basefn_m5b)[0] # Like "rd1910_wz_268-1811"
+        basefn = "nt_" + basefn                  # Like "nt_rd1910_wz_268-1811"
 
-        t_stamp = str(time.strftime("%H%M%S")) + \
-            ".%03d" % (1000*modf(time.time())[0])
+        t_stamp = str(time.strftime("%Y%m%d_%H%M%S")) + \
+            ".%03d" % (1000*np.modf(time.time())[0])
 
 
         return basefn, t_stamp
@@ -319,6 +324,8 @@ class normtest:
 
     def do_m5b_cuda(cls, fname_m5b, n_frms_chunk, n_frms_last_chunk):
         # print("\n\nCUDA: cls.gpu_framework = ", cls.gpu_framework)
+
+        ticg = time.time()
 
         #
         # Create empty gpu arrays for the results
@@ -333,17 +340,20 @@ class normtest:
         #
         # Open binary files to save the results into
         #
-        f_quantl = open(bsname + "cuda_quantl.bin", "wb")
-        f_residl = open(bsname + "cuda_residl.bin", "wb")
-        f_thresh = open(bsname + "cuda_thresh.bin", "wb")
-        f_flag =   open(bsname + "cuda_flag.bin",   "wb")
-        f_niter =  open(bsname + "cuda_niter.bin",  "wb")
+        basefn, t_stamp = cls.form_fout_name(fname_m5b)
+        fnend = t_stamp + ".bin"
+        
+        f_quantl = open(basefn + "_quantl_" + fnend, "wb")
+        f_residl = open(basefn + "_residl_" + fnend, "wb")
+        f_thresh = open(basefn + "_thresh_" + fnend, "wb")
+        f_flag =   open(basefn + "_flag_"   + fnend, "wb")
+        f_niter =  open(basefn + "_niter_"  + fnend, "wb")
                         
         #
         # Main loop =====================================================
         #
         
-        for i_chunk in range(n_m5b_chunks):
+        for i_chunk in range(cls.n_m5b_chunks):
             #
             # Read a file chunk into the dat array
             #
@@ -352,16 +362,16 @@ class normtest:
             n_words =  cls.n_frmwords
             
             cls.dat = np.fromfile(fname_m5b, dtype=np.uint32,
-                                  count=chunk_size_words[i_chunk],
-                                  offset=chunk_offs_words[i_chunk])
+                                  count=cls.chunk_size_words[i_chunk],
+                                  offset=cls.chunk_offs_words[i_chunk])
             toc = time.time()
             print("M5B file has been read. Time: %7.3f s.\n" % (toc-tic))
-            print("chunk_size_words[%d] = %d, chunk_offs_words[%d] = %d" %
-                  (i_chunk, chunk_size_words[i_chunk],
-                   i_chunk, chunk_offs_words[i_chunk]))
+            print("chunk_size_words[%d] = %d, cls.chunk_offs_words[%d] = %d" %
+                  (i_chunk, cls.chunk_size_words[i_chunk],
+                   i_chunk, cls.chunk_offs_words[i_chunk]))
 
             # Number of frames in the current file chunk and in dat array
-            n_frms = np.uint32(chunk_size_words[i_chunk] // cls.n_frmwords)
+            n_frms = np.uint32(cls.chunk_size_words[i_chunk] // cls.n_frmwords)
 
             
             # == START ==== CUDA ========== CUDA =========== CUDA =======
