@@ -1,5 +1,9 @@
+import sys, os
+import atexit
+#import warnings
+
 class Student:
-    name = 'unknown' # class attribute
+    name = 'Beauty' # class attribute
     def __init__(self):
         self.age = 20  # instance attribute
 
@@ -14,4 +18,25 @@ class Student:
         print('Student Attributes: age, name = ', self.age, ', ', self.name)
 
     
+print(__name__)
+
+# if __name__ != "__main__":
+#     import warnings
+#     warnings.filterwarnings("ignore")
+#     raise SystemExit
+
+if __name__ == "__main__":
+
+    from test_class_method import Student as S
+
+    # Call classmethod
+    S.tostring()
+
+    s = S()
+
+    # Call class method and instance methods
+    s.tostring() 
+    s.tostring1() 
+    s.tostring2() 
     
+

@@ -2,10 +2,11 @@ import numpy as np
 import importlib
 import os, sys
 import time
+import warnings
 
-class normtest:
+class Normtest:
 
-    name = 'normtest'
+    name = 'Normtest'
     fmega = pow(1024.,2)
     fgiga = pow(1024.,3)
     
@@ -44,6 +45,7 @@ class normtest:
     elif pyopencl_installed:
         gpu_framework = "opencl"   # Use PyOpenCL if PyCUDA not installed
     else:
+        warnings.filterwarnings("ignore")
         sys.exit("Neither PyCUDA nor PyOpenCL are installed. Exiting.")
 
     import psutil
@@ -151,7 +153,7 @@ class normtest:
     @classmethod
     def do_m5b(cls, fname_m5b):
 
-        # ticg = time.time()
+        cls.fname_m5b = fname_m5b
 
         #
         # Accounting
@@ -258,8 +260,10 @@ class normtest:
         chunk_offs_words = [i*n_words_chunk for i in range(n_m5b_chunks)]
 
         cls.n_m5b_chunks = n_m5b_chunks
+        cls.n_frms_chunk = n_frms_chunk
         cls.chunk_size_words = chunk_size_words
         cls.chunk_offs_words = chunk_offs_words
+        cls.n_frms_last_chunk = n_frms_last_chunk
             
         # Number of frames in a whole file chunk and in dat array
         # n_frms_whole = np.uint32(n_words_chunk // cls.n_frmwords)
@@ -293,13 +297,13 @@ class normtest:
         print(" = ", )
         print(" = ", )
 
-        cls.do_m5b_cuda(cls, fname_m5b, n_frms_chunk, n_frms_last_chunk)
+        cls.do_m5b_cuda()   # cls, fname_m5b, n_frms_chunk, n_frms_last_chunk)
 
         # sys.exit("........... STOP .............")
         
 
 
-        
+    @staticmethod    
     def form_fout_name(fname_m5b):
         '''
         Find components of the m5b file name to form the basename of
@@ -322,14 +326,15 @@ class normtest:
         
 
 
-    def do_m5b_cuda(cls, fname_m5b, n_frms_chunk, n_frms_last_chunk):
-        # print("\n\nCUDA: cls.gpu_framework = ", cls.gpu_framework)
+    @classmethod
+    def do_m5b_cuda(cls):     # , fname_m5b, n_frms_chunk, n_frms_last_chunk):
 
         ticg = time.time()
 
         #
         # Create empty gpu arrays for the results
         #
+        n_frms_chunk = cls.n_frms_chunk
         gpuarray = cls.gpuarray
         quantl_gpu = gpuarray.empty((n_frms_chunk*16*4,), np.float32)
         residl_gpu = gpuarray.empty((n_frms_chunk*16,), np.float32)
@@ -340,7 +345,7 @@ class normtest:
         #
         # Open binary files to save the results into
         #
-        basefn, t_stamp = cls.form_fout_name(fname_m5b)
+        basefn, t_stamp = cls.form_fout_name(cls.fname_m5b)
         fnend = t_stamp + ".bin"
         
         f_quantl = open(basefn + "_quantl_" + fnend, "wb")
@@ -361,7 +366,7 @@ class normtest:
 
             n_words =  cls.n_frmwords
             
-            cls.dat = np.fromfile(fname_m5b, dtype=np.uint32,
+            cls.dat = np.fromfile(cls.fname_m5b, dtype=np.uint32,
                                   count=cls.chunk_size_words[i_chunk],
                                   offset=cls.chunk_offs_words[i_chunk])
             toc = time.time()
@@ -415,7 +420,7 @@ class normtest:
                 # create new empty gpu arrays for the results
                 #
                 # if n_frms != n_frms_whole:
-                if n_frms_last_chunk != 0:
+                if cls.n_frms_last_chunk != 0:
                     # del quantl_gpu  ########## WHY DEL???
                     # del residl_gpu  ### gpuarray.empty() dels and creates new
                     # del thresh_gpu
