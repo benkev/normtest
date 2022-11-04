@@ -465,7 +465,14 @@ class Normtest:
             flag =   flag_gpu.get()
             niter =  niter_gpu.get()
 
-                    
+            del dat_gpu
+            del quantl_gpu
+            del residl_gpu
+            del thresh_gpu
+            del flag_gpu
+            del niter_gpu
+            del ch_mask_gpu
+        
             toc = time.time()
             print("\nGPU time: %.3f s." % (toc-tic))
             
@@ -497,13 +504,12 @@ class Normtest:
         #
         # if cls.gpu_framework == "cuda":
         
-        del quantl_gpu
-        del residl_gpu
-        del thresh_gpu
-        del flag_gpu
-        del niter_gpu
-        del ch_mask_gpu
-        del dat_gpu
+        # del quantl_gpu
+        # del residl_gpu
+        # del thresh_gpu
+        # del flag_gpu
+        # del niter_gpu
+        # del ch_mask_gpu
         
         tocg = time.time()
         print("\nTotal time: %.3f s." % (tocg-ticg))
