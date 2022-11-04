@@ -19,13 +19,8 @@ class Normtest:
     n_frmdatwords = 2500 # 32-bit words of data in one frame
 
     #quota_dat = 0.95  # Quota of dat array in overall GPU data (approx)
-    quota_dat = 0.85  # Quota of dat array in overall GPU data (approx)
-
-    #
-    # It looks like 8 threads per block is
-    # the optimum: 2.245 s to do 1.2 Gb m5b file!
-    #
-    n_threads_max = 8 #16 # 1024 # 32  # 256
+    quota_dat = 0.90  # Quota of dat array in overall GPU data (approx)
+    #quota_dat = 0.85  # Quota of dat array in overall GPU data (approx)
 
     #
     # Determine if PyCUDA or/and PyOpenCL are installed
@@ -151,9 +146,14 @@ class Normtest:
 
         
     @classmethod
-    def do_m5b(cls, fname_m5b):
+    def do_m5b(cls, fname_m5b, nthreads=8):
 
         cls.fname_m5b = fname_m5b
+        cls.n_threads_max = nthreads
+        #
+        # It looks like 8 threads per block is
+        # the optimum: 2.245 s to do 1.2 Gb m5b file!
+        #
 
         #
         # Accounting
@@ -232,13 +232,13 @@ class Normtest:
 
         
         # Size of the file chunk of whole frames to read at once in 32bit words
-        n_words_chunk = n_frms_chunk*cls.n_frmwords
+        n_words_whole_chunk = n_frms_chunk*cls.n_frmwords
         # Number of whole chunks (each having n_frms_chunk of whole frames) in
         # the entire m5b file
-        n_m5b_whole_chunks = n_m5bwords // n_words_chunk
+        n_m5b_whole_chunks = n_m5bwords // n_words_whole_chunk
         # Number of uint32 words in the last, incomplete chunk of the m5b file.
         # The last, incomplete chunk may have the last frame incomplete
-        n_words_last_chunk_incompl_frm = n_m5bwords % n_words_chunk
+        n_words_last_chunk_incompl_frm = n_m5bwords % n_words_whole_chunk
         # Determine how many whole frames the last chunk has
         n_frms_last_chunk = n_words_last_chunk_incompl_frm // cls.n_frmwords
         # Number of words in the last (possibly incomplete) chunk to make
@@ -252,21 +252,23 @@ class Normtest:
         # Create the lists of all chunk sizes and all the corresponding
         # offsetts to read them one by one from the m5b file
         #
-        chunk_size_words = [n_words_chunk for i in range(n_m5b_whole_chunks)]
+        # chunk_size_words = [n_words_whole_chunk for i in range(n_m5b_whole_chunks)]
         n_m5b_chunks = n_m5b_whole_chunks  # Assume all chunks are whole 
-        if n_words_last_chunk != 0:
-            chunk_size_words += [n_words_last_chunk]
-            n_m5b_chunks = n_m5b_whole_chunks + 1 # Include the incomplete chunk
-        chunk_offs_words = [i*n_words_chunk for i in range(n_m5b_chunks)]
+        # if n_words_last_chunk != 0:
+        #     chunk_size_words += [n_words_last_chunk]
+        #     n_m5b_chunks = n_m5b_whole_chunks + 1 # Include the incomplete chunk
+        # chunk_offs_words = [i*n_words_whole_chunk for i in range(n_m5b_chunks)]
 
         cls.n_m5b_chunks = n_m5b_chunks
         cls.n_frms_chunk = n_frms_chunk
-        cls.chunk_size_words = chunk_size_words
-        cls.chunk_offs_words = chunk_offs_words
+        # cls.chunk_size_words = chunk_size_words
+        # cls.chunk_offs_words = chunk_offs_words
         cls.n_frms_last_chunk = n_frms_last_chunk
-            
+        cls.n_words_whole_chunk = n_words_whole_chunk
+        cls.n_words_last_chunk = n_words_last_chunk
+        
         # Number of frames in a whole file chunk and in dat array
-        # n_frms_whole = np.uint32(n_words_chunk // cls.n_frmwords)
+        # n_frms_whole = np.uint32(n_words_whole_chunk // cls.n_frmwords)
 
         print("n_m5bbytes = ", n_m5bbytes, ", n_m5bwords = ", n_m5bwords)
         print("n_whole_frms = ", n_whole_frms)
@@ -278,7 +280,8 @@ class Normtest:
         print("sz_dat_max_rough = ", sz_dat_max_rough)
         print("sz_dat_max = ", sz_dat_max)
         print("sz_dat = ", sz_dat)
-        print("n_words_chunk = ", n_words_chunk)
+        print("n_words_whole_chunk = ", n_words_whole_chunk)
+        print("n_words_last_chunk = ", n_words_last_chunk)
         print("n_frms_chunk_max = ", n_frms_chunk_max)
         print("n_frms_chunk = ", n_frms_chunk)
         print("n_frms_last_chunk = ", n_frms_last_chunk)
@@ -286,18 +289,20 @@ class Normtest:
         print("n_m5b_chunks = ", n_m5b_chunks)
         print("n_words_last_chunk_incompl_frm = ",
               n_words_last_chunk_incompl_frm)
-        print("n_words_last_chunk = ", n_words_last_chunk)
         print("n_words_last_incompl_frm = ", n_words_last_incompl_frm)
-        print("chunk_size_words = ", chunk_size_words)
-        print("chunk_offs_words = ", chunk_offs_words)
+        # print("chunk_size_words = ", chunk_size_words)
+        # print("chunk_offs_words = ", chunk_offs_words)
         # print("n_frms_whole = ", n_frms_whole)
         print(" = ", )
         print(" = ", )
         print(" = ", )
         print(" = ", )
         print(" = ", )
-
-        cls.do_m5b_cuda()   # cls, fname_m5b, n_frms_chunk, n_frms_last_chunk)
+        
+        if cls.gpu_framework == "cuda":
+            cls.do_m5b_cuda()
+        # elif cls.gpu_framework == "opencl":
+        #     cls.do_m5b_opencl()
 
         # sys.exit("........... STOP .............")
         
@@ -312,7 +317,7 @@ class Normtest:
         # fname_full = os.path.expanduser(fname_m5b)
         basefn_m5b = os.path.basename(fname_m5b) # Like "rd1910_wz_268-1811.m5b"
         basefn = os.path.splitext(basefn_m5b)[0] # Like "rd1910_wz_268-1811"
-        basefn = "nt_" + basefn                  # Like "nt_rd1910_wz_268-1811"
+        # basefn = "nt_" + basefn                # Like "nt_rd1910_wz_268-1811"
 
         t_stamp = str(time.strftime("%Y%m%d_%H%M%S")) + \
             ".%03d" % (1000*np.modf(time.time())[0])
@@ -327,14 +332,17 @@ class Normtest:
 
 
     @classmethod
-    def do_m5b_cuda(cls):     # , fname_m5b, n_frms_chunk, n_frms_last_chunk):
+    def do_m5b_cuda(cls):  # , fname_m5b, n_frms_chunk, n_frms_last_chunk):
 
         ticg = time.time()
+
+        n_threads_max = cls.n_threads_max
 
         #
         # Create empty gpu arrays for the results
         #
         n_frms_chunk = cls.n_frms_chunk
+        
         gpuarray = cls.gpuarray
         quantl_gpu = gpuarray.empty((n_frms_chunk*16*4,), np.float32)
         residl_gpu = gpuarray.empty((n_frms_chunk*16,), np.float32)
@@ -345,127 +353,119 @@ class Normtest:
         #
         # Open binary files to save the results into
         #
+        # fnend = t_stamp + ".bin"
         basefn, t_stamp = cls.form_fout_name(cls.fname_m5b)
-        fnend = t_stamp + ".bin"
-        
-        f_quantl = open(basefn + "_quantl_" + fnend, "wb")
-        f_residl = open(basefn + "_residl_" + fnend, "wb")
-        f_thresh = open(basefn + "_thresh_" + fnend, "wb")
-        f_flag =   open(basefn + "_flag_"   + fnend, "wb")
-        f_niter =  open(basefn + "_niter_"  + fnend, "wb")
+        basefn = basefn + "_" + t_stamp + ".bin"
+
+        f_quantl = open("nt_quantl_cuda_" + basefn, "wb")
+        f_residl = open("nt_residl_cuda_" + basefn, "wb")
+        f_thresh = open("nt_thresh_cuda_" + basefn, "wb")
+        f_flag =   open("nt_flag_cuda_"  + basefn, "wb")
+        f_niter =  open("nt_niter_cuda_"  + basefn, "wb")
                         
         #
         # Main loop =====================================================
         #
+
+
+        # Assume chunks are whole
+        n_words_chunk = cls.n_words_whole_chunk  
         
         for i_chunk in range(cls.n_m5b_chunks):
+
+            tic = time.time()
+
+            #
+            # Count chunk size and offsett to read them one by one
+            # from the m5b file
+            #
+
+            print("i_chunk = ", i_chunk, ", cls.n_m5b_chunks-1 = ",
+                  cls.n_m5b_chunks-1)
+
+            # The last chunk can be incomplete
+            if i_chunk == cls.n_m5b_chunks-1 and cls.n_frms_last_chunk != 0:
+                n_words_chunk = n_words_last_chunk
+
+            n_words_chunk_offs = i_chunk * cls.n_words_whole_chunk
+            
             #
             # Read a file chunk into the dat array
             #
-            tic = time.time()
-
-            n_words =  cls.n_frmwords
-            
             cls.dat = np.fromfile(cls.fname_m5b, dtype=np.uint32,
-                                  count=cls.chunk_size_words[i_chunk],
-                                  offset=cls.chunk_offs_words[i_chunk])
+                                  count=n_words_chunk,
+                                  offset=n_words_chunk_offs)
             toc = time.time()
-            print("M5B file has been read. Time: %7.3f s.\n" % (toc-tic))
-            print("chunk_size_words[%d] = %d, cls.chunk_offs_words[%d] = %d" %
-                  (i_chunk, cls.chunk_size_words[i_chunk],
-                   i_chunk, cls.chunk_offs_words[i_chunk]))
+            print("M5B file chunk has been read. Time: %7.3f s.\n" % (toc-tic))
+            print("Chunk #%d, chunk size, words: %d, chunk offset, words: %d" %
+                  (i_chunk, n_words_chunk, n_words_chunk_offs))
 
             # Number of frames in the current file chunk and in dat array
-            n_frms = np.uint32(cls.chunk_size_words[i_chunk] // cls.n_frmwords)
-
+            n_frms = np.uint32(n_words_chunk // cls.n_frmwords)
             
-            # == START ==== CUDA ========== CUDA =========== CUDA =======
+            #
+            # Find how many CUDA blocks and CUDA threads per block needed
+            #
+            quot, rem = divmod(n_frms, cls.n_threads_max)
+            if quot == 0:
+                n_blocks = 1
+                n_threads = rem
+            elif rem == 0:
+                n_blocks = quot
+                n_threads = cls.n_threads_max
+            else:   # Both quot and rem != 0:
+                    # the last thread block will be < cls.n_threads_max 
+                n_blocks = quot + 1
+                n_threads = cls.n_threads_max
 
-            if cls.gpu_framework == "cuda":
-            
-                #
-                # Find how many CUDA blocks and CUDA threads per block needed
-                #
-                quot, rem = divmod(n_frms, cls.n_threads_max)
-                if quot == 0:
-                    n_blocks = 1
-                    n_threads = rem
-                elif rem == 0:
-                    n_blocks = quot
-                    n_threads = cls.n_threads_max
-                else:   # Both quot and rem != 0:
-                        # the last thread block will be < cls.n_threads_max 
-                    n_blocks = quot + 1
-                    n_threads = cls.n_threads_max
+            n_blocks =  int(n_blocks)
+            n_threads = int(n_threads)
 
-                n_blocks =  int(n_blocks)
-                n_threads = int(n_threads)
+            print('CUDA GPU Process Parameters:')
+            print("Processing %d frames using %d CUDA blocks, "
+                  "%d threads in each." % (n_frms, n_blocks, n_threads))
+            if rem != 0:
+                  print("The last, incomplete block has %d threads." % rem)
 
-                print('CUDA GPU Process Parameters:')
-                print("Processing %d frames using %d CUDA blocks, "
-                      "%d threads in each." % (n_frms, n_blocks, n_threads))
-                if rem != 0:
-                      print("The last, incomplete block has %d threads." % rem)
+            tic = time.time()           
 
-                tic = time.time()           
+            #
+            # Transfer host (CPU) memory to device (GPU) memory 
+            #
+            dat_gpu =     gpuarray.to_gpu(cls.dat)
+            ch_mask_gpu = gpuarray.to_gpu(cls.ch_mask)
 
-                #
-                # Transfer host (CPU) memory to device (GPU) memory 
-                #
-                dat_gpu =     gpuarray.to_gpu(cls.dat)
-                ch_mask_gpu = gpuarray.to_gpu(cls.ch_mask)
+            #
+            # For the last, incomplete file chunk
+            # create new empty gpu arrays for the results
+            #
+            # if n_frms != n_frms_whole:
+            if cls.n_frms_last_chunk != 0:
+                quantl_gpu = gpuarray.empty((n_frms*16*4,), np.float32)
+                residl_gpu = gpuarray.empty((n_frms*16,), np.float32)
+                thresh_gpu = gpuarray.empty((n_frms*16,), np.float32)
+                flag_gpu =   gpuarray.empty((n_frms*16,), np.uint16)
+                niter_gpu =  gpuarray.empty((n_frms*16,), np.uint16)
 
-                #
-                # For the last, incomplete file chunk
-                # create new empty gpu arrays for the results
-                #
-                # if n_frms != n_frms_whole:
-                if cls.n_frms_last_chunk != 0:
-                    # del quantl_gpu  ########## WHY DEL???
-                    # del residl_gpu  ### gpuarray.empty() dels and creates new
-                    # del thresh_gpu
-                    # del flag_gpu
-                    # del niter_gpu
+            #
+            # Call the kernel on the CUDA GPU card
+            #
+            # print("cls.m5b_gauss_test_cuda() started ...")
 
-                    quantl_gpu = gpuarray.empty((n_frms*16*4,), np.float32)
-                    residl_gpu = gpuarray.empty((n_frms*16,), np.float32)
-                    thresh_gpu = gpuarray.empty((n_frms*16,), np.float32)
-                    flag_gpu =   gpuarray.empty((n_frms*16,), np.uint16)
-                    niter_gpu =  gpuarray.empty((n_frms*16,), np.uint16)
+            cls.m5b_gauss_test_cuda(dat_gpu, ch_mask_gpu,
+                            quantl_gpu, residl_gpu, thresh_gpu, flag_gpu,
+                            niter_gpu, n_frms,
+                            block = (n_threads, 1, 1), grid = (n_blocks, 1))
 
-                #
-                # Call the kernel on the CUDA GPU card
-                #
-                # print("cls.m5b_gauss_test_cuda() started ...")
+            # print("cls.m5b_gauss_test_cuda() ended")
 
-                cls.m5b_gauss_test_cuda(dat_gpu, ch_mask_gpu,
-                                quantl_gpu, residl_gpu, thresh_gpu, flag_gpu,
-                                niter_gpu, n_frms,
-                                block = (n_threads, 1, 1), grid = (n_blocks, 1))
+            quantl = quantl_gpu.get()
+            residl = residl_gpu.get()
+            thresh = thresh_gpu.get()
+            flag =   flag_gpu.get()
+            niter =  niter_gpu.get()
 
-                # print("cls.m5b_gauss_test_cuda() ended")
-
-                quantl = quantl_gpu.get()
-                residl = residl_gpu.get()
-                thresh = thresh_gpu.get()
-                flag =   flag_gpu.get()
-                niter =  niter_gpu.get()
-
-                del dat_gpu # Release GPU memory for another data file chunk
-
-            # == END ==== CUDA ========== CUDA =========== CUDA =======
-
-
-            
-            # == START ==== OpenCL ======== OpenCL ========= OpenCL =======
-            
-            if cls.gpu_framework == "opencl":
-                pass
-
-            # == END ==== OpenCL ======== OpenCL ========= OpenCL =======
-            
-
-            
+                    
             toc = time.time()
             print("\nGPU time: %.3f s." % (toc-tic))
             
@@ -493,16 +493,18 @@ class Normtest:
         f_niter.close()
         
         #
-        # Release GPU memory allocated to the large arrays
+        # Release GPU memory allocated to the large arrays -- needed, really??
         #
-        if cls.gpu_framework == "cuda":
-            del quantl_gpu
-            del residl_gpu
-            del thresh_gpu
-            del flag_gpu
-            del niter_gpu
-            del ch_mask_gpu
-
+        # if cls.gpu_framework == "cuda":
+        
+        del quantl_gpu
+        del residl_gpu
+        del thresh_gpu
+        del flag_gpu
+        del niter_gpu
+        del ch_mask_gpu
+        del dat_gpu
+        
         tocg = time.time()
         print("\nTotal time: %.3f s." % (tocg-ticg))
 
