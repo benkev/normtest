@@ -348,7 +348,6 @@ class Normtest:
         #
         # Open binary files to save the results into
         #
-        # fnend = t_stamp + ".bin"
         basefn, t_stamp = cls.form_fout_name(cls.fname_m5b)
         basefn = basefn + "_" + t_stamp + ".bin"
 
@@ -382,6 +381,7 @@ class Normtest:
             # The last chunk can be incomplete
             if i_chunk == cls.n_m5b_chunks-1 and cls.n_frms_last_chunk != 0:
                 n_words_chunk = n_words_last_chunk
+                n_frms = np.uint32(cls.n_frms_last_chunk)
 
             n_words_chunk_offs = i_chunk * cls.n_words_whole_chunk
             
@@ -397,7 +397,7 @@ class Normtest:
                   (i_chunk, n_words_chunk, n_words_chunk_offs))
 
             # Number of frames in the current file chunk and in dat array
-            n_frms = np.uint32(n_words_chunk // cls.n_frmwords)
+            # n_frms = np.uint32(n_words_chunk // cls.n_frmwords)
             
             #
             # Find how many CUDA blocks and CUDA threads per block needed
@@ -436,6 +436,7 @@ class Normtest:
             # create new empty gpu arrays for the results
             #
             if cls.n_frms_last_chunk != 0:
+                n_frms = np.uint32(cls.n_frms_last_chunk)
                 quantl_gpu = gpuarray.empty((n_frms*16*4,), np.float32)
                 residl_gpu = gpuarray.empty((n_frms*16,), np.float32)
                 thresh_gpu = gpuarray.empty((n_frms*16,), np.float32)
