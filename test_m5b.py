@@ -8,7 +8,8 @@ F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))
 
 pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
 
-nfrm = 1
+nfrm = 10000
+
 ndat = 2500*nfrm   # Total data (32-bit words)
 # thr = 0.6652475842498528 # 0.82       # Threshold in STD 
 thr = 0.817       # Threshold in STD 
