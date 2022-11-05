@@ -249,20 +249,15 @@ class Normtest:
                                    n_words_last_chunk
 
         #
-        # Create the lists of all chunk sizes and all the corresponding
-        # offsetts to read them one by one from the m5b file
+        # Calculate number of m5b file chunks allowing for a possible
+        # last incomplete chunk
         #
-        # chunk_size_words = [n_words_whole_chunk for i in range(n_m5b_whole_chunks)]
         n_m5b_chunks = n_m5b_whole_chunks  # Assume all chunks are whole 
-        # if n_words_last_chunk != 0:
-        #     chunk_size_words += [n_words_last_chunk]
-        #     n_m5b_chunks = n_m5b_whole_chunks + 1 # Include the incomplete chunk
-        # chunk_offs_words = [i*n_words_whole_chunk for i in range(n_m5b_chunks)]
+        if n_words_last_chunk != 0:
+            n_m5b_chunks = n_m5b_whole_chunks + 1 # Include the incomplete chunk
 
         cls.n_m5b_chunks = n_m5b_chunks
         cls.n_frms_chunk = n_frms_chunk
-        # cls.chunk_size_words = chunk_size_words
-        # cls.chunk_offs_words = chunk_offs_words
         cls.n_frms_last_chunk = n_frms_last_chunk
         cls.n_words_whole_chunk = n_words_whole_chunk
         cls.n_words_last_chunk = n_words_last_chunk
@@ -332,7 +327,7 @@ class Normtest:
 
 
     @classmethod
-    def do_m5b_cuda(cls):  # , fname_m5b, n_frms_chunk, n_frms_last_chunk):
+    def do_m5b_cuda(cls):
 
         ticg = time.time()
 
@@ -362,11 +357,11 @@ class Normtest:
         f_thresh = open("nt_thresh_cuda_" + basefn, "wb")
         f_flag =   open("nt_flag_cuda_"  + basefn, "wb")
         f_niter =  open("nt_niter_cuda_"  + basefn, "wb")
-                        
+
+        
         #
         # Main loop =====================================================
         #
-
 
         # Assume chunks are whole
         n_words_chunk = cls.n_words_whole_chunk  
@@ -440,7 +435,6 @@ class Normtest:
             # For the last, incomplete file chunk
             # create new empty gpu arrays for the results
             #
-            # if n_frms != n_frms_whole:
             if cls.n_frms_last_chunk != 0:
                 quantl_gpu = gpuarray.empty((n_frms*16*4,), np.float32)
                 residl_gpu = gpuarray.empty((n_frms*16,), np.float32)
