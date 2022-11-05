@@ -370,6 +370,7 @@ class Normtest:
 
         # Assume chunks are whole
         n_words_chunk = cls.n_words_whole_chunk  
+        n_words_last_chunk = cls.n_words_last_chunk
         
         for i_chunk in range(cls.n_m5b_chunks):
 
