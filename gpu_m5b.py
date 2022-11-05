@@ -443,7 +443,7 @@ class Normtest:
             #
             # print("cls.m5b_gauss_test_cuda() started ...")
 
-            print("!!!!!!!!!    n_frms = %d     !!!!!!!!!!!!", n_frms)
+            print("!!!!!!!!!    n_frms = %d     !!!!!!!!!!!!" % n_frms)
 
             cls.m5b_gauss_test_cuda(dat_gpu, ch_mask_gpu,
                             quantl_gpu, residl_gpu, thresh_gpu, flag_gpu,
