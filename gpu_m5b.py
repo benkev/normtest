@@ -377,7 +377,7 @@ class Normtest:
             n_frms = np.uint32(cls.n_frms_chunk)
 
             # The last chunk can be incomplete
-            if i_chunk == cls.n_m5b_chunks-1 and cls.n_frms_last_chunk != 0:
+            if i_chunk == cls.n_m5b_chunks-1 and cls.n_frms_last_chunk == 0:
                 n_words_chunk = n_words_last_chunk
                 n_frms = np.uint32(cls.n_frms_last_chunk)
 
