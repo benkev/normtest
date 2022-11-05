@@ -495,7 +495,6 @@ class Normtest:
         #
         # Release GPU memory allocated to the large arrays -- needed, really??
         #
-        del dat_gpu  # It occupies ~96% of the total array memory
         del quantl_gpu
         del residl_gpu
         del thresh_gpu
