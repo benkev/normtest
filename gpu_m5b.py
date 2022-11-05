@@ -362,22 +362,26 @@ class Normtest:
         # Main loop =====================================================
         #
 
-        # Assume chunks are whole
-        n_words_chunk = cls.n_words_whole_chunk  
-        n_words_last_chunk = cls.n_words_last_chunk
-        
         for i_chunk in range(cls.n_m5b_chunks):
 
             tic = time.time()
 
+            incompleteChunk = (i_chunk == cls.n_m5b_chunks-1) and \
+                              (cls.n_frms_last_chunk != 0)
+            
             #
-            # Count chunk size and offsett to read them one by one
+            # Count chunk size and offset to read them one by one
             # from the m5b file
             #
+            # Assume the current chunk is whole
+            #
+            n_words_chunk = cls.n_words_whole_chunk  
+            n_words_last_chunk = cls.n_words_last_chunk
+        
             n_frms = np.uint32(cls.n_frms_chunk)
 
-            # The last chunk can be incomplete
-            if i_chunk == cls.n_m5b_chunks-1 and cls.n_frms_last_chunk == 0:
+            # However, the last chunk can be incomplete
+            if incompleteChunk:
                 n_words_chunk = n_words_last_chunk
                 n_frms = np.uint32(cls.n_frms_last_chunk)
 
@@ -427,10 +431,10 @@ class Normtest:
             ch_mask_gpu = gpuarray.to_gpu(cls.ch_mask)
 
             #
-            # For the last, incomplete file chunk
-            # create new empty gpu arrays for the results
+            # For the last file chunk, if it is incomplete,
+            # create new, smaller empty gpu arrays for the results
             #
-            if cls.n_frms_last_chunk != 0:
+            if incompleteChunk:
                 n_frms = np.uint32(cls.n_frms_last_chunk)
                 quantl_gpu = gpuarray.empty((n_frms*16*4,), np.float32)
                 residl_gpu = gpuarray.empty((n_frms*16,), np.float32)
@@ -441,16 +445,11 @@ class Normtest:
             #
             # Call the kernel on the CUDA GPU card
             #
-            # print("cls.m5b_gauss_test_cuda() started ...")
-
-            print("!!!!!!!!!    n_frms = %d     !!!!!!!!!!!!" % n_frms)
 
             cls.m5b_gauss_test_cuda(dat_gpu, ch_mask_gpu,
                             quantl_gpu, residl_gpu, thresh_gpu, flag_gpu,
                             niter_gpu, n_frms,
                             block = (n_threads, 1, 1), grid = (n_blocks, 1))
-
-            # print("cls.m5b_gauss_test_cuda() ended")
 
             quantl = quantl_gpu.get()
             residl = residl_gpu.get()
@@ -458,13 +457,14 @@ class Normtest:
             flag =   flag_gpu.get()
             niter =  niter_gpu.get()
 
-            del dat_gpu
-            del quantl_gpu
-            del residl_gpu
-            del thresh_gpu
-            del flag_gpu
-            del niter_gpu
-            del ch_mask_gpu
+            del dat_gpu  # It occupies ~96% of the total array memory
+            
+            # del quantl_gpu
+            # del residl_gpu
+            # del thresh_gpu
+            # del flag_gpu
+            # del niter_gpu
+            # del ch_mask_gpu
         
             toc = time.time()
             print("\nGPU time: %.3f s." % (toc-tic))
@@ -495,14 +495,13 @@ class Normtest:
         #
         # Release GPU memory allocated to the large arrays -- needed, really??
         #
-        # if cls.gpu_framework == "cuda":
-        
-        # del quantl_gpu
-        # del residl_gpu
-        # del thresh_gpu
-        # del flag_gpu
-        # del niter_gpu
-        # del ch_mask_gpu
+        del dat_gpu  # It occupies ~96% of the total array memory
+        del quantl_gpu
+        del residl_gpu
+        del thresh_gpu
+        del flag_gpu
+        del niter_gpu
+        del ch_mask_gpu
         
         tocg = time.time()
         print("\nTotal time: %.3f s." % (tocg-ticg))
