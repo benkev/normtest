@@ -374,9 +374,7 @@ class Normtest:
             # Count chunk size and offsett to read them one by one
             # from the m5b file
             #
-
-            print("i_chunk = ", i_chunk, ", cls.n_m5b_chunks-1 = ",
-                  cls.n_m5b_chunks-1)
+            n_frms = np.uint32(cls.n_frms_chunk)
 
             # The last chunk can be incomplete
             if i_chunk == cls.n_m5b_chunks-1 and cls.n_frms_last_chunk != 0:
@@ -396,9 +394,6 @@ class Normtest:
             print("Chunk #%d, chunk size, words: %d, chunk offset, words: %d" %
                   (i_chunk, n_words_chunk, n_words_chunk_offs))
 
-            # Number of frames in the current file chunk and in dat array
-            # n_frms = np.uint32(n_words_chunk // cls.n_frmwords)
-            
             #
             # Find how many CUDA blocks and CUDA threads per block needed
             #
