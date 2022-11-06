@@ -9,19 +9,22 @@ class Normtest:
     name = 'Normtest'
     fmega = pow(1024.,2)
     fgiga = pow(1024.,3)
-    
+
+    n_bytes_uint32 = np.dtype(np.uint32).itemsize
 
     #
     # M5B file parameters
     #
     n_frmwords = 2504    # 32-bit words in one frame including the 4-word header
-    n_frmbytes = 2504*4  # Bytes in a frame
+    n_frmbytes = 2504*n_bytes_uint32  # Bytes in a frame
     n_frmdatwords = 2500 # 32-bit words of data in one frame
 
     #quota_dat = 0.95  # Quota of dat array in overall GPU data (approx)
     quota_dat = 0.90  # Quota of dat array in overall GPU data (approx)
     #quota_dat = 0.85  # Quota of dat array in overall GPU data (approx)
-
+    
+    quota_dat = 0.01    # ??????????????
+    
     #
     # Determine if PyCUDA or/and PyOpenCL are installed
     #
@@ -233,6 +236,7 @@ class Normtest:
         
         # Size of the file chunk of whole frames to read at once in 32bit words
         n_words_whole_chunk = n_frms_chunk*cls.n_frmwords
+        n_bytes_whole_chunk = n_frms_chunk*cls.n_frmbytes
         # Number of whole chunks (each having n_frms_chunk of whole frames) in
         # the entire m5b file
         n_m5b_whole_chunks = n_m5bwords // n_words_whole_chunk
@@ -244,6 +248,7 @@ class Normtest:
         # Number of words in the last (possibly incomplete) chunk to make
         # a whole number of frames
         n_words_last_chunk = n_frms_last_chunk*cls.n_frmwords
+        n_bytes_last_chunk = n_frms_last_chunk*cls.n_frmbytes
         # If the last frame is incomplete, this will be non-zero
         n_words_last_incompl_frm = n_words_last_chunk_incompl_frm - \
                                    n_words_last_chunk
@@ -260,7 +265,9 @@ class Normtest:
         cls.n_frms_chunk = n_frms_chunk
         cls.n_frms_last_chunk = n_frms_last_chunk
         cls.n_words_whole_chunk = n_words_whole_chunk
+        cls.n_bytes_whole_chunk = n_bytes_whole_chunk
         cls.n_words_last_chunk = n_words_last_chunk
+        cls.n_bytes_last_chunk = n_bytes_last_chunk
         
         # Number of frames in a whole file chunk and in dat array
         # n_frms_whole = np.uint32(n_words_whole_chunk // cls.n_frmwords)
@@ -276,7 +283,9 @@ class Normtest:
         print("sz_dat_max = ", sz_dat_max)
         print("sz_dat = ", sz_dat)
         print("n_words_whole_chunk = ", n_words_whole_chunk)
+        print("n_bytes_whole_chunk = ", n_bytes_whole_chunk)
         print("n_words_last_chunk = ", n_words_last_chunk)
+        print("n_bytes_last_chunk = ", n_bytes_last_chunk)
         print("n_frms_chunk_max = ", n_frms_chunk_max)
         print("n_frms_chunk = ", n_frms_chunk)
         print("n_frms_last_chunk = ", n_frms_last_chunk)
@@ -376,6 +385,7 @@ class Normtest:
             # Assume the current chunk is whole
             #
             n_words_chunk = cls.n_words_whole_chunk  
+            n_bytes_chunk = cls.n_bytes_whole_chunk  
             n_words_last_chunk = cls.n_words_last_chunk
         
             n_frms = np.uint32(cls.n_frms_chunk)
@@ -386,13 +396,25 @@ class Normtest:
                 n_frms = np.uint32(cls.n_frms_last_chunk)
 
             n_words_chunk_offs = i_chunk * cls.n_words_whole_chunk
+            n_bytes_chunk_offs = i_chunk * cls.n_bytes_whole_chunk
             
             #
             # Read a file chunk into the dat array
             #
             cls.dat = np.fromfile(cls.fname_m5b, dtype=np.uint32,
                                   count=n_words_chunk,
-                                  offset=n_words_chunk_offs)
+                                  offset=n_bytes_chunk_offs)
+
+            # if i_chunk > 0:
+            #     n_words_chunk_offs = n_bytes_chunk_offs / 4
+            #     print("i_chunk = %d \n dat[%d:%d] = " %
+            #           (n_words_chunk_offs-5, n_words_chunk_offs+5))
+            #     print(
+            
+
+
+
+            
             toc = time.time()
             print("M5B file chunk has been read. Time: %7.3f s.\n" % (toc-tic))
             print("Chunk #%d, chunk size, words: %d, chunk offset, words: %d" %

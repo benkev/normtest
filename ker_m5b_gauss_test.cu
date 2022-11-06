@@ -94,14 +94,14 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
     uint idt, ich, iqua, ixdat, iseq;
     // float (*quantl)[16][4]; /* 4 quantiles of  data for 16 channels */
     float *pqua = NULL;
-    float q_exprm[4];
+    float q_exprm[4] = {0., 0., 0., 0.};
     float  *presidl = NULL, *pthresh = NULL;
     ushort *pniter = NULL,  *pflag = NULL;
 
     int nitr = 0;    /* Number of calls to the optimized function residual() */
-    float res; /* The minimal value of the quantization threshold */
-    float th0; /* Optimal quantization theshold found */
-    int flg;   /* Optimization flag  */
+    float res = 0.;  /* The minimal value of the quantization threshold */
+    float th0 = 0.;  /* Optimal quantization theshold found */
+    int flg = 0;     /* Optimization flag  */
 
     float nfdat_fl = (float) nfdat;
 
@@ -225,6 +225,7 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
          * the Gaussian PDF and those of the 2-bit streams 
          * from M5B files. 
          */
+        
         th0 = fminbndf(*residual, 0.5, 1.5, q_exprm, xatol, maxiter,
                        &res, &nitr, &flg, 0);
 
