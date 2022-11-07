@@ -228,7 +228,10 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
         
         th0 = fminbndf(*residual, 0.5, 1.5, q_exprm, xatol, maxiter,
                        &res, &nitr, &flg, 0);
-
+        // if (ifrm < 10) {
+        //     printf("KERNEL: ifrm: %d, residual = %e\n", ifrm, res);
+        // }
+        
         presidl[ich] = res;
         pthresh[ich] = th0;
         pniter[ich] = nitr;

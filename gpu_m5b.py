@@ -20,9 +20,9 @@ class Normtest:
     n_frmdatwords = 2500 # 32-bit words of data in one frame
 
     #quota_dat = 0.95  # Quota of dat array in overall GPU data (approx)
-    quota_dat = 0.90  # Quota of dat array in overall GPU data (approx)
+    #quota_dat = 0.90  # Quota of dat array in overall GPU data (approx)
     #quota_dat = 0.85  # Quota of dat array in overall GPU data (approx)
-    #quota_dat = 0.01    # ??????????????
+    quota_dat = 0.92    # ??????????????
     
     #
     # Determine if PyCUDA or/and PyOpenCL are installed
@@ -83,6 +83,7 @@ class Normtest:
         # Read the kernel code from file into the string "ker"
         #
         ker_filename = "ker_m5b_gauss_test.cu"
+#        ker_filename = "ker_m5b_gauss_test_20221107.cu"
         with open (ker_filename) as fh: ker_source_code = fh.read()
         print("CUDA kernel file '%s' is used\n" % ker_filename)
 
@@ -325,6 +326,7 @@ class Normtest:
         t_stamp = str(time.strftime("%Y%m%d_%H%M%S")) + \
             ".%03d" % (1000*np.modf(time.time())[0])
 
+        # print("t_stamp = ", t_stamp)
 
         return basefn, t_stamp
 
@@ -356,7 +358,12 @@ class Normtest:
         #
         # Open binary files to save the results into
         #
+
+        
         basefn, t_stamp = cls.form_fout_name(cls.fname_m5b)
+
+        #print("do_m5b_cuda: t_stamp = ", t_stamp)
+        
         basefn = basefn + "_" + t_stamp + ".bin"
 
         f_quantl = open("nt_quantl_cuda_" + basefn, "wb")
