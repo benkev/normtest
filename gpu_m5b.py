@@ -22,8 +22,7 @@ class Normtest:
     #quota_dat = 0.95  # Quota of dat array in overall GPU data (approx)
     quota_dat = 0.90  # Quota of dat array in overall GPU data (approx)
     #quota_dat = 0.85  # Quota of dat array in overall GPU data (approx)
-    
-    quota_dat = 0.01    # ??????????????
+    #quota_dat = 0.01    # ??????????????
     
     #
     # Determine if PyCUDA or/and PyOpenCL are installed

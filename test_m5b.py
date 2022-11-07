@@ -4,11 +4,14 @@ import matplotlib.pyplot as pl
 #from matplotlib.font_manager import FontProperties
 # import scipy.stats
 
+# fname_m5b = 'rd1910_wz_268-1811.m5b'
+fname_m5b = 'rd1903_ft_100-0950.m5b'
+
 F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))
 
 pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
 
-nfrm = 10000
+nfrm = 1
 
 ndat = 2500*nfrm   # Total data (32-bit words)
 # thr = 0.6652475842498528 # 0.82       # Threshold in STD 
@@ -24,10 +27,10 @@ for ifrm in range(nfrm):
     foff = 10016*ifrm
     i0 = ifrm*2500
     i1 = i0 + 2500
-    h = np.fromfile('rd1910_wz_268-1811.m5b', dtype=np.uint32, \
+    h = np.fromfile(fname_m5b, dtype=np.uint32, \
                     offset=foff, count=4)
 #    print('i0=%d, i1=%d' % (i0,i1))
-    d[i0:i1] = np.fromfile('rd1910_wz_268-1811.m5b', dtype=np.uint32, \
+    d[i0:i1] = np.fromfile(fname_m5b, dtype=np.uint32, \
                     offset=foff+16, count=2500)
 
 #    print('Header: 0x%08x  0x%08x  0x%08x  0x%08x' % tuple(h))
