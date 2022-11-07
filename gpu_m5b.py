@@ -22,7 +22,7 @@ class Normtest:
     #quota_dat = 0.95  # Quota of dat array in overall GPU data (approx)
     #quota_dat = 0.90  # Quota of dat array in overall GPU data (approx)
     #quota_dat = 0.85  # Quota of dat array in overall GPU data (approx)
-    quota_dat = 0.92    # ??????????????
+    quota_dat = 0.93    # ??????????????
     
     #
     # Determine if PyCUDA or/and PyOpenCL are installed
@@ -108,15 +108,15 @@ class Normtest:
         #
         plats = cl.get_platforms()
         plat = plats[0]
-        platname = plat.name
-        platname = platname.split()[0] # Get the first word
+        platform = plat.name
+        platform = platform.split()[0] # Get the first word
 
-        if platname == 'NVIDIA':
+        if platform == 'NVIDIA':
             ker_opts = ['-I . -D __nvidia']
-        elif platname == 'AMD':
+        elif platform == 'AMD':
             ker_opts = ['-I . -D __amd']
         else:
-            sys.exit("Platform ""%s"" is not supported. Exiting." % platname)
+            sys.exit("Platform ""%s"" is not supported. Exiting." % platform)
 
         devs = plat.get_devices(cl.device_type.ALL)
         ocl_dev = devs[0]
