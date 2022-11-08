@@ -22,7 +22,8 @@ class Normtest:
     #quota_dat = 0.95  # Quota of dat array in overall GPU data (approx)
     #quota_dat = 0.90  # Quota of dat array in overall GPU data (approx)
     #quota_dat = 0.85  # Quota of dat array in overall GPU data (approx)
-    quota_dat = 0.93    # ??????????????
+    quota_dat = 0.93    # Works on Nvidia
+    quota_dat = 0.80    # ??????????????
     
     #
     # Determine if PyCUDA or/and PyOpenCL are installed
@@ -83,7 +84,6 @@ class Normtest:
         # Read the kernel code from file into the string "ker"
         #
         ker_filename = "ker_m5b_gauss_test.cu"
-#        ker_filename = "ker_m5b_gauss_test_20221107.cu"
         with open (ker_filename) as fh: ker_source_code = fh.read()
         print("CUDA kernel file '%s' is used\n" % ker_filename)
 
@@ -308,8 +308,6 @@ class Normtest:
         elif cls.gpu_framework == "opencl":
             cls.do_m5b_opencl()
 
-        # sys.exit("........... STOP .............")
-        
 
         
 
@@ -403,17 +401,7 @@ class Normtest:
             cls.dat = np.fromfile(cls.fname_m5b, dtype=np.uint32,
                                   count=n_words_chunk,
                                   offset=n_bytes_chunk_offs)
-
-            # if i_chunk > 0:
-            #     n_words_chunk_offs = n_bytes_chunk_offs / 4
-            #     print("i_chunk = %d \n dat[%d:%d] = " %
-            #           (n_words_chunk_offs-5, n_words_chunk_offs+5))
-            #     print(
-            
-
-
-
-            
+           
             toc = time.time()
             print("M5B file chunk has been read. Time: %7.3f s.\n" % (toc-tic))
             print("Chunk #%d, chunk size, words: %d, chunk offset, words: %d" %
@@ -537,20 +525,23 @@ class Normtest:
 
         ticg = time.time()
 
+        cl = cls.cl    # OpenCL
         ctx = cls.ctx  # The context created at the class initialization
+        
         n_threads_max = cls.n_threads_max
-
+        n_frms = cls.n_frms_chunk
+        
         mf = cl.mem_flags
         queue = cl.CommandQueue(ctx)
 
         #
         # Create output buffers in the CPU memory.
         #
-        quantl = np.zeros((nfrm*16*4), dtype=np.float32) # Quantiles
-        residl = np.zeros((nfrm*16), dtype=np.float32)   # Residuals
-        thresh = np.zeros((nfrm*16), dtype=np.float32)   # Thresholds
-        flag =   np.zeros((nfrm*16), dtype=np.uint16)    # Flags
-        niter =  np.zeros((nfrm*16), dtype=np.uint16)    # Iterations fminbndf()
+        quantl = np.zeros((n_frms*16*4), dtype=np.float32) # Quantiles
+        residl = np.zeros((n_frms*16), dtype=np.float32)   # Residuals
+        thresh = np.zeros((n_frms*16), dtype=np.float32)   # Thresholds
+        flag =   np.zeros((n_frms*16), dtype=np.uint16)    # Flags
+        niter =  np.zeros((n_frms*16), dtype=np.uint16) # Iterations fminbndf()
 
         #
         # Create input and output buffers in the GPU memory.
@@ -661,6 +652,13 @@ class Normtest:
             #
             if incompleteChunk:
                 n_frms = np.uint32(cls.n_frms_last_chunk)
+                
+                quantl = np.zeros((n_frms*16*4), dtype=np.float32) # Quantiles
+                residl = np.zeros((n_frms*16), dtype=np.float32)   # Residuals
+                thresh = np.zeros((n_frms*16), dtype=np.float32)   # Thresholds
+                flag =   np.zeros((n_frms*16), dtype=np.uint16)    # Flags
+                niter =  np.zeros((n_frms*16), dtype=np.uint16) # Iterations
+                
                 buf_quantl = cl.Buffer(ctx, mf.WRITE_ONLY, quantl.nbytes)
                 buf_residl = cl.Buffer(ctx, mf.WRITE_ONLY, residl.nbytes)
                 buf_thresh = cl.Buffer(ctx, mf.WRITE_ONLY, thresh.nbytes)
@@ -684,7 +682,7 @@ class Normtest:
             cl.enqueue_copy(queue, flag, buf_flag)
             cl.enqueue_copy(queue, niter, buf_niter)
 
-            dat_gpu.release()  # It occupies ~96% of the total array memory
+            buf_dat.release()  # It occupies ~96% of the total array memory
 
             toc = time.time()
             print("\nGPU time: %.3f s." % (toc-tic))
@@ -710,7 +708,7 @@ class Normtest:
         queue.finish()
 
         buf_ch_mask.release()
-        buf_dat.release()
+        # buf_dat.release()
         buf_quantl.release()
         buf_residl.release()
         buf_thresh.release()
@@ -719,7 +717,11 @@ class Normtest:
 
 
         tocg = time.time()
-        print("\nTotal time: %.3f s." % (tocg-ticg))
+        tsec_total = tocg - ticg
+        tminute = tsec_total // 60.0
+        tsecond = tsec_total % 60.0
+        print("\nTotal time: %d m, %.3f s (%.3f s)." % \
+              (tminute, tsecond, tsec_total))
 
         
 
