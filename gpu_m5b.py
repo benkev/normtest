@@ -305,8 +305,8 @@ class Normtest:
         
         if cls.gpu_framework == "cuda":
             cls.do_m5b_cuda()
-        # elif cls.gpu_framework == "opencl":
-        #     cls.do_m5b_opencl()
+        elif cls.gpu_framework == "opencl":
+            cls.do_m5b_opencl()
 
         # sys.exit("........... STOP .............")
         
