@@ -127,7 +127,7 @@ class Normtest:
         sz_gpu = mem_gpu_total   # Use all the available GPU global memory
         # sz_gpu = mem_gpu_free  # Only use the available GPU global memory ???
     
-        mf = cl.mem_flags
+        # mf = cl.mem_flags
         ctx = cl.create_some_context()
         #
         # Read the kernel code from file into the string "ker"
@@ -311,6 +311,7 @@ class Normtest:
         # sys.exit("........... STOP .............")
         
 
+        
 
     @staticmethod    
     def form_fout_name(fname_m5b):
@@ -331,9 +332,6 @@ class Normtest:
         return basefn, t_stamp
 
 
-
-
-        
 
 
     @classmethod
@@ -358,12 +356,7 @@ class Normtest:
         #
         # Open binary files to save the results into
         #
-
-        
         basefn, t_stamp = cls.form_fout_name(cls.fname_m5b)
-
-        #print("do_m5b_cuda: t_stamp = ", t_stamp)
-        
         basefn = basefn + "_" + t_stamp + ".bin"
 
         f_quantl = open("nt_quantl_cuda_" + basefn, "wb")
@@ -534,7 +527,125 @@ class Normtest:
         print("\nTotal time: %.3f s." % (tocg-ticg))
 
         
+        
 
+    @classmethod
+    def do_m5b_opencl(cls):
+
+        ticg = time.time()
+
+        n_threads_max = cls.n_threads_max
+
+        mf = cl.mem_flags
+        queue = cl.CommandQueue(ctx)
+
+        #
+        # Create input and output
+        # buffers in the GPU memory. The mf.COPY_HOST_PTR flag
+        # forces copying from the host buffer to the device buffer
+        # (referred as buf_) in the GPU memory.
+        #
+        buf_ch_mask = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
+                                hostbuf=cls.ch_mask)
+        buf_quantl = cl.Buffer(ctx, mf.WRITE_ONLY, quantl.nbytes)
+        buf_residl = cl.Buffer(ctx, mf.WRITE_ONLY, residl.nbytes)
+        buf_thresh = cl.Buffer(ctx, mf.WRITE_ONLY, thresh.nbytes)
+        buf_flag = cl.Buffer(ctx,   mf.WRITE_ONLY, flag.nbytes)
+        buf_niter = cl.Buffer(ctx,  mf.WRITE_ONLY, niter.nbytes)
+
+
+        #
+        # Open binary files to save the results into
+        #
+        basefn, t_stamp = cls.form_fout_name(cls.fname_m5b)
+        basefn = basefn + "_" + t_stamp + ".bin"
+
+        f_quantl = open("nt_quantl_opencl_" + basefn, "wb")
+        f_residl = open("nt_residl_opencl_" + basefn, "wb")
+        f_thresh = open("nt_thresh_opencl_" + basefn, "wb")
+        f_flag =   open("nt_flag_opencl_"  + basefn, "wb")
+        f_niter =  open("nt_niter_opencl_"  + basefn, "wb")
+
+        
+        #
+        # Main loop OpenCL =========================================
+        #
+
+        for i_chunk in range(cls.n_m5b_chunks):
+
+            tic = time.time()
+
+            incompleteChunk = (i_chunk == cls.n_m5b_chunks-1) and \
+                              (cls.n_frms_last_chunk != 0)
+            
+            #
+            # Count chunk size and offset to read them one by one
+            # from the m5b file
+            #
+            # Assume the current chunk is whole
+            #
+            n_words_chunk = cls.n_words_whole_chunk  
+            n_bytes_chunk = cls.n_bytes_whole_chunk  
+            n_words_last_chunk = cls.n_words_last_chunk
+        
+            n_frms = np.uint32(cls.n_frms_chunk)
+
+            # However, the last chunk can be incomplete
+            if incompleteChunk:
+                n_words_chunk = n_words_last_chunk
+                n_frms = np.uint32(cls.n_frms_last_chunk)
+
+            n_words_chunk_offs = i_chunk * cls.n_words_whole_chunk
+            n_bytes_chunk_offs = i_chunk * cls.n_bytes_whole_chunk
+            
+            #
+            # Read a file chunk into the dat array
+            #
+            cls.dat = np.fromfile(cls.fname_m5b, dtype=np.uint32,
+                                  count=n_words_chunk,
+                                  offset=n_bytes_chunk_offs)
+
+            toc = time.time()
+            
+            print("M5B file chunk has been read. Time: %7.3f s.\n" % (toc-tic))
+            print("Chunk #%d, chunk size, words: %d, chunk offset, words: %d" %
+                  (i_chunk, n_words_chunk, n_words_chunk_offs))
+
+
+            #
+            # Transfer host (CPU) memory to device (GPU) memory 
+            #
+            buf_dat = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
+                            hostbuf=cls.dat)
+
+
+            cls.m5b_gauss_test_ocl(queue, (wiglobal,), (wgsize,),
+                             buf_dat, buf_ch_mask,  buf_quantl, buf_residl, 
+                             buf_thresh,  buf_flag, buf_niter,  nfrm).wait()
+
+            #
+            # Move the results from GPU memory to CPU RAM
+            #
+            cl.enqueue_copy(queue, quantl, buf_quantl)
+            cl.enqueue_copy(queue, residl, buf_residl)
+            cl.enqueue_copy(queue, thresh, buf_thresh)
+            cl.enqueue_copy(queue, flag, buf_flag)
+            cl.enqueue_copy(queue, niter, buf_niter)
+
+        queue.flush()
+        queue.finish()
+
+        buf_ch_mask.release()
+        buf_dat.release()
+        buf_quantl.release()
+        buf_residl.release()
+        buf_thresh.release()
+        buf_flag.release()
+        buf_niter.release()
+
+
+        tocg = time.time()
+        print("\nTotal time: %.3f s." % (tocg-ticg))
 
         
 
