@@ -367,7 +367,7 @@ class Normtest:
 
         
         #
-        # Main loop =====================================================
+        # Main loop  CUDA  ======================================
         #
 
         for i_chunk in range(cls.n_m5b_chunks):
@@ -472,6 +472,9 @@ class Normtest:
                             niter_gpu, n_frms,
                             block = (n_threads, 1, 1), grid = (n_blocks, 1))
 
+            #
+            # Move the results from GPU memory to CPU RAM
+            #
             quantl = quantl_gpu.get()
             residl = residl_gpu.get()
             thresh = thresh_gpu.get()
@@ -534,16 +537,25 @@ class Normtest:
 
         ticg = time.time()
 
+        ctx = cls.ctx  # The context created at the class initialization
         n_threads_max = cls.n_threads_max
 
         mf = cl.mem_flags
         queue = cl.CommandQueue(ctx)
 
         #
-        # Create input and output
-        # buffers in the GPU memory. The mf.COPY_HOST_PTR flag
-        # forces copying from the host buffer to the device buffer
-        # (referred as buf_) in the GPU memory.
+        # Create output buffers in the CPU memory.
+        #
+        quantl = np.zeros((nfrm*16*4), dtype=np.float32) # Quantiles
+        residl = np.zeros((nfrm*16), dtype=np.float32)   # Residuals
+        thresh = np.zeros((nfrm*16), dtype=np.float32)   # Thresholds
+        flag =   np.zeros((nfrm*16), dtype=np.uint16)    # Flags
+        niter =  np.zeros((nfrm*16), dtype=np.uint16)    # Iterations fminbndf()
+
+        #
+        # Create input and output buffers in the GPU memory.
+        # The mf.COPY_HOST_PTR flag forces copying from the host buffer
+        # to the device buffer referred as buf_) in the GPU memory.
         #
         buf_ch_mask = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
                                 hostbuf=cls.ch_mask)
@@ -611,17 +623,57 @@ class Normtest:
             print("Chunk #%d, chunk size, words: %d, chunk offset, words: %d" %
                   (i_chunk, n_words_chunk, n_words_chunk_offs))
 
+            #
+            # Find how many Global Work Items, global_size (i.e. total number
+            # of threads), are needed to process n_frms frames in the current
+            # m5b file chunk provided that global_size must be a multiple
+            # of the Work Group Size, local_size (i.e. number of threads per
+            # block in CUDA terms). 
+            #
+            # In an OpenCL kernel: global_size = get_global_size(0)
+            #
+            # Find global_size >= n_frms as the least multiple of local_size
+            # (i.e. work group size, which is n_threads_max per block here)
+            #
+            local_size = n_threads_max
+            global_size = int(local_size*np.ceil(n_frms/local_size))
+            nwg = global_size//local_size  # Number of work groups
+            rem = n_frms % local_size
+
+            print('OpenCL GPU Process Parameters:')
+            print("Processing %d frames using %d OpenCL work groups, " \
+                  "%d work items in each." % (n_frms, nwg, local_size))
+            if rem != 0:
+                print("The last, incomplete work group has %d work items." % \
+                      rem)
+
+            tic = time.time()           
 
             #
-            # Transfer host (CPU) memory to device (GPU) memory 
+            # Transfer data chunk from host (CPU) memory to device (GPU) memory 
             #
             buf_dat = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
-                            hostbuf=cls.dat)
+                                hostbuf=cls.dat)
 
+            #
+            # For the last m5b file chunk, if it is incomplete,
+            # create new, smaller empty buffers for the results
+            #
+            if incompleteChunk:
+                n_frms = np.uint32(cls.n_frms_last_chunk)
+                buf_quantl = cl.Buffer(ctx, mf.WRITE_ONLY, quantl.nbytes)
+                buf_residl = cl.Buffer(ctx, mf.WRITE_ONLY, residl.nbytes)
+                buf_thresh = cl.Buffer(ctx, mf.WRITE_ONLY, thresh.nbytes)
+                buf_flag = cl.Buffer(ctx,   mf.WRITE_ONLY, flag.nbytes)
+                buf_niter = cl.Buffer(ctx,  mf.WRITE_ONLY, niter.nbytes)
+                
+            #
+            # Call the kernel on the OpenCL GPU card
+            #
 
-            cls.m5b_gauss_test_ocl(queue, (wiglobal,), (wgsize,),
+            cls.m5b_gauss_test_ocl(queue, (global_size,), (local_size,),
                              buf_dat, buf_ch_mask,  buf_quantl, buf_residl, 
-                             buf_thresh,  buf_flag, buf_niter,  nfrm).wait()
+                             buf_thresh,  buf_flag, buf_niter,  n_frms).wait()
 
             #
             # Move the results from GPU memory to CPU RAM
@@ -631,6 +683,28 @@ class Normtest:
             cl.enqueue_copy(queue, thresh, buf_thresh)
             cl.enqueue_copy(queue, flag, buf_flag)
             cl.enqueue_copy(queue, niter, buf_niter)
+
+            dat_gpu.release()  # It occupies ~96% of the total array memory
+
+            toc = time.time()
+            print("\nGPU time: %.3f s." % (toc-tic))
+            
+            #
+            # Save the results in binary files.
+            # If several m5b file chunks are processed, this
+            # appends the files with the results for current chunk
+            #
+            tic = time.time()
+
+            quantl.tofile(f_quantl)
+            residl.tofile(f_residl)
+            thresh.tofile(f_thresh)
+            flag.tofile(f_flag)
+            niter.tofile(f_niter)
+            
+            toc = time.time()
+            print('Saving a chunk of results in files: %.3f s.' % (toc-tic))
+
 
         queue.flush()
         queue.finish()
