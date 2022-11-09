@@ -1,64 +1,104 @@
+#
+# test_m5b.py
+#
+#
+# 
+#
+
+
 import math
 import numpy as np
 import matplotlib.pyplot as pl
-#from matplotlib.font_manager import FontProperties
-# import scipy.stats
 
 
-# fname_m5b = 'rd1910_wz_268-1811.m5b'
-fname_m5b = '/home/benkev/Work/normtest/rd1903_ft_100-0950.m5b'
+fname_m5b = 'rd1910_wz_268-1811.m5b'
+#fname_m5b = 'rd1903_ft_100-0950.m5b'
 
 F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))
 
 pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
 
-nfrm = 100
-ndat = 2500*nfrm   # Total data (32-bit words)
-#thr = 0.6652475842498528 # 0.82       # Threshold in STD 
-thr = 0.67       # Threshold in STD 
-# thr = 0.817
+ifrm_start = 0 # Frame number (zero-based) from which to read nfrm frames 
+nfrm = 1
+chan = 0            # Channel number, 0 .. 15
 
-d = np.zeros(ndat, dtype=np.uint32)   # Raw data
-xt = np.zeros_like(d, dtype=np.float64)
-x = np.zeros(2500, dtype=np.float64)
-qua = np.zeros(4, dtype=np.uint32)  # Quantiles
+#
+# Create 16 2-bit masks for 16 channels in ch_mask
+#
+ch_mask = np.zeros(16, dtype=np.uint32)           # Channel 2-bit masks
+ch_mask[0] = 0x00000003;  # For ch 0: 0b00000000000000000000000000000011
+for ich in range(1,16):
+    ch_mask[ich] = ch_mask[ich-1] << 2;
+
+
+ndat = 2500*nfrm   # Total data (32-bit words)
+# thr = 0.6652475842498528 # 0.82       # Threshold in STD 
+# thr = 0.817       # Threshold in STD
+thr = 0.66
+
+dat = np.zeros(ndat, dtype=np.uint32)     # Raw data of nfrm frames
+chdat = np.zeros(ndat, dtype=np.uint16)   # Data of chan-th channel
+xt = np.zeros(2500, dtype=np.float64)
+qua = np.zeros(4, dtype=np.float32)  # Quantiles for chan-th channel
+
+foff = 10016*ifrm_start
 
 for ifrm in range(nfrm):
-    foff = 10016*ifrm
+    foff = foff + 10016*ifrm
     i0 = ifrm*2500
     i1 = i0 + 2500
-    h = np.fromfile(fname_m5b, dtype=np.uint32, \
+    hdr = np.fromfile(fname_m5b, dtype=np.uint32, \
                     offset=foff, count=4)
-#    print('i0=%d, i1=%d' % (i0,i1))
-    d[i0:i1] = np.fromfile(fname_m5b, dtype=np.uint32, \
-                    offset=foff+16, count=2500)
 
-#    print('Header: 0x%08x  0x%08x  0x%08x  0x%08x' % tuple(h))
+    dat[i0:i1] = np.fromfile(fname_m5b, dtype=np.uint32, \
+                                offset=foff+16, count=2500)
 
-    d01 = ((0x03<<2) & d[i0:i1])>>2     # 0th channel, bits 0 and 1
-    x[np.where(d01 == 3)] =  1.5
-    x[np.where(d01 == 2)] =  0.5
-    x[np.where(d01 == 1)] = -0.5
-    x[np.where(d01 == 0)] =  -1.5
+    # print('Header: 0x%08x  0x%08x  0x%08x  0x%08x' % tuple(h))
+
+
+
+for idat in range(ndat):
+    ch_bits = dat[idat] & ch_mask[chan]; # 2-bit-stream value
+
+    #
+    # Move the 2-bit-stream of the chan-th channel to the
+    # rightmost position in the 32-bit word  chbits
+    # to get the quantile index iqua from 0,1,2,3
+    #
+    iqua = ch_bits >> (2*chan); # Index of a quantile partition: 0, 1, 2, or 3
+    chdat[idat] = iqua
+    qua[iqua] += 1.0; 
+
+#    xt = np.sum(qua, axis=0)
+
+raise SystemExit
     
-    # d23 = 0b1100 & d[i0:i1]   # 1th channel, bits 0 and 1
-    # x[np.where(d23 == 3)] =  1.5
-    # x[np.where(d23 == 2)] =  0.5
-    # x[np.where(d23 == 1)] = -0.5
-    # x[np.where(d23 == 0)] =  -1.5
     
-    # pl.figure()
-    # pl.hist(x, rwidth=0.5, bins=[-3, -2, -1, 0, 1, 2, 3]); pl.grid(1)
 
-d01t = 0x03 & d   # 0th channel, bits 0 and 1
+    # d01 = 0x03 & d[i0:i1]     # 0th channel, bits 0 and 1
+    # x[np.where(d01 == 3)] =  1.5
+    # x[np.where(d01 == 2)] =  0.5
+    # x[np.where(d01 == 1)] = -0.5
+    # x[np.where(d01 == 0)] =  -1.5
+    
+    # # d23 = 0b1100 & d[i0:i1]   # 1th channel, bits 0 and 1
+    # # x[np.where(d23 == 3)] =  1.5
+    # # x[np.where(d23 == 2)] =  0.5
+    # # x[np.where(d23 == 1)] = -0.5
+    # # x[np.where(d23 == 0)] =  -1.5
+    
+    # # pl.figure()
+    # # pl.hist(x, rwidth=0.5, bins=[-3, -2, -1, 0, 1, 2, 3]); pl.grid(1)
 
-xt[np.where(d01t == 3)] =  1.5
-xt[np.where(d01t == 2)] =  0.5
-xt[np.where(d01t == 1)] = -0.5
-xt[np.where(d01t == 0)] =  -1.5
+# d01t = 0x03 & d   # 0th channel, bits 0 and 1
 
-for idt in range(ndat):
-    qua[d01t[idt]] += 1
+# xt[np.where(d01t == 3)] =  1.5
+# xt[np.where(d01t == 2)] =  0.5
+# xt[np.where(d01t == 1)] = -0.5
+# xt[np.where(d01t == 0)] =  -1.5
+
+# for idt in range(ndat):
+#     qua[d01t[idt]] += 1
 
 
 F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))  # Normal CDF
