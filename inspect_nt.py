@@ -1,7 +1,7 @@
 #
 # inspect_nt.py
 #
-# python inspect_nt <m5b_filename> <nt_file_timestamp> <start_frame#> \
+# python inspect_nt.py <m5b_filename> <nt_file_timestamp> <start_frame#> \
 #          [<end_frame#>]         
 #
 #
@@ -26,9 +26,11 @@ fm5b_base = os.path.splitext(fm5b_base)[0]
 fquantls = glob.glob("nt_quantl_*" + fm5b_base + "*" + ftst +".bin")
 fthreshs = glob.glob("nt_thresh_*" + fm5b_base + "*" + ftst +".bin")
 
-if len(fquantl) > 1 or len(fthresh) > 1:
+if len(fquantls) > 1 or len(fthreshs) > 1:
     print("Ambiguous timestamp. Give more detail.")
     raise SystemExit
+
+#raise SystemExit
 
 fquantl_name = fquantls[0]
 fthresh_name = fthreshs[0]
