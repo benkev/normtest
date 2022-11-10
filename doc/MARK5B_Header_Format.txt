@@ -1,0 +1,32 @@
+#
+#         TimeServerVlbi
+# A VLBI data stream real-time monitor
+#          Matteo Stagni
+#          March 25, 2015
+#            IRA 485/15
+# 
+# https://www.ira.inaf.it/Library/rapp-int/485-15.pdf
+#
+# MARK5B Header Format (consists of 4 32-bit words):
+#  Word0: sync word 0xABADDEED
+#  Word1:
+#    bits 0..14 (mask 0x00007fff): BINARY frame number within second, which
+#          depends on the sampling rate decided for the observation.
+#    bit 15 (mask 0x00008000): marked as T. Signals the presence of the
+#          Test Vector Generator, random noise produced by the formatter to
+#          test the hardware. It is occasionally included into the frame
+#          number section like when the sampling rate of the VLBI experiment
+#          rises over 2 Gbit/s.
+#    bits 16..31 (mask 0xffff0000): User-specified 16 bits.
+#  Word2:
+#    4-byte BCD time code 0xJJJSSSSS.
+#          The first three hexadecimal digits (mask 0xfff00000) represent
+#          a shortened Modified Julian Date day (JJJ)
+#          The last five hexadecimal digits (mask 0x000fffff) are the second
+#          of the day starting from 0 at midnight (SSSSS).
+#  Word 3:
+#    bits 0:15 (mask 0x0000ffff) the 16-bit CRCC code (usually marked
+#          as zeros). 
+#    bits 16..31 (mask 0xffff0000) the fractional part of the
+#          second (.SSSS)
+#
