@@ -515,7 +515,15 @@ class Normtest:
         del ch_mask_gpu
         
         tocg = time.time()
-        print("\nTotal time: %.3f s." % (tocg-ticg))
+        
+        tsec_total = tocg - ticg
+        if tsec_total < 60.:
+            print("\nTotal time: %.3f s." % (tocg-ticg))
+        else:
+            tminute = tsec_total // 60.0
+            tsecond = tsec_total % 60.0
+            print("\nTotal time: %d m, %.3f s (%.3f s)." % \
+                  (tminute, tsecond, tsec_total))
 
         
         
@@ -717,13 +725,16 @@ class Normtest:
 
 
         tocg = time.time()
-        tsec_total = tocg - ticg
-        tminute = tsec_total // 60.0
-        tsecond = tsec_total % 60.0
-        print("\nTotal time: %d m, %.3f s (%.3f s)." % \
-              (tminute, tsecond, tsec_total))
 
-        
+        tsec_total = tocg - ticg
+        if tsec_total < 60.:
+            print("\nTotal time: %.3f s." % (tocg-ticg))
+        else:
+            tminute = tsec_total // 60.0
+            tsecond = tsec_total % 60.0
+            print("\nTotal time: %d m, %.3f s (%.3f s)." % \
+                  (tminute, tsecond, tsec_total))
+
 
 
 

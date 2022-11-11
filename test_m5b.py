@@ -1,12 +1,48 @@
+#
+# test_m5b.py
+#
+#
+#         TimeServerVlbi
+# A VLBI data stream real-time monitor
+#          Matteo Stagni
+#          March 25, 2015
+#            IRA 485/15
+# 
+# https://www.ira.inaf.it/Library/rapp-int/485-15.pdf
+#
+# MARK5B Header Format (consists of 4 32-bit words):
+#  Word0: sync word 0xABADDEED
+#  Word1:
+#    bits 0..14 (mask 0x00007fff): BINARY frame number within second, which
+#          depends on the sampling rate decided for the observation.
+#    bit 15 (mask 0x00008000): marked as T. Signals the presence of the
+#          Test Vector Generator, random noise produced by the formatter to
+#          test the hardware. It is occasionally included into the frame
+#          number section like when the sampling rate of the VLBI experiment
+#          rises over 2 Gbit/s.
+#    bits 16..31 (mask 0xffff0000): User-specified 16 bits.
+#  Word2:
+#    4-byte BCD time code 0xJJJSSSSS.
+#          The first three hexadecimal digits (mask 0xfff00000) represent
+#          a shortened Modified Julian Date day (JJJ)
+#          The last five hexadecimal digits (mask 0x000fffff) are the second
+#          of the day starting from 0 at midnight (SSSSS).
+#  Word 3:
+#    bits 0:15 (mask 0x0000ffff) the 16-bit CRCC code (usually marked
+#          as zeros). 
+#    bits 16..31 (mask 0xffff0000) the fractional part of the
+#          second (.SSSS)
+#
+#
+
 import math
 import numpy as np
 import matplotlib.pyplot as pl
 #from matplotlib.font_manager import FontProperties
 # import scipy.stats
 
-
-# fname_m5b = 'rd1910_wz_268-1811.m5b'
-fname_m5b = '/home/benkev/Work/normtest/rd1903_ft_100-0950.m5b'
+fname_m5b = 'rd1910_wz_268-1811.m5b'
+#fname_m5b = 'rd1903_ft_100-0950.m5b'
 
 F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))
 
@@ -27,9 +63,21 @@ for ifrm in range(nfrm):
     foff = 10016*ifrm
     i0 = ifrm*2500
     i1 = i0 + 2500
-    h = np.fromfile(fname_m5b, dtype=np.uint32, \
-                    offset=foff, count=4)
-#    print('i0=%d, i1=%d' % (i0,i1))
+    
+    hdr = np.fromfile(fname_m5b, dtype=np.uint32, \
+                      offset=foff, count=4)
+    # print("hdr[0] = 0x%0x" % hdr[0])
+    # print("hdr[1] = 0x%0x" % hdr[1])
+    # print("hdr[2] = 0x%0x" % hdr[2])
+    # print("hdr[3] = 0x%0x" % hdr[3])
+    # print()
+    # print("%04x - Frame# within a second" % (hdr[1] & 0x7fff))
+    # print("%08x - Day" % (hdr[2] & 0xfff00000))
+    # print("%08x - Whole seconds of time" %  (hdr[2] & 0xfffff))
+    # print(".%04x - Tenths of milliseconds" % (hdr[3] // 0x10000))
+    # print("%08x - CRCC Code" % (hdr[3] & 0xffff0000))
+    # print()
+
     d[i0:i1] = np.fromfile(fname_m5b, dtype=np.uint32, \
                     offset=foff+16, count=2500)
 
@@ -49,6 +97,10 @@ for ifrm in range(nfrm):
     
     # pl.figure()
     # pl.hist(x, rwidth=0.5, bins=[-3, -2, -1, 0, 1, 2, 3]); pl.grid(1)
+
+
+# raise SystemExit
+
 
 d01t = 0x03 & d   # 0th channel, bits 0 and 1
 
