@@ -38,21 +38,23 @@
 import math
 import numpy as np
 import matplotlib.pyplot as pl
+from scipy.special import erf
+
 #from matplotlib.font_manager import FontProperties
 # import scipy.stats
 
 fname_m5b = 'rd1910_wz_268-1811.m5b'
 #fname_m5b = 'rd1903_ft_100-0950.m5b'
 
-F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))
+F = lambda x: 0.5*(1 + erf(x/np.sqrt(2)))
 
 pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
 
 nfrm = 100
 ndat = 2500*nfrm   # Total data (32-bit words)
 #thr = 0.6652475842498528 # 0.82       # Threshold in STD 
-thr = 0.67       # Threshold in STD 
-# thr = 0.817
+# thr = 0.67       # Threshold in STD 
+thr = 0.817
 
 d = np.zeros(ndat, dtype=np.uint32)   # Raw data
 xt = np.zeros_like(d, dtype=np.float64)
@@ -113,7 +115,7 @@ for idt in range(ndat):
     qua[d01t[idt]] += 1
 
 
-F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))  # Normal CDF
+F = lambda x: 0.5*(1 + erf(x/np.sqrt(2)))  # Normal CDF
 
 Fthr = F(-thr)
 # hsnor = np.array([F(-thr), F(0)-F(-thr), F(thr) - F(0), 1 - F(0.92)])
