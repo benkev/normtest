@@ -1,3 +1,30 @@
+/* 
+ * Even though array and &array both are resulting in same address
+ * but they are different types of addresses. And this is the
+ * difference between array and &array.
+ *
+ * Basically, array is a pointer to the first element of array but &array 
+ * is a pointer to whole array of 5 int. Since array is pointer to int, 
+ * addition of 1 resulted in an address with increment of 4 (assuming int 
+ * size in your machine is 4 bytes). Since &array is pointer to array of 5 
+ * ints, addition of 1 resulted in an address with increment of 
+ * 4 x 5 = 20 = 0x14. Now you see why these two seemingly similar pointers 
+ * are different at core level. 
+ *
+ * This logic can be extended to multidimensional arrays as well. Suppose 
+ *   double array2d[5][4];
+ * is a 2D array. Here, array2d is a pointer to array of 4 int but 
+ * &array2d is pointer to array of 5 rows arrays of 4 int. If this sounds
+ * cryptic, you can always have a small program to print these after 
+ * adding 1.
+ *
+ * We hope that we could clarify that any array name itself is a pointer to
+ * the first element but & (i.e. address-of) for the array name is a pointer
+ * to the whole array itself. 
+*/
+    
+
+
 #include <stdio.h>
 #include <stdlib.h>
 // #include <stdint.h>
@@ -60,30 +87,6 @@ int main() {
     
     /* printf("p = %f\n", p[0]); */
 
-
-    /* Even though array and &array both are resulting in same address
-     * but they are different types of addresses. And this is the
-     * difference between array and &array.
-     *
-     * Basically, array is a pointer to the first element of array but &array 
-     * is a pointer to whole array of 5 int. Since array is pointer to int, 
-     * addition of 1 resulted in an address with increment of 4 (assuming int 
-     * size in your machine is 4 bytes). Since &array is pointer to array of 5 
-     * ints, addition of 1 resulted in an address with increment of 
-     * 4 x 5 = 20 = 0x14. Now you see why these two seemingly similar pointers 
-     * are different at core level. 
-     *
-     * This logic can be extended to multidimensional arrays as well. Suppose 
-     *   double array2d[5][4];
-     * is a 2D array. Here, array2d is a pointer to array of 4 int but 
-     * &array2d is pointer to array of 5 rows arrays of 4 int. If this sounds
-     * cryptic, you can always have a small program to print these after 
-     * adding 1.
-     *
-     * We hope that we could clarify that any array name itself is a pointer to
-     * the first element but & (i.e. address-of) for the array name is a pointer
-     * to the whole array itself. */
-    
     int array[5];
     double array2d[5][4];
     

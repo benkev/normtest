@@ -106,4 +106,26 @@ else:
     #     pl.plot(quantl[ich,:], 'b'); pl.plot(quanor[ich,:], 'r')
     #     pl.grid(1)
 
+#
+# Plot
+#
+F = lambda x: 0.5*(1 + erf(x/np.sqrt(2)))  # Normal CDF
+
+thr = 0.8
+
+Fthr = F(-thr)
+# hsnor = np.array([F(-thr), F(0)-F(-thr), F(thr) - F(0), 1 - F(0.92)])
+hsnor = np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])    # Normal quantilles
+
+xrul = np.linspace(-3., 3., 51)
+fnorm = 1/(2*np.pi)*np.exp(-xrul**2/2)
+
+xloc = [-1.5, -0.5, 0.5, 1.5]
+
+pl.figure()
+pl.plot(xrul, 1.5*fnorm, 'b-.', lw=0.5)
+pl.bar(xloc, hsnor, width=0.5) # , color='b') # , alpha=0.9)
+pl.bar(xloc, quantl[0,:], width=0.2, color='orange')
+
+    
 pl.show()

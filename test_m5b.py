@@ -1,5 +1,5 @@
 #
-# test_m5b.py
+# test_m5b.py <file.m5b>
 #
 #
 #         TimeServerVlbi
@@ -35,6 +35,7 @@
 #
 #
 
+import sys
 import math
 import numpy as np
 import matplotlib.pyplot as pl
@@ -43,8 +44,11 @@ from scipy.special import erf
 #from matplotlib.font_manager import FontProperties
 # import scipy.stats
 
-fname_m5b = 'rd1910_wz_268-1811.m5b'
+#fname_m5b = 'rd1910_wz_268-1811.m5b'
 #fname_m5b = 'rd1903_ft_100-0950.m5b'
+
+fname_m5b = sys.argv[1]
+
 
 F = lambda x: 0.5*(1 + erf(x/np.sqrt(2)))
 

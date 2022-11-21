@@ -91,7 +91,7 @@ class Normtest:
         # Compile the kernel code 
         #
         prog_cuda = compiler.SourceModule(ker_source_code,
-                                    options=['-I /home/benkev/Work/normtest/'])
+                            options=['-I /home/benkev/Work/normtest/'])
         #
         # Get the kernel function from the compiled module
         #
