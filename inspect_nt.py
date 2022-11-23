@@ -2,7 +2,7 @@
 # inspect_nt.py
 #
 # python inspect_nt.py <m5b_filename> <nt_file_timestamp> <start_frame#> \
-#          [<end_frame#>]         
+#          [<n_frames>]         
 #
 #
 
@@ -22,9 +22,9 @@ ftst = args[1]
 frm0 = int(args[2])
 
 if len(args) > 3:
-    frm1 = int(args[3])
+    n_frms = int(args[3])   # Number of frames is given on the cmd line
 else:
-    frm1 = None
+    n_frms = 1              # Just the frame number on the cmd line
 
 
 
@@ -53,44 +53,42 @@ fresidl_name = fresidls[0]
 #
 # Find file offsets to read the data from
 #
-if frm1:
-    n_frms = frm1 - frm0
-else:
-    n_frms = 1
 
-cnt_q = 16*4*n_frms          # float32 words
-offs_qdat = 16*4*4*frm0      # Bytes
+cnt_q = 16*4*n_frms          # float32 words for quantiles
+offs_qdat = 16*4*4*frm0      # Offset bytes for quantiles  
 
-cnt_t = 16*n_frms            # float32 words
-cnt_r = cnt_t                # float32 words
-offs_tdat = 16*4*frm0        # Bytes
-offs_rdat = offs_tdat        # Bytes
+cnt_t = 16*n_frms            # float32 words for thresholds
+cnt_r = cnt_t                # float32 words for residuals
+offs_tdat = 16*4*frm0        # Bytes for thresholds
+offs_rdat = offs_tdat        # Bytes for residuals
 
 quantl = np.fromfile(fquantl_name, dtype=np.float32, \
                       offset=offs_qdat, count=cnt_q)
 thresh = np.fromfile(fthresh_name, dtype=np.float32, \
                       offset=offs_tdat, count=cnt_t)
-
 residl = np.fromfile(fresidl_name, dtype=np.float32, \
                       offset=offs_rdat, count=cnt_t)
-if frm1:
+if n_frms > 1:
     quantl = quantl.reshape((len(quantl)//64, 16, 4)) / 2500.
     thresh = thresh.reshape((len(thresh)//16, 16))
     residl = residl.reshape((len(residl)//16, 16))
 else:
     quantl = quantl.reshape((16, 4)) / 2500.
-    # thresh = thresh.reshape((16))
-    # residl = residl.reshape((16))
+    thresh = thresh.reshape((16))
+    residl = residl.reshape((16))
 
 
 F = lambda x: 0.5*(1 + erf(x/np.sqrt(2)))  # Normal CDF
 
-F_thr = F(-thresh)
+#
+# Find 4 quantiles of the Normal PDF over 4 intervals separated by thresholds
+# 
+F_thr = F(-thresh) # Area under the Normal PDF curve over ]-Inf .. -thre]
 
-if frm1:
+if n_frms > 1:
     quanor = np.zeros((n_frms, 16, 4), dtype=np.float32)
-    quanor[:,:,0] = quanor[:,:,3] = F_thr
-    quanor[:,:,1] = quanor[:,:,2] = 0.5 - F_thr
+    quanor[:,:,0] = quanor[:,:,3] = F_thr       # ]-Inf .. -thr]; [thr .. +Inf[ 
+    quanor[:,:,1] = quanor[:,:,2] = 0.5 - F_thr # ]-thr .. 0];    ]0 .. +thr[ 
 else:
     quanor = np.zeros((16, 4), dtype=np.float32)
     quanor[:,0] = quanor[:,3] = F_thr
