@@ -10,7 +10,7 @@ import matplotlib.pyplot as pl
 from scipy.special import erf
 
 N = 2500       # Measurements in one m5b data frame (per channel)
-Nf = 2000      # Number of frames to read
+Nf = 20000     # Number of frames to read
 nq = 16*4      # Words in quantl file: 16 chans x 4 quantiles per 1 frame
 nt = 16        # Words in thresh file: 16 chans per 1 frame
 cnt = Nf*nt   # Number of np.float32 words to read from thresh
@@ -19,17 +19,27 @@ cnq = Nf*nq   # Number of np.float32 words to read from quantl
 offq = 0*nq*4  # Offset in bytes from quantl
 
 fbase = "rd1910_wz_268-1811cuda_"
-
+#fbase = "rd1903_ft_100-0950"
 
 fnorm = lambda x: (1/np.sqrt(2*np.pi))*(np.exp(-0.5*x**2))  # Normal PDF (0,1)
 Fnorm = lambda x: 0.5*(1 + erf(x/np.sqrt(2)))               # Normal CDF (0,1)
 
-q0 = np.fromfile(fbase + "quantl.bin", dtype=np.float32, offset=offq, count=cnq)
-t0 = np.fromfile(fbase + "thresh.bin", dtype=np.float32, offset=offt, count=cnt)
+q0 = np.fromfile(fbase + "quantl.bin",dtype=np.float32,offset=offq, count=cnq)
+t0 = np.fromfile(fbase + "thresh.bin",dtype=np.float32,offset=offt, count=cnt)
+
+# q0 = np.fromfile("bin_leonid2/nt_quantl_cuda_" + fbase +
+#                  "_20221115_155722.652.bin",
+#                  dtype=np.float32, offset=offq, count=cnq)
+# t0 = np.fromfile("bin_leonid2/nt_thresh_cuda_" + fbase +
+#                  "_20221115_155722.652.bin",
+#                  dtype=np.float32, offset=offt, count=cnt)
 
 qua = q0.reshape((len(q0)//64, 16, 4))   # / N
 thr = t0.reshape((len(t0)//16, 16))
 
+#
+# Quantiles of Normal distribution
+#
 Fthr = Fnorm(-thr)
 qnor = np.zeros((Nf,16,4), dtype=np.float32)
 qnor[:,:,0] = qnor[:,:,3] = Fthr
