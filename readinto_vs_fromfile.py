@@ -2,13 +2,13 @@ import os, sys, time
 import numpy as np
 
 
-n = os.path.getsize('bin.m5b')
+n = os.path.getsize('rd1910_wz_268-1811.m5b')
 nw = n//4
 
 tic = time.time()
 
 #a = np.zeros(nw, dtype=np.uint32)
-a = np.zeros(10**6  , dtype=np.uint32)
+a = np.zeros(nw  , dtype=np.uint32)
 
 #with open('/dev/zero', "rb") as f:
 #with open('bin2.m5b', "rb") as f:
