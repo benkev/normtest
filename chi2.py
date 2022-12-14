@@ -79,6 +79,14 @@ pl.xlabel(r"$x$")
 # chi2.ppf(0.95, df=5)     # 11.07
 # chi2.cdf(11.07, df=5)    # 0.95
 #
+# chi2.isf(q, *args, **kwds)
+# Inverse survival function (inverse of `sf`) at q of the given RV
+#
+# from scipy import stats
+# upperv=stats.chi2.isf(1-alpha/2,nu)
+#
+# Quantile corresponding to the upper tail probability q.
+#
 
 
 y = np.logspace(-3, 0, 100)
