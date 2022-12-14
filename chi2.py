@@ -46,8 +46,8 @@ qnor = np.zeros((Nf,16,4), dtype=np.float32)
 qnor[:,:,0] = qnor[:,:,3] = Fthr
 qnor[:,:,1] = qnor[:,:,2] = 0.5-Fthr
 
-c2 = np.sum((qobs - N*qnor)**2 / qobs, axis=2)
-#c2 = np.sum((qobs - N*qnor)**2 / N*qnor, axis=2)
+c2 = np.sum((qobs - N*qnor)**2 / qobs, axis=2)    # 
+c2n = np.sum((qobs - N*qnor)**2 / N*qnor, axis=2)
 
 #
 # Degrees of freedom, df
@@ -60,7 +60,12 @@ c2 = np.sum((qobs - N*qnor)**2 / qobs, axis=2)
 #
 df = 2
 
-pl.figure(); pl.hist(c2.flatten(), 100); pl.grid(1)
-pl.xlabel(r"$\chi^2 $")
+c2r = c2/df   # Reduced chi^2
+
+pl.figure(); pl.hist(c2r.flatten(), 100); pl.grid(1)
+pl.xlabel(r"Reduced $\chi^2_\nu = \chi^2$/$\mathrm{df}$")
+
+
+
 
 pl.show()
