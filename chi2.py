@@ -8,6 +8,7 @@ import sys, os
 import numpy as np
 import matplotlib.pyplot as pl
 from scipy.special import erf
+from scipy.stats import chi2
 
 N = 2500       # Measurements in one m5b data frame (per channel)
 Nf = 20000     # Number of frames to read
@@ -66,6 +67,30 @@ pl.figure(); pl.hist(c2r.flatten(), 100); pl.grid(1)
 pl.xlabel(r"Reduced $\chi^2_\nu = \chi^2$/$\mathrm{df}$")
 
 
+x = np.linspace(0, 10, 100)
+pl.figure(); pl.plot(x, 1 - chi2.cdf(x, 2)); pl.grid(1)
+pl.title(r"$1 - \mathrm{CDF}[\chi^2_\nu(2,x)]$")
+pl.xlabel(r"$x$")
 
+#
+# chi2.ppf and chi2.cdf are inverse of each-other:
+#
+# from scipy.stats.distributions import chi2
+# chi2.ppf(0.95, df=5)     # 11.07
+# chi2.cdf(11.07, df=5)    # 0.95
+#
+
+
+y = np.logspace(-3, 0, 100)
+pl.figure(); pl.plot(y, chi2.ppf(y, 2)); pl.grid(1)
+pl.title(r"$\mathrm{PPF}[\chi^2_\nu(2,x)]$")
+pl.xlabel(r"$x$")
+
+pval = np.array([0.95, 0.90, 0.80, 0.70, 0.50, 0.30, 0.20, 0.10,
+                 0.05, 0.01, 0.001])
+
+for p in pval:
+    print(1-p, chi2.ppf(p, df=2))
 
 pl.show()
+
