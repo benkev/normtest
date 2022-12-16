@@ -63,11 +63,17 @@ df = 2
 
 c2r = c2/df   # Reduced chi^2
 
+x = np.linspace(0, 10, 100)
+
+pl.figure();
+pl.plot(x, chi2.pdf(x, 2), label="PDF $\chi^2_2(x)$"); pl.grid(1)
+pl.plot(x, chi2.cdf(x, 2), label="CDF $\chi^2_2(x)$");
+pl.legend()
+
 pl.figure(); pl.hist(c2r.flatten(), 100); pl.grid(1)
 pl.xlabel(r"Reduced $\chi^2_\nu = \chi^2$/$\mathrm{df}$")
 
 
-x = np.linspace(0, 10, 100)
 pl.figure(); pl.plot(x, 1 - chi2.cdf(x, 2)); pl.grid(1)
 pl.title(r"$1 - \mathrm{CDF}[\chi^2_\nu(2,x)]$")
 pl.xlabel(r"$x$")
@@ -80,7 +86,8 @@ pl.xlabel(r"$x$")
 # chi2.cdf(11.07, df=5)    # 0.95
 #
 # chi2.isf(q, *args, **kwds)
-# Inverse survival function (inverse of `sf`) at q of the given RV
+# Inverse survival function (inverse of `sf`) at q of the given RV (Random
+# Variable)
 #
 # from scipy import stats
 # upperv=stats.chi2.isf(1-alpha/2,nu)
@@ -98,7 +105,20 @@ pval = np.array([0.95, 0.90, 0.80, 0.70, 0.50, 0.30, 0.20, 0.10,
                  0.05, 0.01, 0.001])
 
 for p in pval:
-    print(1-p, chi2.ppf(p, df=2))
+    #print(1-p, chi2.ppf(p, df=2))
+    print("%f  %f" % (p, chi2.isf(p, df=2)))
+print()
+
+for p in pval:
+    print("%f  %f" % (p, chi2.ppf(1-p, df=2)))
+    #print("%f  %f" % (p, chi2.isf(p, df=4)))
 
 pl.show()
+
+# print("Critical value of $\chi^2_2(x)$ for $p_{value}= 0.05$: %f" % \
+#       chi2.isf(p, df=2))
+print("Critical value of chi^2(2,x) for p-value = 0.05: %f" % \
+      chi2.isf(p, df=2))
+
+
 
