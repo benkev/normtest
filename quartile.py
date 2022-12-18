@@ -24,8 +24,8 @@ f_pdf = (1/np.sqrt(2*np.pi))*(np.exp(-0.5*xrul**2))  # Normal PDF (0,1)
 f_pdf = (hsep-0.05)*f_pdf/f_pdf.max()
 
 pl.figure(figsize=(10,10))
-pl.figtext(0.5, 0.95, r"Normal PDF Quartiles Separated by $-\infty, " \
-           r"-\theta, 0, +\theta, +\infty$", fontsize=16, ha='center')
+pl.figtext(0.5, 0.91, r"Normal PDF Quantiles Separated by $-\infty, " \
+           r"-\theta, \, 0, +\theta, +\infty$", fontsize=20, ha='center')
 for ip in range(9):
     pl.subplot(3, 3, ip+1)
 
@@ -41,7 +41,9 @@ for ip in range(9):
     xl = pl.xlim()
     pl.plot([xl[0],xl[1]], [hsep,hsep], 'k--', lw=1) # Horiz. separation line
     pl.plot([-thr,-thr], [0,0.8], 'k--', lw=0.7)   # 
-    pl.plot([thr,thr], [0,0.8], 'k--', lw=0.7)     # 
+    pl.plot([thr,thr], [0,0.8], 'k--', lw=0.7)     #
+    pl.xticks([-2,0,2], ["$-2\sigma$", "$0$", "$2\sigma$"], fontsize=12)
+    pl.yticks([])
     pl.text(-thr-0.7, 0.65, r"$-\theta$")
     pl.text(thr+0.05, 0.65, r"$+\theta$")
     
@@ -50,8 +52,15 @@ for ip in range(9):
     bw = 0.15 if thr < 0.4 else 0.25
     pl.bar(barloc, qnor, bw, hsep+0.05, color='red', edgecolor='k')
     pl.ylim(-0.05, 0.85)
-    pl.text(xl[0], 0.78, r"$\theta=\pm%3.1f$" % thr)
+    pl.text(xl[0], 0.78, r"$\theta=\pm%3.1f$" % thr, fontsize=12)
     #pl.grid(1)
-        
+
+    if ip == 3: pl.text(2.8, 0.77, "*", fontsize=20)
+
+pl.figtext(0.5, 0.05, r"* Quantization Threshold $\theta$ MUST be " \
+           r"$ > 0.6745\sigma$", \
+           fontsize=20, ha='center')
+
+
 pl.show()
 
