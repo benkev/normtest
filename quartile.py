@@ -57,8 +57,8 @@ for ip in range(9):
 
     if ip == 3: pl.text(2.8, 0.77, "*", fontsize=20)
 
-pl.figtext(0.5, 0.05, r"* Quantization Threshold $\theta$ MUST be " \
-           r"$ > 0.6745\sigma$", \
+pl.figtext(0.5, 0.05, r"* Quantization Thresholds $\pm\theta$: " \
+           r"MUST be $|\theta|\, > 0.6745 \, \sigma$", \
            fontsize=20, ha='center')
 
 

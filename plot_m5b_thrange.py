@@ -84,13 +84,15 @@ chi2_opt, hsnor_opt, hsrel_opt = calc_hserr(xt, thr_opt, prres=True)
 
 pl.figure(); pl.plot(thrs, chi2s); pl.grid(1)
 pl.plot(thr_opt, chi2_opt, 'ro')
-pl.title(r'Error b/w M5B Data and Normal Quantiles ' \
-         'for Tresholds [0.4 .. 1.5] ', fontsize=14)
-pl.xlabel(r'$\alpha=$ (quantization threshold)/$\sigma$', fontsize=14)
+# pl.title(r'Error b/w M5B Data and Normal Quantiles ' \
+#          'for Tresholds [0.4 .. 1.5] ', fontsize=16)
+pl.figtext(0.5, 0.93, r'Error b/w M5B Data and Normal Quantiles ' \
+           'for Tresholds [0.4 .. 1.5] ', ha='center', fontsize=15)
+pl.xlabel(r'$\theta=$ (quantization threshold)/$\sigma$', fontsize=14)
 pl.ylabel(r'Error, $\epsilon^2$', fontsize=14)
 
-pl.text(0.7, 0.036, r'Optimum:', fontsize=12)
-pl.text(0.62, 0.031, r'$\alpha=%5.3f, \, \epsilon^2=%8.6f$' % \
-        (thr_opt, chi2_opt), fontsize=12)
+pl.text(0.7, 0.043, r'Optimum:', fontsize=16)
+pl.text(0.57, 0.034, r'$\theta=%5.3f, \, \epsilon^2=%8.6f$' % \
+        (thr_opt, chi2_opt), fontsize=16)
 
 pl.show()

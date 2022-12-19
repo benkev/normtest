@@ -55,18 +55,35 @@ else:
     
 
 t0 = np.fromfile(fthresh_name, dtype=np.float32)
-r0 = np.fromfile(fresidl_name, dtype=np.float32)
-q0 = np.fromfile(fquantl_name, dtype=np.float32)
-
-quantl = q0.reshape((len(q0)//64, 16, 4)) / 2500.
 thresh = t0.reshape((len(t0)//16, 16))
-residl = r0.reshape((len(r0)//16, 16))
+
+# r0 = np.fromfile(fresidl_name, dtype=np.float32)
+# q0 = np.fromfile(fquantl_name, dtype=np.float32)
+
+# quantl = q0.reshape((len(q0)//64, 16, 4)) / 2500.
+# residl = r0.reshape((len(r0)//16, 16))
+
+nfrm = len(t0)//16
 
 pl.figure()
-pl.hist(t0, 50)
-pl.title("Quantization Threshold Estimates for %s" % fm5b, fontsize=16)
+pl.hist(t0, 70)
+pl.title("Quantization Threshold Estimates", fontsize=16)
+pl.xlabel(r"$\theta$ = (quantization threshold)/$\sigma$", fontsize=14)
 pl.grid(1)
-#pl.figure(); pl.hist(r0, 50); pl.grid(1)
+
+vl = pl.ylim()
+vd = vl[1] - vl[0]
+hl = pl.xlim()
+hd = hl[1] - hl[0]
+xtpos = hl[0] + 0.55*hd
+
+if fm5b == "rd1903_ft_100-0950.m5b":
+    pl.text(hl[0]+0.01, 0.92*vd, "File: (%d frames)" % nfrm, fontsize=14)
+    pl.text(hl[0]+0.01, 0.86*vd, fm5b, ha="left", fontsize=14)
+else:
+    pl.text(xtpos, 0.92*vd, "File: (%d frames)" % nfrm, ha="left", fontsize=14)
+    pl.text(xtpos, 0.86*vd, fm5b, ha="left", fontsize=14)
+
 
 pl.show()
 

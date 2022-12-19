@@ -57,7 +57,7 @@ pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
 nfrm = 100
 ndat = 2500*nfrm   # Total data (32-bit words)
 #thr = 0.6652475842498528 # 0.82       # Threshold in STD 
-# thr = 0.67       # Threshold in STD 
+#thr = 0.67       # Threshold in STD 
 thr = 0.817
 
 d = np.zeros(ndat, dtype=np.uint32)   # Raw data
@@ -143,7 +143,8 @@ xrul = np.linspace(-3., 3., 51)
 fnorm = 1/(2*np.pi)*np.exp(-xrul**2/2)
 
 xloc = [-1.5, -0.5, 0.5, 1.5]
-xloc0 = [-1.5, -0.5, 0., 0.5, 1.5]
+xloc0 = [-1.9, -0.7, 0.5, 1.8]
+#xloc0 = [-1.5, -0.5, 0., 0.5, 1.5]
 #xloc0 = [-1.5, -1., -0.5, 0., 0.5, 1., 1.5]
 pl.figure()
 pl.plot(xrul, 1.5*fnorm, 'b-.', lw=0.5)
@@ -160,8 +161,8 @@ pl.xlim(-3.5, 3.5)
 pl.grid(1)
 # pl.xticks(xloc0, ['$-\infty \sim -v_0$', '$-v_0 \sim 0$', '$0$',
 #                   '$0 \sim v_0$', '$v_0 \sim +\infty$'])
-pl.xticks(xloc, ['$-\infty \sim -v_0$', '$-v_0 \sim 0$',
-                  '$0 \sim v_0$', '$v_0 \sim +\infty$'], fontsize=11)
+pl.xticks(xloc0, [r'$-\infty \sim -\theta$', r'$-\theta \sim 0$',
+                  r'$0 \sim \theta$', r'$\theta \sim +\infty$'], fontsize=14)
 
 # a0 = a[0]
 # bcol = a0.get_facecolor()  # Pick the default 'blue' color of the hsrel bars
@@ -171,18 +172,18 @@ pl.xticks(xloc, ['$-\infty \sim -v_0$', '$-v_0 \sim 0$',
 #font.set_family('monospace')
 #cfont = {'fontname':'Courier'}
 
-pl.text(-1.2, 1.015*y1, '$-v_0$') #, fontsize=12)
-pl.text(0.95, 1.015*y1, '$v_0$') #, fontsize=12)
-pl.text(-0.04, 1.015*y1, '$0$') #, fontsize=12)
+pl.text(-1.2, 1.015*y1, r'$-\theta$', fontsize=14)
+pl.text(0.95, 1.015*y1, r'$\theta$', fontsize=14)
+pl.text(-0.04, 1.015*y1, r'$0$', fontsize=14)
 
 # pl.text(-3.4, 1.3*y1, 'Normal:       %5.3f  %5.3f  %5.3f  %5.3f' % \
 #         tuple(hsnor), color='b', fontsize=14)
 # pl.text(-3.4, 1.2*y1, 'Experimental: %5.3f  %5.3f  %5.3f  %5.3f' % \
 #         tuple(hsrel), color='r', fontsize=14)
 
-pl.text(-3.4, 1.3*y1, 'Normal:', color='b', fontsize=14)
-pl.text(-3.4, 1.2*y1, 'Experimental:', color='r', fontsize=14)
-pl.text(2.1, 1.2*y1, '$\epsilon^2 =$ %8.2e' % chi2, color='r', fontsize=12)
+pl.text(-3.4, 1.3*y1, r'Normal:', color='b', fontsize=14)
+pl.text(-3.4, 1.2*y1, r'Experimental:', color='r', fontsize=14)
+pl.text(2.1, 1.2*y1, r'$\epsilon^2 =$ %8.2e' % chi2, color='r', fontsize=12)
 
 for itx in range(4):
     pl.text(xloc[itx]-0.2, 1.3*y1, '%5.3f' % hsnor[itx], color='b', \
@@ -192,11 +193,11 @@ for itx in range(4):
 
 
     
-pl.text(-3.3, 1.015*y1, '$v_0 = %4.2f\sigma$' % thr, fontsize=14)
-pl.text(1.8, 1.015*y1, '%d Frames' % nfrm, fontsize=13)
+pl.text(-3.3, 1.015*y1, r'$\theta = %4.2f\sigma$' % thr, fontsize=14)
+pl.text(1.8, 1.015*y1, r'%d Frames' % nfrm, fontsize=13)
     
-pl.title('M5B Data vs Normal in Quantiles between $-v_0, 0, and +v_0$', \
-         fontsize=15)
+pl.title(r"M5B Data vs Normal in Quantiles between $-\theta, 0," \
+         r"$ and $+\theta$", fontsize=15)
 
 # pl.savefig('fig/M5B_vs_Normal_in_Quantiles_nfrms_%d_thres_%4.2fsigma.svg' % \
 #                (nfrm, thr), format='svg')
