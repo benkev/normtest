@@ -33,7 +33,7 @@ The radio astronomy data from a single dish are recorded in M5B (Mark-5) or VDIF
 
 The problem may be thought about from a security standpoint. Suppose someone (a malicious character) wishes to hack a system and figures an approach would be to embed some malicious code in. Is it possible to detect the embedded (non-Gaussian) data within a frame or multiple frames before the correlator? Also, even though an algorithm can be determined, is it possible to ensure its implementation is fast enough? The data files are large (up to a hundred gigabytes).
 
-At the current stage of work we only consider M5B files. The data in M5B format are streamed in 16 channels, 2-bit width each resulted from a 4-level quantization. The 2-bit shortness of the integers with the 4 possible values, 0, 1, 2, and 3, makes it difficult to use standard statistical tests for normality, such as the one based on the Pearson criterion.     
+At the current stage of work we only consider M5B files. The data in M5B format are streamed in 16 channels, 2-bit width each, resulted from a 4-level quantization. The 2-bit shortness of the integers with the 4 possible values, 0, 1, 2, and 3, makes it difficult to use standard statistical tests for normality, such as the one based on the Pearson criterion.     
  
 We offer a solution based on comparing the data statistics with the corresponding quantiles of standard normal distribution. The algorithm runs on the GPU (Graphics Processing Unit), which provides high speed computations.
 \end{abstract}
