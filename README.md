@@ -110,11 +110,25 @@ Example:
 from gpu_m5b import normtest as nt
 thres, resid, n_iter, flag, quantl = nt.do_m5b("rd1910_wz_268-1811.m5b")
 
+---------------------------
+
+Ancillary scripts:
+
+4. plot_m5b_thrange.py
+
+Plots squared error (the residual) between M5B Data and four quantiles of the
+standard normal distribution over the range [0.4 .. 1.5] of input sample
+thresholds. The plot obviously has its minimum at the threshold +-0.817/STD
+marked with the red dot.
 
 
+5. test_m5b.py
 
+Calculates the observed Chi^2 and compares it with the Chi^2 critical value at
+the significance level 0.05 for the degrees of freedom 3 (we have 4 quantiles,
+so df = 4 - 1 = 3).
 
-
-
+Plots histograms of the observed data and the theoretical normal distribution
+to compare.
 
  

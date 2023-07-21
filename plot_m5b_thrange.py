@@ -1,3 +1,12 @@
+#
+# Plot squared error (the residual) between M5B Data and four quantiles of the
+# standard normal distribution over the range [0.4 .. 1.5] of input sample
+# thresholds. The plot obviously has its minimum at the threshold +-0.817/STD
+# marked with the red dot.
+#
+# 
+#
+
 import math
 import numpy as np
 import matplotlib.pyplot as pl

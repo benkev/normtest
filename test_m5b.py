@@ -38,6 +38,7 @@
 import sys
 import math
 import numpy as np
+import scipy.stats
 import matplotlib.pyplot as pl
 from scipy.special import erf
 
@@ -54,7 +55,7 @@ F = lambda x: 0.5*(1 + erf(x/np.sqrt(2)))
 
 pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
 
-nfrm = 100
+nfrm = 10
 ndat = 2500*nfrm   # Total data (32-bit words)
 #thr = 0.6652475842498528 # 0.82       # Threshold in STD 
 #thr = 0.67       # Threshold in STD 
@@ -128,17 +129,40 @@ hsnor = np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])    # Normal quantilles
 hs, be = np.histogram(xt, bins=[-2, -1, 0, 1, 2])
 hsrel = hs/ndat
 
-chi2 = sum((hsnor - hsrel)**2)
-        
+eps = sum((hsnor - hsrel)**2)
+
+#
+# hs: observed frequencies
+# nr: expected normal theoretical frequencies
+# chi2_obs: observed value of chi^2
+# alpha: level of significance
+# df: number of degrees of freedom
+#
+nr = ndat*hsnor # expected normal theoretical frequencies
+chi2obs = sum(hs**2/nr) - ndat
+
+alpha = 0.05
+df = 3
+chi2cr = scipy.stats.chi2.ppf(1-alpha, df)
+
+print("Ndat = ", ndat)
 print('Normal:       %5.3f  %5.3f  %5.3f  %5.3f' % tuple(hsnor))
 print('Experimental: %5.3f  %5.3f  %5.3f  %5.3f' % tuple(hsrel))
-print('Chi2: %8f' % chi2)
+print('Chi2 observed: \t\t\t\t\t    %8f' % chi2obs)
+print('Chi2 critical value at significance %.2f and df = %d: %.2f' % \
+      (alpha, 3, chi2cr))
+if chi2obs > chi2cr:
+    print("chi2obs > chi2cr: the null hypothesis to be rejected?");
+else:
+    print("chi2obs <= chi2cr: the null hypothesis is not rejected.");
 
 
 
 #
 # Plot integrals
 #
+pl.ion()
+
 xrul = np.linspace(-3., 3., 51)
 fnorm = 1/(2*np.pi)*np.exp(-xrul**2/2)
 
@@ -183,7 +207,7 @@ pl.text(-0.04, 1.015*y1, r'$0$', fontsize=14)
 
 pl.text(-3.4, 1.3*y1, r'Normal:', color='b', fontsize=14)
 pl.text(-3.4, 1.2*y1, r'Experimental:', color='r', fontsize=14)
-pl.text(2.1, 1.2*y1, r'$\epsilon^2 =$ %8.2e' % chi2, color='r', fontsize=12)
+pl.text(2.1, 1.2*y1, r'$\epsilon^2 =$ %8.2e' % eps, color='r', fontsize=12)
 
 for itx in range(4):
     pl.text(xloc[itx]-0.2, 1.3*y1, '%5.3f' % hsnor[itx], color='b', \
