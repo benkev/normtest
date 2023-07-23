@@ -106,7 +106,7 @@ total_frms = m5bbytes // frmbytes;
 last_frmbytes = m5bbytes % frmbytes;
 last_frmwords = last_frmbytes // 4;
 
-print("File: rd1910_wz_268-1811.m5b")
+print("File: ", fname)
 print("M5B file size: %ld bytes = %g MiB = %g GiB" %
       (m5bbytes, m5bbytes/fmega, m5bbytes/fgiga))
 print("Frame size: %d Bytes = %d words." % (frmbytes, nfdat))
@@ -289,6 +289,8 @@ if not saveResults:
 print('\nSaving results started ...')
 
 tic = time.time()
+
+if not os.path.exists("./result"): os.makedirs("result")
 
 basefn = fname.split('.')[0]
 cnfrm = str(nfrm)

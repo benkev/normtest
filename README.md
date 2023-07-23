@@ -113,7 +113,7 @@ framework selected.
    
 Example:
    
-from gpu_m5b import normtest as nt
+from gpu_m5b import Normtest as nt
 thres, resid, n_iter, flag, quantl = nt.do_m5b("rd1910_wz_268-1811.m5b")
 
 ---------------------------

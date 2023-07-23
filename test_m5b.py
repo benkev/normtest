@@ -135,20 +135,24 @@ eps = sum((hsnor - hsrel)**2)
 # hs: observed frequencies
 # nr: expected normal theoretical frequencies
 # chi2_obs: observed value of chi^2
+# chi2obs_nu: observed value of chi^2 reduced (chi^2 per degree of freedom)
 # alpha: level of significance
 # df: number of degrees of freedom
 #
+alpha = 0.05    # level of significance
+df = 3          # number of degrees of freedom
+
 nr = ndat*hsnor # expected normal theoretical frequencies
 chi2obs = sum(hs**2/nr) - ndat
+chi2obs_nu = chi2obs/df # observed value of chi^2 reduced (per deg. of freedom)
 
-alpha = 0.05
-df = 3
 chi2cr = scipy.stats.chi2.ppf(1-alpha, df)
 
 print("Ndat = ", ndat)
 print('Normal:       %5.3f  %5.3f  %5.3f  %5.3f' % tuple(hsnor))
 print('Experimental: %5.3f  %5.3f  %5.3f  %5.3f' % tuple(hsrel))
-print('Chi2 observed: \t\t\t\t\t    %8f' % chi2obs)
+print('Chi2 observed reduced: \t\t\t\t     %.2f' % chi2obs_nu)
+print('Chi2 observed: \t\t\t\t\t     %.2f' % chi2obs)
 print('Chi2 critical value at significance %.2f and df = %d: %.2f' % \
       (alpha, 3, chi2cr))
 if chi2obs > chi2cr:
@@ -205,14 +209,15 @@ pl.text(-0.04, 1.015*y1, r'$0$', fontsize=14)
 # pl.text(-3.4, 1.2*y1, 'Experimental: %5.3f  %5.3f  %5.3f  %5.3f' % \
 #         tuple(hsrel), color='r', fontsize=14)
 
-pl.text(-3.4, 1.3*y1, r'Normal:', color='b', fontsize=14)
-pl.text(-3.4, 1.2*y1, r'Experimental:', color='r', fontsize=14)
-pl.text(2.1, 1.2*y1, r'$\epsilon^2 =$ %8.2e' % eps, color='r', fontsize=12)
+pl.text(-3.4, 1.32*y1, r'Normal:', color='b', fontsize=14)
+pl.text(-3.4, 1.22*y1, r'Experimental:', color='r', fontsize=14)
+pl.text(2.1, 1.22*y1, r'$\epsilon^2 =$ %8.2e' % eps, color='r', fontsize=12)
+pl.text(-3.4, 1.135*y1, r'd.f. $\nu =$ %d:    $\chi^2_{\nu} =$ %.2f,    $\chi^2 =$ %.2f,    $\chi^2_{cr} =$ %.2f   @ 0.05 confidence' % (df, chi2obs_nu, chi2obs, chi2cr), color='k', fontsize=12)
 
 for itx in range(4):
-    pl.text(xloc[itx]-0.2, 1.3*y1, '%5.3f' % hsnor[itx], color='b', \
+    pl.text(xloc[itx]-0.2, 1.32*y1, '%5.3f' % hsnor[itx], color='b', \
             fontsize=14)
-    pl.text(xloc[itx]-0.2, 1.2*y1, '%5.3f' % hsrel[itx], color='r', \
+    pl.text(xloc[itx]-0.2, 1.22*y1, '%5.3f' % hsrel[itx], color='r', \
             fontsize=14)
 
 
