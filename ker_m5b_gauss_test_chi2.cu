@@ -1,5 +1,5 @@
 /*
- *   ker_m5b_gauss_test.cu
+ *   ker_m5b_gauss_test_chi2.cu
  *
  * CUDA kernel for Normality (Gaussianity) test for M5B files on GPU
  * Single precision floats.
@@ -44,7 +44,7 @@ __device__ float residual(float thresh, float *q_obs) {
      * q_obs: array of four quantiles of the experimental data
      *          from M5B files.
      * Returns:
-     * chi2: sum of squares of the differences between 4 quantiles of 
+     * eps2: sum of squares of the differences between 4 quantiles of 
      *       the standard Gaussian PDF (mean=0, std=1) and 4 quantiles
      *       of a stream from M5B file data. 
      */
@@ -53,8 +53,39 @@ __device__ float residual(float thresh, float *q_obs) {
     /* q_norm0: quantile of Gaussian in [thresh .. 0] and [0 .. thresh] : */
     float q_norm = f_normcdf(-thresh);
     float q_norm0 = 0.5 - q_norm;
-    float chi2 = pow(q_norm -  q_obs[0], 2) + pow(q_norm0 - q_obs[1], 2) +
-                 pow(q_norm0 - q_obs[2], 2) + pow(q_norm -  q_obs[3], 2);
+    float eps2 = pow(q_norm -  q_obs[0], 2) + pow(q_norm0 - q_obs[1], 2) +
+                pow(q_norm0 - q_obs[2], 2) + pow(q_norm -  q_obs[3], 2);
+    return eps2;
+}
+
+
+__device__ float chi2(float thresh, float *q_obs, float nfdat_fl) {
+    /*
+     * The function calculates chi^2 to be minimized to find the optimal
+     * quantization threshold
+     *
+     * Inputs:
+     * thresh: theshold for the quantization like:
+     *         -inf, thresh, 0, thresh, +inf
+     * q_obs: array of four quantiles of the experimental (observation) data
+     *          from M5B files.
+     * Returns:
+     * chi2: sum of squares of the differences between 4 quantiles of 
+     *       the standard Gaussian PDF (mean=0, std=1) and 4 quantiles
+     *       of a stream from M5B file observation data divided by the
+     *       observation data quantiles:
+     *       chi^2 = sum_{i=1}^4()
+     */
+
+    /* q_norm:  quantile of Gaussian in [-inf .. thresh]  [thresh .. +inf] : */
+    /* q_norm0: quantile of Gaussian in [thresh .. 0] and [0 .. thresh] : */
+    float q_norm = f_normcdf(-thresh);
+    float q_norm0 = nfdat_fl*(0.5 - q_norm);
+    q_norm = nfdat_fl*qnorm;
+    float chi2 = pow(q_norm -  q_obs[0], 2)/q_obs[0] + \
+                 pow(q_norm0 - q_obs[1], 2)/q_obs[1] + \
+                 pow(q_norm0 - q_obs[2], 2)/q_obs[2] + \
+                 pow(q_norm -  q_obs[3], 2)/q_obs[3];
     return chi2;
 }
 

@@ -56,7 +56,7 @@ Note that saving the result files may take long time.
 
 2. normtest_m5b_ocl.py:
 
-Normality (Gaussianity) test for M5B files on GPU using PyOpenCL package.
+Normality (Gaussianity) test for M5B files on a GPU using PyOpenCL package.
 Single precision floats.
 
 Requires:
@@ -94,8 +94,14 @@ Note that saving the result files may take long time.
 
 
 3. gpu_m5b.py:
-   
-This module contains class normtest. It is not intended to create multiple
+
+Normality (Gaussianity) test for M5B files on either an Nvidia GPU using PyCUDA
+package or a GPU using PyOpenCL package. Single precision floats.
+
+This module provides "transparent" access to the GPU independent of the
+software framework used, CUDA or OpenCL.
+
+The module contains class normtest. It is not intended to create multiple
 class instances (althoug it is surely possible). When imported, it 
 probes the system to find what GPU frameworks are installed. It chooses
 automatically between PyCUDA and OpenCL and initializes the relevant 
