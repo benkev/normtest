@@ -99,7 +99,8 @@ Normality (Gaussianity) test for M5B files on either an Nvidia GPU using PyCUDA
 package or a GPU using PyOpenCL package. Single precision floats.
 
 This module provides "transparent" access to the GPU independent of the
-software framework used, CUDA or OpenCL.
+software framework used, CUDA or OpenCL. In case both are installed, it prefers
+PyCUDA since it is ~1.5 times faster than PyOpenCL.
 
 The module contains class normtest. It is not intended to create multiple
 class instances (althoug it is surely possible). When imported, it 
@@ -114,7 +115,7 @@ framework selected.
 Example:
    
 from gpu_m5b import Normtest as nt
-thres, resid, n_iter, flag, quantl = nt.do_m5b("rd1910_wz_268-1811.m5b")
+nt.do_m5b("rd1910_wz_268-1811.m5b")
 
 ---------------------------
 
