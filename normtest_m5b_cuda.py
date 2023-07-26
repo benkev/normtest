@@ -8,7 +8,7 @@ help_text = \
 # Single precision floats.
 #
 # Requires:
-# ker_m5b_gauss_test_chi2.cu, CUDA kernel.
+# ker_m5b_gauss_test.cu, CUDA kernel.
 #
 # Usage: 
 # $ python normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]

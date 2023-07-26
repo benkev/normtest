@@ -5,15 +5,55 @@ files (m5b files) before the correlator. The 2-bit data streams in the m5b files
 can be considered correct if they are samples from the Gaussian (normal)
 distribution. We call such tests "testing for normality".
 
-This directory contains two Python scripts for normality testing using the
-GPUs. One of them, normtest_m5b_cuda.py, uses PyCuda and can be only run on
-Nvidia GPUs with CUDA and PyCuda installed. The other one uses PyOpenCL and can
-be run on both AMD and Nvidia GPUs as long as OpenCL and PyOpenCL are
-installed. Note that CUDA works ~1.5 times faster than OpenCL.
+1. gpu_m5b.py:
+
+Normality (Gaussianity) test for M5B files on either an Nvidia GPU using PyCUDA
+package or a GPU using PyOpenCL package. Single precision floats.
+
+This module provides "transparent" access to the GPU independent of the
+software framework used, CUDA or OpenCL.
+
+The module contains class normtest. It is not intended to create multiple
+class instances (althoug it is surely possible). When imported, it 
+probes the system to find what GPU frameworks are installed. It chooses
+automatically between PyCUDA and OpenCL and initializes the relevant 
+data structures. In case both frameworks are installed, it prefers
+PyCUDA since it is ~1.5 times faster than PyOpenCL.
+
+The normtest class provides a "class method" do_m5b(m5b_filename),
+which runs the normality test on the available GPU and the software
+framework selected. If the M5B file is large and it does not fit into either
+system RAM or the GPU ram, it is processed in chunks. The results are saved 
+in binary files. 
+   
+Example:
+   
+from gpu_m5b import Normtest as nt
+nt.do_m5b("rd1910_wz_268-1811.m5b")
+
+Empirically, it has been found that the best performance is achieved 
+with 8 threads per block (in CUDA terminology), and, which is the same, 
+8 work items per work group (in OpenCL terms). However, this number can 
+be changed using the nthreads parameter. For example:
+
+nt.do_m5b("rd1910_wz_268-1811.m5b", nthreads=64)
+
+
+---------------------------
+
+This directory also contains two older versions ofthe Python scripts for
+normality testing using the GPUs. One of them, normtest_m5b_cuda.py, uses
+PyCuda and can be only run on Nvidia GPUs with CUDA and PyCuda installed.
+The other one uses PyOpenCL and can be run on both AMD and Nvidia GPUs as
+long as OpenCL and PyOpenCL are installed. Note that CUDA works ~1.5 times
+faster than OpenCL.
+
+Both scripts cannot process M5B files in chunks, and therefore they are unable
+to process large M5B files.
 
 Currently, the scripts use positional command line parameters.
 
-1. normtest_m5b_cuda.py:
+2. normtest_m5b_cuda.py:
 
 Normality (Gaussianity) test for M5B files on Nvidia GPU using PyCUDA package.
 Single precision floats.
@@ -54,7 +94,7 @@ Note that saving the result files may take long time.
 
 
 
-2. normtest_m5b_ocl.py:
+3. normtest_m5b_ocl.py:
 
 Normality (Gaussianity) test for M5B files on a GPU using PyOpenCL package.
 Single precision floats.
@@ -85,7 +125,7 @@ files in the subdirectory result/ with the names:
    quantiles_*.txt
 
 Examples:
-
+")
 $ python normtest_m5b_ocl.py rd1910_wz_268-1811.m5b
 $ python normtest_m5b_ocl.py rd1910_wz_268-1811.m5b 8
 $ python normtest_m5b_ocl.py rd1910_wz_268-1811.m5b 8 -s
@@ -93,31 +133,7 @@ $ python normtest_m5b_ocl.py rd1910_wz_268-1811.m5b 8 -s
 Note that saving the result files may take long time.
 
 
-3. gpu_m5b.py:
-
-Normality (Gaussianity) test for M5B files on either an Nvidia GPU using PyCUDA
-package or a GPU using PyOpenCL package. Single precision floats.
-
-This module provides "transparent" access to the GPU independent of the
-software framework used, CUDA or OpenCL. In case both are installed, it prefers
-PyCUDA since it is ~1.5 times faster than PyOpenCL.
-
-The module contains class normtest. It is not intended to create multiple
-class instances (althoug it is surely possible). When imported, it 
-probes the system to find what GPU frameworks are installed. It chooses
-automatically between PyCUDA and OpenCL and initializes the relevant 
-data structures.
-
-The normtest class provides a "class method" do_m5b(m5b_filename),
-which runs the normality test on the available GPU and the software
-framework selected. 
-   
-Example:
-   
-from gpu_m5b import Normtest as nt
-nt.do_m5b("rd1910_wz_268-1811.m5b")
-
----------------------------
+----------------------------
 
 Ancillary scripts:
 
