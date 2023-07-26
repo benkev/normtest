@@ -11,7 +11,8 @@
 /* #define strbool(b) ((b) ? "True" : "False") */
 
 float f_normcdf(float x);
-float residual(float thresh, float *q_exprm);
+/* float residual(float thresh, float *q_obs); */
+float calc_chi2(float thresh, float *q_obs);
 
 float fminbndf_amd(float a, float b, float *args, float xatol, int maxiter,
                    float *fval, int *niter, int *flag, int disp) {
@@ -59,7 +60,7 @@ float fminbndf_amd(float a, float b, float *args, float xatol, int maxiter,
     //    float f = 0.0;
     int num = 1;
 
-    fx = residual(x, args);
+    fx = calc_chi2(x, args);
 
     if (a > b) {
         // printf("The lower bound exceeds the upper bound: a > b.\n");
@@ -76,7 +77,7 @@ float fminbndf_amd(float a, float b, float *args, float xatol, int maxiter,
     nfc = xf = fulc;
     rat = e = 0.0;
     x = xf;
-    fx = residual(x, args);
+    fx = calc_chi2(x, args);
     fu = INFINITY;
     ffulc = fnfc = fx;
     xm = 0.5*(a + b);
@@ -135,7 +136,7 @@ float fminbndf_amd(float a, float b, float *args, float xatol, int maxiter,
         
         si = sign(rat) + (rat == 0.0);
         x = xf + si*fmax(fabs(rat), tol1);
-        fu = residual(x, args);
+        fu = calc_chi2(x, args);
         num += 1;
        
         // if (disp > 2)

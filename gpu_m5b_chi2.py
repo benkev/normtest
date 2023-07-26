@@ -173,7 +173,7 @@ class Normtest:
         #
         # Read the kernel code from file into the string "ker"
         #
-        ker_filename = "ker_m5b_gauss_test.cl"
+        ker_filename = "ker_m5b_gauss_test_chi2.cl"
         with open (ker_filename) as fh: ker_source_code = fh.read()
         print("OpenCL kernel file '%s' is used\n" % ker_filename)
         #
@@ -399,7 +399,7 @@ class Normtest:
         basefn = basefn + "_" + t_stamp + ".bin"
 
         f_quantl = open("nt_quantl_cuda_" + basefn, "wb")
-        f_chi2 = open("nt_chi2_cuda_" + basefn, "wb")
+        f_chi2 =   open("nt_chi2_cuda_" + basefn, "wb")
         f_thresh = open("nt_thresh_cuda_" + basefn, "wb")
         f_flag =   open("nt_flag_cuda_"  + basefn, "wb")
         f_niter =  open("nt_niter_cuda_"  + basefn, "wb")
@@ -505,7 +505,7 @@ class Normtest:
             # Move the results from GPU memory to CPU RAM
             #
             quantl = quantl_gpu.get()
-            chi2 = chi2_gpu.get()
+            chi2 =   chi2_gpu.get()
             thresh = thresh_gpu.get()
             flag =   flag_gpu.get()
             niter =  niter_gpu.get()
@@ -525,8 +525,8 @@ class Normtest:
 
             #
             # Save the results in binary files.
-            # If several m5b file chunks are processed, this
-            # appends the files with the results for current chunk
+            # If several m5b file chunks are processed, the current chunk
+            # data are appended to the file.
             #
             tic = time.time()
 

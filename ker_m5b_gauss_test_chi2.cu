@@ -54,7 +54,7 @@ __device__ float residual(float thresh, float *q_obs) {
     float q_norm = f_normcdf(-thresh);
     float q_norm0 = 0.5 - q_norm;
     float eps2 = pow(q_norm -  q_obs[0], 2) + pow(q_norm0 - q_obs[1], 2) +
-                pow(q_norm0 - q_obs[2], 2) + pow(q_norm -  q_obs[3], 2);
+                 pow(q_norm0 - q_obs[2], 2) + pow(q_norm -  q_obs[3], 2);
     return eps2;
 }
 
@@ -79,16 +79,20 @@ __device__ float calc_chi2(float thresh, float *q_obs) {
      *       chi^2 = sum_{i=1}^4((q_norm_i - q_obs_i)/q_obs_i)
      */
 
-    /* q_norm:  quantile of Gaussian in [-inf .. thresh]  [thresh .. +inf] : */
+    /* q_norm:  quantile of Gaussian in [-inf .. thresh] and [thresh .. +inf] */
     /* q_norm0: quantile of Gaussian in [thresh .. 0] and [0 .. thresh] : */
-    float nfdat_fl = q_obs[4];
+    float nfdat_fl = q_obs[4];  /* Data sample size */
     float q_norm = f_normcdf(-thresh);
-    float q_norm0 = nfdat_fl*(0.5 - q_norm); /* Theoretical frequency */
+    float q_norm0 = nfdat_fl*(0.5 - q_norm);  /* Theoretical frequency */
     q_norm =        nfdat_fl*q_norm;          /* Theoretical frequency */
-    float chi2 = pow(q_norm -  q_obs[0], 2)/q_obs[0] + \
-                 pow(q_norm0 - q_obs[1], 2)/q_obs[1] + \
-                 pow(q_norm0 - q_obs[2], 2)/q_obs[2] + \
-                 pow(q_norm -  q_obs[3], 2)/q_obs[3];
+    /* float chi2 = pow(q_norm -  q_obs[0], 2)/q_obs[0] + \ */
+    /*              pow(q_norm0 - q_obs[1], 2)/q_obs[1] + \ */
+    /*              pow(q_norm0 - q_obs[2], 2)/q_obs[2] + \ */
+    /*              pow(q_norm -  q_obs[3], 2)/q_obs[3]; */
+    float chi2 = pow(q_norm -  q_obs[0], 2)/q_norm + \
+                 pow(q_norm0 - q_obs[1], 2)/q_norm0 + \
+                 pow(q_norm0 - q_obs[2], 2)/q_norm0 + \
+                 pow(q_norm -  q_obs[3], 2)/q_norm;
     return chi2;
 }
 
@@ -138,7 +142,7 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
     int flg = 0;     /* Optimization flag  */
 
     float nfdat_fl = (float) nfdat;
-    q_obs[4] = nfdat_fl;  /* number of data in one frame */
+    q_obs[4] = nfdat_fl;  /* number of data in one frame (sample size) */
 
     /*
      * Here at least the header must be checked if it only contains the 
@@ -184,53 +188,43 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
     for (iseq=0; iseq<nchqua; iseq++)
         *pqua++ = 0.0;
 
-    /*
-     * Sum up the quantiles from the 2500 data words for all 16 channels
-     */
+    /* Pointer to the the quantile [16][4] subarray */
     pqua = quantl + ix_nchqua; /* 1D array pqua[i] == quantl[ifrm][i] */
 
-    // printf("ifrm = %ld, ix_nchqua = %4ld, quantl = %14p, pqua = %14p, " \
-    //        "dif=%4ld\n",
-    //        ifrm, ix_nchqua, (void*)quantl, (void*)pqua,
-    //        (pqua-quantl));
 
-    // if (ifrm ==2) {
-    //     printf("M5B 2-bit stream masks:\n");
-    //     for (ich=0; ich<16; ich++)
-    //         printf("ch_mask[%2u] = %10x\n", ich, ch_mask[ich]);
-    // }
-
+    /*
+     * Sum up the quantiles from the 2500 data words for all 16 channels
+     *
+     * In the following loop over the 2500 words of current frame
+     * data block, for each of 16 streams the 4 unnormalized quantiles
+     * are counted as numbers of occurrencies of the the binary values 
+     * 00, 01, 10, 11. 
+     *
+     */
     for (idt=0; idt<nfdat; idt++) { /* Data 32b-words in frame count */
 
         for (ich=0; ich<nch; ich++) {
+            /* 2-bit-stream value */
             ch_bits = pdat[idt] & ch_mask[ich]; /* 2-bit-stream value */
 
             /* Move the 2-bit-stream of the ich-th channel to the
              * rightmost position in the 32-bit word  chbits
              * to get the quantile index iqua from 0,1,2,3 */
             iqua = ch_bits >> (2*ich);
-            
-            // if (ifrm == 0 && idt == 0)
-            //     printf("%ld: iqua = %u\n", ifrm, iqua);
-
             pqua[ich*nqua+iqua] += 1.0; /* quantl[ifrm][ich][iqua] += 1.0; */
 
-            // if (ifrm == 0 && idt == 0)
-            //     for (i=0; i<4; i++)
-            //         printf("%g ", quantl[i]);
-            // printf("\n");
+            /* The same in the array-index notation: */
+            /* ch_bits = dat[ixdat+idt] & ch_mask[ich]; */
+            /* iqua = ch_bits >> 2*ich; */
+            /* quantl[ifrm][ich][iqua] += 1.0; */
         }
     }
 
-    // if (ifrm == 0) {
-    //     printf("ifrm = %d; quantiles: ", ifrm);
-    //     for (i=0; i<4; i++)
-    //         printf("%g ", quantl[i]);
-    //     printf("\n");
-    // }
     
     /* 
-     * Finding optimal quantization thresholds and residuals
+     * Finding optimal quantization thresholds and chi^2-s
+     * in current frame for all the 16 channels
+     * using the accumulated quantiles' frequencies in quantl[ifrm][16][4]
      */
     for (ich=0; ich<nch; ich++) {
 
@@ -242,6 +236,7 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
         q_obs[2] = *pqua_ch++;
         q_obs[3] = *pqua_ch++;
 
+        /* The same in the array-index notation: */
         // q_obs[0] = (quantl[ifrm][ich][0]);
         // q_obs[1] = (quantl[ifrm][ich][1]);
         // q_obs[2] = (quantl[ifrm][ich][2]);
@@ -252,9 +247,12 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
          * Fit the Gaussian PDF to the quantiles of the signals from 
          * the M5B file. The single variable search Brent's  method is 
          * used find the optimal value of the signal rms (i.e. STD), 
-         * which provides the minimum residual between quantiles of 
+         * which provides the minimum of chi^2 between quantiles of 
          * the Gaussian PDF and those of the 2-bit streams 
-         * from M5B files. 
+         * from M5B files.
+         *
+         * The results are the optimal quantization threshold, th0,
+         * and the corresponding to th0 chi^2 value in res.
          */
         
         th0 = fminbndf(*calc_chi2, 0.5, 1.5, q_obs, xatol, maxiter,
@@ -268,6 +266,7 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
         pniter[ich] = nitr;
         pflag[ich] = flg;
             
+        /* OR (which is much clearer): */
         // chi2[ifrm][ich] = res;
         // thresh[ifrm][ich] = th0;
         // niter[ifrm][ich] = nitr;
