@@ -587,7 +587,7 @@ class Normtest:
         # Create output buffers in the CPU memory.
         #
         quantl = np.zeros((n_frms*16*4), dtype=np.float32) # Quantiles
-        chi2 = np.zeros((n_frms*16), dtype=np.float32)     # Chi^2
+        chi2 =   np.zeros((n_frms*16), dtype=np.float32)     # Chi^2
         thresh = np.zeros((n_frms*16), dtype=np.float32)   # Thresholds
         flag =   np.zeros((n_frms*16), dtype=np.uint16)    # Flags
         niter =  np.zeros((n_frms*16), dtype=np.uint16) # Iterations fminbndf()
@@ -613,7 +613,7 @@ class Normtest:
         basefn = basefn + "_" + t_stamp + ".bin"
 
         f_quantl = open("nt_quantl_opencl_" + basefn, "wb")
-        f_chi2 = open("nt_chi2_opencl_" + basefn, "wb")
+        f_chi2 =   open("nt_chi2_opencl_" + basefn, "wb")
         f_thresh = open("nt_thresh_opencl_" + basefn, "wb")
         f_flag =   open("nt_flag_opencl_"  + basefn, "wb")
         f_niter =  open("nt_niter_opencl_"  + basefn, "wb")
