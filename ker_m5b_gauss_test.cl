@@ -152,7 +152,8 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
                    (pfrm[2] == fill_pattern) && (pfrm[3] == fill_pattern));
 
     /* Set pointer to the start of data block in the frame */
-    pdat = pfrm + 4;
+    /* pdat = pfrm + 4; */
+    pdat = pfrm + nfhead;
         
     /* 
      * Zeroize the quantiles for current frame: all channels. 
@@ -180,7 +181,7 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
          *
          * In the following loop over the 2500 words of current frame
          * data block. For each of 16 streams the 4 unnormalized quantiles
-         * are counted as numbers of occurrencies the binary values 
+         * are counted as numbers of occurrencies of the binary values 
          * 00, 01, 10, 11. 
          *
          */

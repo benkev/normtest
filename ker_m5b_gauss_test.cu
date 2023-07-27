@@ -122,17 +122,35 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
      * but with a fixed length of 10016 bytes.
      * The Mark 5B fill-pattern word is (0x11223344).
      */
-    int ixhdr = ifrm*frmwords;
-
+    int ixfrm = ifrm*frmwords;
+    uint *pfrm = dat + ixfrm; /* Points at the current frame header */
     
-
+    /*
+     * Detect and skip bad frame by checking if the 4 words of its header
+     * contain the fill pattern 0x11223344 
+     */
+    int good_frame = 0;      /* Boolean */
+    good_frame = !((pfrm[0] == fill_pattern) && (pfrm[1] == fill_pattern) &&
+                   (pfrm[2] == fill_pattern) && (pfrm[3] == fill_pattern));
+    
     /*
      * Set pointers to the ifrm-th frame to process in this thread 
      * (or "work item" in the OpenCL terminology.)
      */
-    ixdat = ixhdr + nfhead;  /* Index at the 2500-word data block */
-    uint *pdat = dat + ixdat;   
+    // ixdat = ixfrm + nfhead;  /* Index at the 2500-word data block 
+    // uint *pdat = dat + ixdat;
+    uint *pdat = pfrm + nfhead;
 
+    /* 
+     * Zeroize the quantiles for current frame: all channels. 
+     */
+    size_t ix_nchqua = ifrm*nchqua;  /* Index at the 16x4 section of quantl */
+    pqua = quantl + ix_nchqua; /* 1D array pqua[i] == quantl[ifrm][i] */
+    for (iseq=0; iseq<nchqua; iseq++)
+        *pqua++ = 0.0;
+
+    /* To work with the arrays of results, set pointers
+     * to the starts of current frame's result data */ 
     size_t ix_nch = ifrm*nch;  /* Index at the 16-ch section of 1D arrays */
     presidl = residl + ix_nch;
     pthresh = thresh + ix_nch;
@@ -149,41 +167,28 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
     for (iseq=0; iseq<nchqua; iseq++)
         *pqua++ = 0.0;
 
+    if (good_frame) { 
+        
     /*
      * Sum up the quantiles from the 2500 data words for all 16 channels
+     *
+     * In the following loop over the 2500 words of current frame
+     * data block. For each of 16 streams the 4 unnormalized quantiles
+     * are counted as numbers of occurrencies of the binary values 
+     * 00, 01, 10, 11. 
+     *
      */
     pqua = quantl + ix_nchqua; /* 1D array pqua[i] == quantl[ifrm][i] */
-
-    // printf("ifrm = %ld, ix_nchqua = %4ld, quantl = %14p, pqua = %14p, " \
-    //        "dif=%4ld\n",
-    //        ifrm, ix_nchqua, (void*)quantl, (void*)pqua,
-    //        (pqua-quantl));
-
-    // if (ifrm ==2) {
-    //     printf("M5B 2-bit stream masks:\n");
-    //     for (ich=0; ich<16; ich++)
-    //         printf("ch_mask[%2u] = %10x\n", ich, ch_mask[ich]);
-    // }
 
     for (idt=0; idt<nfdat; idt++) { /* Data 32b-words in frame count */
 
         for (ich=0; ich<nch; ich++) {
             ch_bits = pdat[idt] & ch_mask[ich]; /* 2-bit-stream value */
-
             /* Move the 2-bit-stream of the ich-th channel to the
              * rightmost position in the 32-bit word  chbits
              * to get the quantile index iqua from 0,1,2,3 */
             iqua = ch_bits >> (2*ich);
-            
-            // if (ifrm == 0 && idt == 0)
-            //     printf("%ld: iqua = %u\n", ifrm, iqua);
-
             pqua[ich*nqua+iqua] += 1.0; /* quantl[ifrm][ich][iqua] += 1.0; */
-
-            // if (ifrm == 0 && idt == 0)
-            //     for (i=0; i<4; i++)
-            //         printf("%g ", quantl[i]);
-            // printf("\n");
         }
     }
 
@@ -228,9 +233,6 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
         
         th0 = fminbndf(*residual, 0.5, 1.5, q_obs, xatol, maxiter,
                        &res, &nitr, &flg, 0);
-        // if (ifrm < 10) {
-        //     printf("KERNEL: ifrm: %d, residual = %e\n", ifrm, res);
-        // }
         
         presidl[ich] = res;
         pthresh[ich] = th0;
@@ -242,7 +244,23 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
         // niter[ifrm][ich] = nitr;
         // flag[ifrm][ich] = flg;
             
-    }
+    } /* for (ich=0; ... */
+
+    } /* if (good_frame) ... */
+
+    else { /* if the frame is bad */
+        for (ich=0; ich<nch; ich++) {
+            /*
+             * Fill the arrays of results for current bad frame
+             * with zeros to indicate absence of results.
+             * The flags are set to all-ones.
+             */
+            presidl[ich] = 0.0;
+            pthresh[ich] = 0.0;
+            pniter[ich] = 0;
+            pflag[ich] = 1;
+        }  /* for (ich=0; ...  */
+    }      /* if the frame is bad */
 
     return; 
 }
