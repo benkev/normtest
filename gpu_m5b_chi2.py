@@ -487,7 +487,7 @@ class Normtest:
             if incompleteChunk:
                 n_frms = np.uint32(cls.n_frms_last_chunk)
                 quantl_gpu = gpuarray.empty((n_frms*16*4,), np.float32)
-                chi2_gpu = gpuarray.empty((n_frms*16,), np.float32)
+                chi2_gpu =   gpuarray.empty((n_frms*16,), np.float32)
                 thresh_gpu = gpuarray.empty((n_frms*16,), np.float32)
                 flag_gpu =   gpuarray.empty((n_frms*16,), np.uint16)
                 niter_gpu =  gpuarray.empty((n_frms*16,), np.uint16)
