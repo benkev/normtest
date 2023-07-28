@@ -11,6 +11,7 @@
 
 #include <fminbndf.cu>
 
+__constant__ uint fill_pattern = 0x11223344; /* Bad frame words' content */
 __constant__ float sqrt2 = 1.4142135; /* = sqrt(2.0) float 32-bit precision */
 __constant__ int frmwords = 2504; /* 32-bit words in a frame with 4-wd header */
 __constant__ int frmbytes = 2504*4;
@@ -129,7 +130,7 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
      */ 
     
     uint ch_bits;
-    uint idt, ich, iqua, ixdat, iseq;
+    uint idt, ich, ixdat, iqua, iseq;
     // float (*quantl)[16][4]; /* 4 quantiles of  data for 16 channels */
     float *pqua = NULL;
     float q_obs[5] = {0., 0., 0., 0., 0.}; 
@@ -145,9 +146,6 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
     q_obs[4] = nfdat_fl;  /* number of data in one frame (sample size) */
 
     /*
-     * Here at least the header must be checked if it only contains the 
-     * fill-pattern 0x11223344 words signalling the "missing frame".
-     *
      * From Mark_5C_Data_Frame_Specification_memo_058.pdf :
      *
      * Under certain circumstances, the Mark 5C writes a 
@@ -161,17 +159,46 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
      * but with a fixed length of 10016 bytes.
      * The Mark 5B fill-pattern word is (0x11223344).
      */
+    // int ixfrm = ifrm*frmwords;
+    // uint *pfrm = dat + ixfrm; /* Points at the current frame header */
+
     int ixhdr = ifrm*frmwords;
-
+    uint *phdr = dat + ixhdr; /* Points at the current frame header */
     
-
+    /*
+     * Detect and skip bad frame by checking if the 4 words of its header
+     * contain the fill pattern 0x11223344 
+     */
+    int good_frame = 0;      /* Boolean */
+    good_frame = !((phdr[0] == fill_pattern) && (phdr[1] == fill_pattern) &&
+                   (phdr[2] == fill_pattern) && (phdr[3] == fill_pattern));
+    
     /*
      * Set pointers to the ifrm-th frame to process in this thread 
      * (or "work item" in the OpenCL terminology.)
      */
+    // ixdat = ixfrm + nfhead;  /* Index at the 2500-word data block 
+    // uint *pdat = dat + ixdat;
+    // uint *pdat = pfrm + nfhead;
     ixdat = ixhdr + nfhead;  /* Index at the 2500-word data block */
     uint *pdat = dat + ixdat;   
+    
 
+    /* 
+     * Zeroize the quantiles for current frame: all channels. 
+     */
+    size_t ix_nchqua = ifrm*nchqua; /* Index at the 16x4 section of quantl */
+    
+    /* Pointer to the the quantile [16][4] subarray */
+    pqua = quantl + ix_nchqua; /* 1D array pqua[i] == quantl[ifrm][i] */
+    for (iseq=0; iseq<nchqua; iseq++)
+        *pqua++ = 0.0;
+
+    /* Restore pointer to the the quantile [16][4] subarray */
+    pqua = quantl + ix_nchqua; /* 1D array pqua[i] == quantl[ifrm][i] */
+
+    /* To work with the arrays of results, set pointers
+     * to the starts of current frame's result data */ 
     size_t ix_nch = ifrm*nch;  /* Index at the 16-ch section of 1D arrays */
     pchi2 = chi2 + ix_nch;
     pthresh = thresh + ix_nch;
@@ -179,100 +206,103 @@ __global__ void m5b_gauss_test(uint *dat, uint *ch_mask,
     pflag =  flag + ix_nch;
 
 
-    /* 
-     * Zeroize the quantiles for current frame: all channels. 
-     */
-    size_t ix_nchqua = ifrm*nchqua;  /* Index at the 16x4 section of quantl */
+    if (good_frame) { 
+        
+        /*
+         * Sum up the quantiles from the 2500 data words for all 16 channels
+         *
+         * In the following loop over the 2500 words of current frame
+         * data block, for each of 16 streams the 4 unnormalized quantiles
+         * are counted as numbers of occurrencies of the the binary values 
+         * 00, 01, 10, 11. 
+         *
+         */
+        for (idt=0; idt<nfdat; idt++) { /* Data 32b-words in frame count */
 
-    pqua = quantl + ix_nchqua; /* 1D array pqua[i] == quantl[ifrm][i] */
-    for (iseq=0; iseq<nchqua; iseq++)
-        *pqua++ = 0.0;
+            for (ich=0; ich<nch; ich++) {
+                /* 2-bit-stream value */
+                ch_bits = pdat[idt] & ch_mask[ich]; /* 2-bit-stream value */
 
-    /* Pointer to the the quantile [16][4] subarray */
-    pqua = quantl + ix_nchqua; /* 1D array pqua[i] == quantl[ifrm][i] */
+                /* Move the 2-bit-stream of the ich-th channel to the
+                 * rightmost position in the 32-bit word  chbits
+                 * to get the quantile index iqua from 0,1,2,3 */
+                iqua = ch_bits >> (2*ich);
+                pqua[ich*nqua+iqua] += 1.0; /* quantl[ifrm][ich][iqua] += 1.; */
 
-
-    /*
-     * Sum up the quantiles from the 2500 data words for all 16 channels
-     *
-     * In the following loop over the 2500 words of current frame
-     * data block, for each of 16 streams the 4 unnormalized quantiles
-     * are counted as numbers of occurrencies of the the binary values 
-     * 00, 01, 10, 11. 
-     *
-     */
-    for (idt=0; idt<nfdat; idt++) { /* Data 32b-words in frame count */
-
-        for (ich=0; ich<nch; ich++) {
-            /* 2-bit-stream value */
-            ch_bits = pdat[idt] & ch_mask[ich]; /* 2-bit-stream value */
-
-            /* Move the 2-bit-stream of the ich-th channel to the
-             * rightmost position in the 32-bit word  chbits
-             * to get the quantile index iqua from 0,1,2,3 */
-            iqua = ch_bits >> (2*ich);
-            pqua[ich*nqua+iqua] += 1.0; /* quantl[ifrm][ich][iqua] += 1.0; */
-
-            /* The same in the array-index notation: */
-            /* ch_bits = dat[ixdat+idt] & ch_mask[ich]; */
-            /* iqua = ch_bits >> 2*ich; */
-            /* quantl[ifrm][ich][iqua] += 1.0; */
+                /* The same in the array-index notation: */
+                /* quantl[ifrm][ich][iqua] += 1.0; */
+            }
         }
-    }
 
     
-    /* 
-     * Finding optimal quantization thresholds and chi^2-s
-     * in current frame for all the 16 channels
-     * using the accumulated quantiles' frequencies in quantl[ifrm][16][4]
-     */
-    for (ich=0; ich<nch; ich++) {
-
-        /* 1D array pqua_ch[i] == quantl[ifrm][ich][i] */
-        float *pqua_ch = quantl + (ifrm*nch + ich)*nqua; 
-            
-        q_obs[0] = *pqua_ch++;
-        q_obs[1] = *pqua_ch++;
-        q_obs[2] = *pqua_ch++;
-        q_obs[3] = *pqua_ch++;
-
-        /* The same in the array-index notation: */
-        // q_obs[0] = (quantl[ifrm][ich][0]);
-        // q_obs[1] = (quantl[ifrm][ich][1]);
-        // q_obs[2] = (quantl[ifrm][ich][2]);
-        // q_obs[3] = (quantl[ifrm][ich][3]);
-
-
-        /*
-         * Fit the Gaussian PDF to the quantiles of the signals from 
-         * the M5B file. The single variable search Brent's  method is 
-         * used find the optimal value of the signal rms (i.e. STD), 
-         * which provides the minimum of chi^2 between quantiles of 
-         * the Gaussian PDF and those of the 2-bit streams 
-         * from M5B files.
-         *
-         * The results are the optimal quantization threshold, th0,
-         * and the corresponding to th0 chi^2 value in res.
+        /* 
+         * Finding optimal quantization thresholds and chi^2-s
+         * in current frame for all the 16 channels
+         * using the accumulated quantiles' frequencies in quantl[ifrm][16][4]
          */
-        
-        th0 = fminbndf(*calc_chi2, 0.5, 1.5, q_obs, xatol, maxiter,
-                       &res, &nitr, &flg, 0);
-        // if (ifrm < 10) {
-        //     printf("KERNEL: ifrm: %d, chi2 = %e\n", ifrm, res);
-        // }
-        
-        pchi2[ich] = res;
-        pthresh[ich] = th0;
-        pniter[ich] = nitr;
-        pflag[ich] = flg;
+        for (ich=0; ich<nch; ich++) {
+
+            /* 1D array pqua_ch[i] == quantl[ifrm][ich][i] */
+            float *pqua_ch = quantl + (ifrm*nch + ich)*nqua; 
             
-        /* OR (which is much clearer): */
-        // chi2[ifrm][ich] = res;
-        // thresh[ifrm][ich] = th0;
-        // niter[ifrm][ich] = nitr;
-        // flag[ifrm][ich] = flg;
+            q_obs[0] = *pqua_ch++;
+            q_obs[1] = *pqua_ch++;
+            q_obs[2] = *pqua_ch++;
+            q_obs[3] = *pqua_ch++;
+
+            /* The same in the array-index notation: */
+            // q_obs[0] = (quantl[ifrm][ich][0]);
+            // q_obs[1] = (quantl[ifrm][ich][1]);
+            // q_obs[2] = (quantl[ifrm][ich][2]);
+            // q_obs[3] = (quantl[ifrm][ich][3]);
+
+
+            /*
+             * Fit the Gaussian PDF to the quantiles of the signals from 
+             * the M5B file. The single variable search Brent's  method is 
+             * used find the optimal value of the signal rms (i.e. STD), 
+             * which provides the minimum of chi^2 between quantiles of 
+             * the Gaussian PDF and those of the 2-bit streams 
+             * from M5B files.
+             *
+             * The results are the optimal quantization threshold, th0,
+             * and the corresponding to th0 chi^2 value in res.
+             */
+        
+            th0 = fminbndf(*calc_chi2, 0.5, 1.5, q_obs, xatol, maxiter,
+                           &res, &nitr, &flg, 0);
+            // if (ifrm < 10) {
+            //     printf("KERNEL: ifrm: %d, chi2 = %e\n", ifrm, res);
+            // }
+        
+            pchi2[ich] = res;
+            pthresh[ich] = th0;
+            pniter[ich] = nitr;
+            pflag[ich] = flg;
             
-    }
+            /* OR (which is much clearer): */
+            // chi2[ifrm][ich] = res;
+            // thresh[ifrm][ich] = th0;
+            // niter[ifrm][ich] = nitr;
+            // flag[ifrm][ich] = flg;
+            
+        } /* for (ich=0; ... */
+
+    } /* if (good_frame) ... */
+
+    else { /* if the frame is bad */
+        for (ich=0; ich<nch; ich++) {
+            /*
+             * Fill the arrays of results for current bad frame
+             * with zeros to indicate absence of results.
+             * The flags are set to all-ones.
+             */
+            pchi2[ich] = 0.0;
+            pthresh[ich] = 0.0;
+            pniter[ich] = 0;
+            pflag[ich] = 1;
+        }  /* for (ich=0; ...  */
+    }      /* if the frame is bad */
 
     return; 
 }

@@ -123,6 +123,7 @@ class Normtest:
         # Read the kernel code from file into the string "ker"
         #
         ker_filename = "ker_m5b_gauss_test_chi2.cu"
+        # ker_filename = "ker_m5b_gauss_test_chi2_20230727.cu"
         with open (ker_filename) as fh: ker_source_code = fh.read()
         print("CUDA kernel file '%s' is used\n" % ker_filename)
 
