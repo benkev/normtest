@@ -33,14 +33,14 @@ fm5b_base = os.path.splitext(fm5b_base)[0]
 
 fquantls = glob.glob("nt_quantl_*" + fm5b_base + "*" + ftst +".bin")
 fthreshs = glob.glob("nt_thresh_*" + fm5b_base + "*" + ftst +".bin")
-fresidls = glob.glob("nt_residl_*" + fm5b_base + "*" + ftst +".bin")
+fchi2s = glob.glob("nt_chi2_*" + fm5b_base + "*" + ftst +".bin")
 
-if len(fquantls) == 0 or len(fthreshs) == 0 or len(fresidls) == 0:
+if len(fquantls) == 0 or len(fthreshs) == 0 or len(fchi2s) == 0:
     print("Files *%s*.bin with the timestamp \"%s\" not found." % \
           (fm5b_base, ftst))
     raise SystemExit
 
-if len(fquantls) > 1 or len(fthreshs) > 1 or len(fresidls) > 1:
+if len(fquantls) > 1 or len(fthreshs) > 1 or len(fchi2s) > 1:
     print("Ambiguous timestamp \"%s\". Give more detail." % ftst)
     raise SystemExit
 
@@ -48,7 +48,7 @@ if len(fquantls) > 1 or len(fthreshs) > 1 or len(fresidls) > 1:
 
 fquantl_name = fquantls[0]
 fthresh_name = fthreshs[0]
-fresidl_name = fresidls[0]
+fchi2_name = fchi2s[0]
 
 #
 # Find file offsets to read the data from
@@ -66,17 +66,17 @@ quantl = np.fromfile(fquantl_name, dtype=np.float32, \
                       offset=offs_qdat, count=cnt_q)
 thresh = np.fromfile(fthresh_name, dtype=np.float32, \
                       offset=offs_tdat, count=cnt_t)
-residl = np.fromfile(fresidl_name, dtype=np.float32, \
+chi2 = np.fromfile(fchi2_name, dtype=np.float32, \
                       offset=offs_rdat, count=cnt_t)
-if n_frms > 1:
-    quantl = quantl.reshape((len(quantl)//64, 16, 4)) / 2500.
-    thresh = thresh.reshape((len(thresh)//16, 16))
-    residl = residl.reshape((len(residl)//16, 16))
-else:
-    quantl = quantl.reshape((16, 4)) / 2500.
-    thresh = thresh.reshape((16))
-    residl = residl.reshape((16))
 
+quantl = quantl.reshape(n_frms, 16, 4))
+thresh = thresh.reshape((n_frms, 16))
+chi2 = chi2.reshape((n_frms, 16))
+
+#
+# Average the observed frequencies over n_frms frames in each of 16 channels
+#
+q_obs = quantl.mean(axis=0) # q_obs.shape=(16,4)
 
 F = lambda x: 0.5*(1 + erf(x/np.sqrt(2)))  # Normal CDF
 
@@ -85,35 +85,22 @@ F = lambda x: 0.5*(1 + erf(x/np.sqrt(2)))  # Normal CDF
 # 
 F_thr = F(-thresh) # Area under the Normal PDF curve over ]-Inf .. -thre]
 
-if n_frms > 1:
-    quanor = np.zeros((n_frms, 16, 4), dtype=np.float32)
-    quanor[:,:,0] = quanor[:,:,3] = F_thr       # ]-Inf .. -thr]; [thr .. +Inf[ 
-    quanor[:,:,1] = quanor[:,:,2] = 0.5 - F_thr # ]-thr .. 0];    ]0 .. +thr[ 
-else:
-    quanor = np.zeros((16, 4), dtype=np.float32)
-    quanor[:,0] = quanor[:,3] = F_thr
-    quanor[:,1] = quanor[:,2] = 0.5 - F_thr
+# q_nor = np.zeros((n_frms, 16, 4), dtype=np.float32)
+# q_nor[:,:,0] = q_nor[:,:,3] = F_thr       # ]-Inf .. -thr]; [thr .. +Inf[ 
+# q_nor[:,:,1] = q_nor[:,:,2] = 0.5 - F_thr # ]-thr .. 0];    ]0 .. +thr[ 
 
-    resnor = np.zeros(16, dtype=np.float32)
+# eps2 = np.zeros(16, dtype=np.float32)
     
-    for ich in range(16):
-        resnor[ich] = np.sum((quanor[ich,:] - quantl[ich,:])**2)
+# for ich in range(16):
+#     eps2[ich] = np.sum((q_nor[ich,:] - quantl[ich,:])**2)
 
-    # for ich in range(16):
-    #     pl.figure()
-    #     pl.plot(quantl[ich,:], 'b'); pl.plot(quanor[ich,:], 'r')
-    #     pl.grid(1)
 
 #
 # Plot
 #
-F = lambda x: 0.5*(1 + erf(x/np.sqrt(2)))  # Normal CDF
-
-thr = 0.8
 
 Fthr = F(-thr)
-# hsnor = np.array([F(-thr), F(0)-F(-thr), F(thr) - F(0), 1 - F(0.92)])
-hsnor = np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])    # Normal quantilles
+q_nor = np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])    # Normal quantilles
 
 xrul = np.linspace(-3., 3., 51)
 fnorm = 1/(2*np.pi)*np.exp(-xrul**2/2)
@@ -122,7 +109,7 @@ xloc = [-1.5, -0.5, 0.5, 1.5]
 
 pl.figure()
 pl.plot(xrul, 1.5*fnorm, 'b-.', lw=0.5)
-pl.bar(xloc, hsnor, width=0.5) # , color='b') # , alpha=0.9)
+pl.bar(xloc, q_nor, width=0.5) # , color='b') # , alpha=0.9)
 pl.bar(xloc, quantl[0,:], width=0.2, color='orange')
 
     
