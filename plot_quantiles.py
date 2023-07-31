@@ -1,7 +1,10 @@
 #
-# quartile.py
+# plot_quantiles.py
 #
-# Show quartiles for 
+# Show quantiles for 9 quantization thresholds (+-theta)
+# [0.2, 0.3, 0.5, 0.6745, 0.8, 1.0, 1.2, 1.5, 2.0].
+# Assumed quantization of data samples drawn from the standard normal
+# distribution.
 #
 #
 

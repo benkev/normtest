@@ -11,6 +11,7 @@ import sys, os
 import numpy as np
 import matplotlib.pyplot as pl
 from scipy.special import erf
+import scipy.stats
 import getopt, glob
 
 pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
@@ -69,14 +70,18 @@ thresh = np.fromfile(fthresh_name, dtype=np.float32, \
 chi2 = np.fromfile(fchi2_name, dtype=np.float32, \
                       offset=offs_rdat, count=cnt_t)
 
-quantl = quantl.reshape(n_frms, 16, 4))
+quantl = quantl.reshape((n_frms, 16, 4))
 thresh = thresh.reshape((n_frms, 16))
 chi2 = chi2.reshape((n_frms, 16))
 
 #
-# Average the observed frequencies over n_frms frames in each of 16 channels
+# Average the observed frequencies, thresholds, and chi2 over n_frms frames
+# in each of the 16 channels
 #
-q_obs = quantl.mean(axis=0) # q_obs.shape=(16,4)
+q_obs = quantl.mean(axis=0)  # q_obs.shape=(16,4)
+th_obs = thresh.mean(axis=0) # th_obs.shape=(16,)
+c2_obs = chi2.mean(axis=0)   # c2_obs.shape = (16,)
+
 
 F = lambda x: 0.5*(1 + erf(x/np.sqrt(2)))  # Normal CDF
 
@@ -94,23 +99,97 @@ F_thr = F(-thresh) # Area under the Normal PDF curve over ]-Inf .. -thre]
 # for ich in range(16):
 #     eps2[ich] = np.sum((q_nor[ich,:] - quantl[ich,:])**2)
 
+#
+# alpha: level of significance
+# df: number of degrees of freedom
+#
+alpha = 0.05    # level of significance
+df = 3          # number of degrees of freedom
+
+chi2cr = scipy.stats.chi2.ppf(1-alpha, df)
+
+print('Chi2 critical value at significance %.2f and df = %d: %.2f' % \
+      (alpha, 3, chi2cr))
+
 
 #
 # Plot
 #
 
-Fthr = F(-thr)
-q_nor = np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])    # Normal quantilles
+# Fthr = F(-thr)
+# q_nor = np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])    # Normal quantilles
 
-xrul = np.linspace(-3., 3., 51)
-fnorm = 1/(2*np.pi)*np.exp(-xrul**2/2)
+# xrul = np.linspace(-3., 3., 51)
+# fnorm = 1/(2*np.pi)*np.exp(-xrul**2/2)
 
-xloc = [-1.5, -0.5, 0.5, 1.5]
+# xloc = [-1.5, -0.5, 0.5, 1.5]
 
-pl.figure()
-pl.plot(xrul, 1.5*fnorm, 'b-.', lw=0.5)
-pl.bar(xloc, q_nor, width=0.5) # , color='b') # , alpha=0.9)
-pl.bar(xloc, quantl[0,:], width=0.2, color='orange')
+# pl.figure()
+# pl.plot(xrul, 1.5*fnorm, 'b-.', lw=0.5)
+# pl.bar(xloc, q_nor, width=0.5) # , color='b') # , alpha=0.9)
+# pl.bar(xloc, quantl[0,:], width=0.2, color='orange')
+
+
+fnorm = lambda x: (1/np.sqrt(2*np.pi))*(np.exp(-0.5*x**2))  # Normal PDF (0,1)
+Fnorm = lambda x: 0.5*(1 + erf(x/np.sqrt(2)))               # Normal CDF (0,1)
+
+hsep = 0.3
+
+# thr = 0.1*np.arange(1,17)
+threshold = np.array([0.2, 0.3, 0.5, 0.6745, 0.8, 1.0, 1.2, 1.5, 2.0, \
+                      0.5, 0.6745, 0.8, 1.0, 1.2, 1.5, 2.0]);
+xrul = np.linspace(-3., 3., 1001)
+xloc = np.array([-2, -0.5, 0.5, 1.5])
+f_pdf = (1/np.sqrt(2*np.pi))*(np.exp(-0.5*xrul**2))  # Normal PDF (0,1)
+f_pdf = (hsep-0.05)*f_pdf/f_pdf.max()
+
+pl.figure(figsize=(8,8))
+pl.figtext(0.5, 0.96, r"Normal PDF Quantiles Separated by $-\infty, " \
+           r"-\theta, \, 0, +\theta, +\infty$", fontsize=16, ha='center')
+for ich in range(16):
+    pl.subplot(4, 4, ich+1)
+
+    thr = th_obs[ich]
+#    xloc =   np.array([-2, -thr[ich], thr[ich], 2])
+    barloc = np.array([-2.5, -thr/2, thr/2, 2.5])
+    pl.plot(xrul, f_pdf, 'orange')
+    pl.fill_between(xrul, f_pdf, where=(-10<xrul)&(xrul<=-thr), color='b')
+    pl.fill_between(xrul, f_pdf, where=(-thr<xrul)&(xrul<=0), color='m');
+    pl.fill_between(xrul, f_pdf, where=(0<xrul)&(xrul<=thr), color='g')
+    pl.fill_between(xrul, f_pdf, where=((thr<xrul)&(xrul<10)), color='c')
+
+    xl = pl.xlim()
+    pl.plot([xl[0],xl[1]], [hsep,hsep], 'k--', lw=1) # Horiz. separation line
+    pl.plot([-thr,-thr], [0,0.6], 'k--', lw=0.7)   # 
+    pl.plot([thr,thr], [0,0.6], 'k--', lw=0.7)     #
+    pl.xticks([-2,0,2], ["$-2\sigma$", "$0$", "$2\sigma$"], fontsize=12)
+    pl.yticks([])
+    pl.text(-thr-0.7, 0.65, r"$-\theta$")
+    pl.text(thr+0.05, 0.65, r"$+\theta$")
+    
+    Fthr = Fnorm(-thr)
+    qnor = np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])
+    bw = 0.15 if thr < 0.4 else 0.25
+    pl.bar(barloc, qnor, bw, hsep+0.05, color='red', edgecolor='k')
+    pl.ylim(-0.05, 0.85)
+    pl.text(xl[0], 0.77, r"$\theta=\pm%4.2f$" % thr, fontsize=10)
+    pl.text(xl[1]-1.5, 0.76, "ch %2d" % ich, fontsize=10)
+    pl.text(xl[1]-1.5, 0.60, r"$\chi^2=%4.1f$" % c2_obs[ich], fontsize=10)
+    #pl.grid(1)
+
+
+# pl.figtext(0.5, 0.05, r"* Quantization Thresholds $\pm\theta$: " \
+#            r"MUST be $|\theta|\, > 0.6745 \, \sigma$", \
+#            fontsize=20, ha='center')
+
+pl.subplots_adjust(top=0.935, bottom=0.055, left=0.035, right=0.965,
+                   hspace=0.2, wspace=0.2)
+
 
     
 pl.show()
+
+
+
+
+
