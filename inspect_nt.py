@@ -1,9 +1,19 @@
 #
 # inspect_nt.py
 #
+# This script creates 4x4 plots of 16 histograms for each of the 16 channels.
+# The plots are for one or several (averaged) frames. The histograms are
+# compared with the normal distribution curves showing approximately from what
+# size quantiles the observation data are drawn. For each plot, the chi^2 is
+# printed, as well as the quantization threshold.
+#
+# The data are read from the *.bin files created with the gpu_m5b_chi2.py.
+#
+# Running:
+# %run inspect_nt.py <m5b_filename> <timestamp> <start_frame_#> <#_of_frames>
+# or
 # python inspect_nt.py <m5b_filename> <nt_file_timestamp> <start_frame#> \
 #          [<n_frames>]         
-#
 #
 
 
@@ -108,7 +118,7 @@ df = 3          # number of degrees of freedom
 
 chi2cr = scipy.stats.chi2.ppf(1-alpha, df)
 
-print('Chi2 critical value at significance %.2f and df = %d: %.2f' % \
+print('Chi^2 critical value at significance %.2f and df = %d: %.2f' % \
       (alpha, 3, chi2cr))
 
 

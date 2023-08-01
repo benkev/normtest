@@ -154,4 +154,40 @@ so df = 4 - 1 = 3).
 Plots histograms of the observed data and the theoretical normal distribution
 to compare.
 
+Running:
+%run test_m5b.py <m5b_filename>
  
+6. inspect_nt.py
+
+This script creates 4x4 plots of 16 histograms for each of the 16 channels.
+The plots are for one or several (averaged) frames. The histograms are compared
+with the normal distribution curves showing approximately from what size
+quantiles the observation data are drawn. For each plot the chi^2 is printed.
+
+The data are read from the *.bin files created with the gpu_m5b_chi2.py.
+
+Running:
+%run inspect_nt.py <m5b_filename> <timestamp> <start_frame_#> <#_of_frames> 
+
+Some interesting frames:
+6.1. These plots show that the Pearson's chi^2 cannot be used. The histograms 
+are very far from the normal distributions, but most of the chi^2 values
+are very small and signal "normality"
+%run inspect_nt.py rd1903_ft_100-0950.m5b 025 97737 1
+
+6.2. These plots are definitely from the uniform distributions, and yet, most
+of the chi^2 values are very small and signal "normality". The pearson's
+criterion also does not work.
+%run inspect_nt.py rd1903_ft_100-0950.m5b 025 4 1
+%run inspect_nt.py rd1903_ft_100-0950.m5b 025 170578 1
+%run inspect_nt.py rd1903_ft_100-0950.m5b 025 389930 1
+%run inspect_nt.py rd1903_ft_100-0950.m5b 025 6832715 1
+
+6.3. These plots show close to normal histograms with good chi^2 values, i.e.
+< 7.81.
+%run inspect_nt.py rd1910_wz_268-1811.m5b 970 200 1
+%run inspect_nt.py rd1910_ny_269-1404.m5a 395 7139 1
+
+
+
+
