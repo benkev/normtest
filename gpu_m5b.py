@@ -1,3 +1,60 @@
+help_text = \
+'''
+gpu_m5b.py:
+
+Normality (Gaussianity) test for M5B files on either an Nvidia GPU using PyCUDA
+package or a GPU using PyOpenCL package. Single precision floats.
+
+This module provides "transparent" access to the GPU independent of the
+software framework used, CUDA or OpenCL.
+
+The module contains class normtest. It is not intended to create multiple
+class instances (althoug it is surely possible). When imported, it 
+probes the system to find what GPU frameworks are installed. It chooses
+automatically between PyCUDA and OpenCL and initializes the relevant 
+data structures. In case both frameworks are installed, it prefers
+PyCUDA since it is ~1.5 times faster than PyOpenCL.
+
+The normtest class provides a "class method" do_m5b(m5b_filename),
+which runs the normality test on the available GPU and the software
+framework selected. If the M5B file is large and it does not fit into either
+system RAM or the GPU ram, it is processed in chunks. The results are saved 
+in binary files. 
+   
+The do_m5b(m5b_filename) method uploads the M5B file chunk into the GPU memory
+and launches one of the kernels, ker_m5b_gauss_test.cu or 
+ker_m5b_gauss_test.cl, dependent on the framework type. The results are saved
+in the binary files. The file have the following names: 
+    nt_<data>_<framework>_<m5b_basename>_<timestamp>.bin,
+where <data> is the result types:
+
+quantl: dtype=np.float32, shape=(n_frames,16,4), 4 quantiles for 16 channels;
+chi2:   dtype=np.float32, shape=(n_frames,16), chi^2 for 16 channels;
+thresh: dtype=np.float32, shape=(n_frames,16), quantization thresholds found
+        for 16 channels;
+flag:   dtype=np.uint16, shape=(n_frames,16), flags for 16 channels; 
+niter:  dtype=np.uint16, shape=(n_frames,16), number of iterations of Brent's
+        optimization method used to find the optimal quantization threshold
+        for 16 channels;
+
+An example of the result file name: 
+    nt_quantl_cuda_rd1903_ft_100-0950_20230726_225857.829.bin
+
+   
+Usage example:
+   
+from gpu_m5b import Normtest as nt
+nt.do_m5b("rd1910_wz_268-1811.m5b")
+
+Empirically, it has been found that the best performance is achieved 
+with 8 threads per block (in CUDA terminology), and, which is the same, 
+8 work items per work group (in OpenCL terms). However, this number can 
+be changed using the nthreads parameter. For example:
+
+nt.do_m5b("rd1910_wz_268-1811.m5b", nthreads=64)
+
+'''
+
 import numpy as np
 import importlib
 import os, sys
@@ -79,6 +136,8 @@ class Normtest:
         # mem_gpu = mem_gpu_free # Use all the available GPU global memory
         sz_gpu = mem_gpu_free  # Only use the available GPU global memory
         #sz_gpu = mem_gpu_total   # Use all the available GPU global memory
+        print("GPU RAM size: %.2f GiB;    CPU RAM size: %.2f GiB" % \
+              (sz_gpu/fgiga, sz_cpu/fgiga))
 
         #
         # Read the kernel code from file into the string "ker"
@@ -126,7 +185,9 @@ class Normtest:
         mem_gpu_total = ocl_dev.global_mem_size 
         sz_gpu = mem_gpu_total   # Use all the available GPU global memory
         # sz_gpu = mem_gpu_free  # Only use the available GPU global memory ???
-    
+        print("GPU RAM size: %.2f GiB;    CPU RAM size: %.2f GiB" % \
+              (sz_gpu/fgiga, sz_cpu/fgiga))
+
         # mf = cl.mem_flags
         ctx = cl.create_some_context()
         #
@@ -346,7 +407,7 @@ class Normtest:
         
         gpuarray = cls.gpuarray
         quantl_gpu = gpuarray.empty((n_frms_chunk*16*4,), np.float32)
-        residl_gpu = gpuarray.empty((n_frms_chunk*16,), np.float32)
+        chi2_gpu = gpuarray.empty((n_frms_chunk*16,), np.float32)
         thresh_gpu = gpuarray.empty((n_frms_chunk*16,), np.float32)
         flag_gpu =   gpuarray.empty((n_frms_chunk*16,), np.uint16)
         niter_gpu =  gpuarray.empty((n_frms_chunk*16,), np.uint16)
@@ -358,7 +419,7 @@ class Normtest:
         basefn = basefn + "_" + t_stamp + ".bin"
 
         f_quantl = open("nt_quantl_cuda_" + basefn, "wb")
-        f_residl = open("nt_residl_cuda_" + basefn, "wb")
+        f_chi2 =   open("nt_chi2_cuda_" + basefn, "wb")
         f_thresh = open("nt_thresh_cuda_" + basefn, "wb")
         f_flag =   open("nt_flag_cuda_"  + basefn, "wb")
         f_niter =  open("nt_niter_cuda_"  + basefn, "wb")
@@ -446,7 +507,7 @@ class Normtest:
             if incompleteChunk:
                 n_frms = np.uint32(cls.n_frms_last_chunk)
                 quantl_gpu = gpuarray.empty((n_frms*16*4,), np.float32)
-                residl_gpu = gpuarray.empty((n_frms*16,), np.float32)
+                chi2_gpu =   gpuarray.empty((n_frms*16,), np.float32)
                 thresh_gpu = gpuarray.empty((n_frms*16,), np.float32)
                 flag_gpu =   gpuarray.empty((n_frms*16,), np.uint16)
                 niter_gpu =  gpuarray.empty((n_frms*16,), np.uint16)
@@ -456,7 +517,7 @@ class Normtest:
             #
 
             cls.m5b_gauss_test_cuda(dat_gpu, ch_mask_gpu,
-                            quantl_gpu, residl_gpu, thresh_gpu, flag_gpu,
+                            quantl_gpu, chi2_gpu, thresh_gpu, flag_gpu,
                             niter_gpu, n_frms,
                             block = (n_threads, 1, 1), grid = (n_blocks, 1))
 
@@ -464,7 +525,7 @@ class Normtest:
             # Move the results from GPU memory to CPU RAM
             #
             quantl = quantl_gpu.get()
-            residl = residl_gpu.get()
+            chi2 =   chi2_gpu.get()
             thresh = thresh_gpu.get()
             flag =   flag_gpu.get()
             niter =  niter_gpu.get()
@@ -472,7 +533,7 @@ class Normtest:
             del dat_gpu  # It occupies ~96% of the total array memory
             
             # del quantl_gpu
-            # del residl_gpu
+            # del chi2_gpu
             # del thresh_gpu
             # del flag_gpu
             # del niter_gpu
@@ -484,13 +545,13 @@ class Normtest:
 
             #
             # Save the results in binary files.
-            # If several m5b file chunks are processed, this
-            # appends the files with the results for current chunk
+            # If several m5b file chunks are processed, the current chunk
+            # data are appended to the file.
             #
             tic = time.time()
 
             quantl.tofile(f_quantl)
-            residl.tofile(f_residl)
+            chi2.tofile(f_chi2)
             thresh.tofile(f_thresh)
             flag.tofile(f_flag)
             niter.tofile(f_niter)
@@ -499,7 +560,7 @@ class Normtest:
             print('Saving a chunk of results in files: %.3f s.' % (toc-tic))
 
         f_quantl.close()
-        f_residl.close()
+        f_chi2.close()
         f_thresh.close()
         f_flag.close()
         f_niter.close()
@@ -508,7 +569,7 @@ class Normtest:
         # Release GPU memory allocated to the large arrays -- needed, really??
         #
         del quantl_gpu
-        del residl_gpu
+        del chi2_gpu
         del thresh_gpu
         del flag_gpu
         del niter_gpu
@@ -546,7 +607,7 @@ class Normtest:
         # Create output buffers in the CPU memory.
         #
         quantl = np.zeros((n_frms*16*4), dtype=np.float32) # Quantiles
-        residl = np.zeros((n_frms*16), dtype=np.float32)   # Residuals
+        chi2 =   np.zeros((n_frms*16), dtype=np.float32)     # Chi^2
         thresh = np.zeros((n_frms*16), dtype=np.float32)   # Thresholds
         flag =   np.zeros((n_frms*16), dtype=np.uint16)    # Flags
         niter =  np.zeros((n_frms*16), dtype=np.uint16) # Iterations fminbndf()
@@ -559,7 +620,7 @@ class Normtest:
         buf_ch_mask = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
                                 hostbuf=cls.ch_mask)
         buf_quantl = cl.Buffer(ctx, mf.WRITE_ONLY, quantl.nbytes)
-        buf_residl = cl.Buffer(ctx, mf.WRITE_ONLY, residl.nbytes)
+        buf_chi2 = cl.Buffer(ctx, mf.WRITE_ONLY, chi2.nbytes)
         buf_thresh = cl.Buffer(ctx, mf.WRITE_ONLY, thresh.nbytes)
         buf_flag = cl.Buffer(ctx,   mf.WRITE_ONLY, flag.nbytes)
         buf_niter = cl.Buffer(ctx,  mf.WRITE_ONLY, niter.nbytes)
@@ -572,7 +633,7 @@ class Normtest:
         basefn = basefn + "_" + t_stamp + ".bin"
 
         f_quantl = open("nt_quantl_opencl_" + basefn, "wb")
-        f_residl = open("nt_residl_opencl_" + basefn, "wb")
+        f_chi2 =   open("nt_chi2_opencl_" + basefn, "wb")
         f_thresh = open("nt_thresh_opencl_" + basefn, "wb")
         f_flag =   open("nt_flag_opencl_"  + basefn, "wb")
         f_niter =  open("nt_niter_opencl_"  + basefn, "wb")
@@ -662,13 +723,13 @@ class Normtest:
                 n_frms = np.uint32(cls.n_frms_last_chunk)
                 
                 quantl = np.zeros((n_frms*16*4), dtype=np.float32) # Quantiles
-                residl = np.zeros((n_frms*16), dtype=np.float32)   # Residuals
+                chi2 = np.zeros((n_frms*16), dtype=np.float32)     # Chi^2
                 thresh = np.zeros((n_frms*16), dtype=np.float32)   # Thresholds
                 flag =   np.zeros((n_frms*16), dtype=np.uint16)    # Flags
-                niter =  np.zeros((n_frms*16), dtype=np.uint16) # Iterations
+                niter =  np.zeros((n_frms*16), dtype=np.uint16)    # Iterations
                 
                 buf_quantl = cl.Buffer(ctx, mf.WRITE_ONLY, quantl.nbytes)
-                buf_residl = cl.Buffer(ctx, mf.WRITE_ONLY, residl.nbytes)
+                buf_chi2 = cl.Buffer(ctx, mf.WRITE_ONLY, chi2.nbytes)
                 buf_thresh = cl.Buffer(ctx, mf.WRITE_ONLY, thresh.nbytes)
                 buf_flag = cl.Buffer(ctx,   mf.WRITE_ONLY, flag.nbytes)
                 buf_niter = cl.Buffer(ctx,  mf.WRITE_ONLY, niter.nbytes)
@@ -678,14 +739,14 @@ class Normtest:
             #
 
             cls.m5b_gauss_test_ocl(queue, (global_size,), (local_size,),
-                             buf_dat, buf_ch_mask,  buf_quantl, buf_residl, 
+                             buf_dat, buf_ch_mask,  buf_quantl, buf_chi2, 
                              buf_thresh,  buf_flag, buf_niter,  n_frms).wait()
 
             #
             # Move the results from GPU memory to CPU RAM
             #
             cl.enqueue_copy(queue, quantl, buf_quantl)
-            cl.enqueue_copy(queue, residl, buf_residl)
+            cl.enqueue_copy(queue, chi2, buf_chi2)
             cl.enqueue_copy(queue, thresh, buf_thresh)
             cl.enqueue_copy(queue, flag, buf_flag)
             cl.enqueue_copy(queue, niter, buf_niter)
@@ -703,7 +764,7 @@ class Normtest:
             tic = time.time()
 
             quantl.tofile(f_quantl)
-            residl.tofile(f_residl)
+            chi2.tofile(f_chi2)
             thresh.tofile(f_thresh)
             flag.tofile(f_flag)
             niter.tofile(f_niter)
@@ -718,7 +779,7 @@ class Normtest:
         buf_ch_mask.release()
         # buf_dat.release()
         buf_quantl.release()
-        buf_residl.release()
+        buf_chi2.release()
         buf_thresh.release()
         buf_flag.release()
         buf_niter.release()

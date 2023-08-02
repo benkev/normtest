@@ -8,22 +8,23 @@ help_text = \
 # Single precision floats.
 #
 # Requires:
-# ker_m5b_gauss_test.cu, CUDA kernel.
+# ker_m5b_gauss_test.cu, CUDA kernel code.
 #
 # Usage: 
-# $ python normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]
+# $ python normtest_m5b_cuda_chi2.py <m5b-file-name> [<# of threads per block>]
+#                                                    [-s]
 #
 # Or, from IPython:
 #
 # $ ipython --pylab
-# %run normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]
+# %run normtest_m5b_cuda_chi2.py <m5b-file-name> [<# of threads per block>] [-s]
 #
 # If # of threads is not specified, the optimal (appearingly) 8 is used.
 #
 # If "-s" is present at the end of command line the results are saved in text
 # files with names:
 #    thresholds_*.txt
-#    residuals_*.txt
+#    chi2s_*.txt
 #    n_iterations_*.txt
 #    flags_*.txt
 #    quantiles_*.txt
@@ -138,14 +139,14 @@ tic = time.time()
 #
 # ch_mask[16]:       Channel 2-bit masks
 # quantl[nfrm,16,4]: Quantiles
-# residl[nfrm,16]:   Residuals
+# chi2[nfrm,16]:     chi^2 values
 # thresh[nfrm,16]:   Thresholds
 # flag[nfrm,16]:     Flags
 # niter[nfrm,16]:    Number of fminbnd() iterations 
 #
 # ch_mask = np.zeros(16, dtype=np.uint32)           # Channel 2-bit masks
 # quantl = np.zeros((nfrm*16*4), dtype=np.float32)  # Quantiles
-# residl = np.zeros((nfrm*16), dtype=np.float32)    # Residuals
+# chi2 = np.zeros((nfrm*16), dtype=np.float32)      # chi^2 values
 # thresh = np.zeros((nfrm*16), dtype=np.float32)    # Thresholds
 # flag =   np.zeros((nfrm*16), dtype=np.uint16)     # Flags
 # niter =  np.zeros((nfrm*16), dtype=np.uint16) # Number of iterations fminbnd()
@@ -222,7 +223,7 @@ ch_mask_gpu = gpuarray.to_gpu(ch_mask)
 # Create empty gpu arrays for the result
 #
 quantl_gpu = gpuarray.empty((nfrm*16*4,), np.float32)
-residl_gpu = gpuarray.empty((nfrm*16,), np.float32)
+chi2_gpu = gpuarray.empty((nfrm*16,), np.float32)
 thresh_gpu = gpuarray.empty((nfrm*16,), np.float32)
 flag_gpu =   gpuarray.empty((nfrm*16,), np.uint16)
 niter_gpu =  gpuarray.empty((nfrm*16,), np.uint16)
@@ -246,7 +247,7 @@ kernel_meminfo(m5b_gauss_test)
 #
 # Call the kernel on the GPU card
 #
-m5b_gauss_test(dat_gpu, ch_mask_gpu,  quantl_gpu, residl_gpu, 
+m5b_gauss_test(dat_gpu, ch_mask_gpu,  quantl_gpu, chi2_gpu, 
                thresh_gpu,  flag_gpu, niter_gpu,  nfrm,
                block = (Nthreads, 1, 1), grid = (Nblocks, 1))
 #               block = (int(nfrm), 1, 1))
@@ -254,7 +255,7 @@ m5b_gauss_test(dat_gpu, ch_mask_gpu,  quantl_gpu, residl_gpu,
 
 
 quantl = quantl_gpu.get()
-residl = residl_gpu.get()
+chi2 = chi2_gpu.get()
 thresh = thresh_gpu.get()
 flag =   flag_gpu.get()
 niter =  niter_gpu.get()
@@ -264,7 +265,7 @@ toc = time.time()
 print("\nGPU time: %.3f s." % (toc-tic))
 
 quantl = quantl.reshape(nfrm,16,4)
-residl = residl.reshape(nfrm,16)
+chi2 = chi2.reshape(nfrm,16)
 thresh = thresh.reshape(nfrm,16)
 flag =   flag.reshape(nfrm,16)
 niter =  niter.reshape(nfrm,16)
@@ -273,7 +274,7 @@ niter =  niter.reshape(nfrm,16)
 # Release GPU memory allocated to the large arrays
 #
 del quantl_gpu
-del residl_gpu
+del chi2_gpu
 del thresh_gpu
 del flag_gpu
 del niter_gpu
@@ -303,10 +304,10 @@ with open('result/thresholds_' + fntail, 'w') as fh:
             fh.write('%8g ' % thresh[ifrm,ich])
         fh.write('\n')
 
-with open('result/residuals_' + fntail, 'w') as fh:
+with open('result/chi2s_' + fntail, 'w') as fh:
     for ifrm in range(nfrm):
         for ich in range(16):
-            fh.write('%12g ' % residl[ifrm,ich])
+            fh.write('%12g ' % chi2[ifrm,ich])
         fh.write('\n')
 
 with open('n_iterations_' + fntail, 'w') as fh:

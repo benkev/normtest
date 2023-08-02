@@ -1,5 +1,5 @@
 /*
- *   ker_m5b_gauss_test_chi2.cl
+ *   ker_m5b_gauss_test.cl
  *
  * OpenCL kernel for Normality (Gaussianity) test for M5B files on GPU
  * Single precision floats.
@@ -53,17 +53,17 @@ float fminbndf(float (*func)(float x, float *args), float a, float b,
 // }
 
 
-float residual(float thresh, float *q_obs) {
+float residual(float thresh, float *q_exprm) {
     /*
-     * The function to be minimized to find the optimal quantization threshold
+     * The function minimized to find the optimal quantization threshold
      *
      * Inputs:
      * thresh: theshold for the quantization like:
      *         -inf, thresh, 0, thresh, +inf
-     * q_obs: array of four quantiles of the experimental data
+     * q_exprm: array of four quantiles of the experimental data
      *          from M5B files.
      * Returns:
-     * eps2: sum of squares of the differences between 4 quantiles of 
+     * chi2: sum of squares of the differences between 4 quantiles of 
      *       the standard Gaussian PDF (mean=0, std=1) and 4 quantiles
      *       of a stream from M5B file data. 
      */
@@ -73,56 +73,18 @@ float residual(float thresh, float *q_obs) {
     /* float q_norm = f_normcdf(-thresh); // Inline f_normcdf(-thresh):   */
     float q_norm = 0.5*(1.0 + erf(-thresh/sqrt2));
     float q_norm0 = 0.5 - q_norm;
-    float eps2 = pow(q_norm -  q_obs[0], 2) + pow(q_norm0 - q_obs[1], 2) +
-                 pow(q_norm0 - q_obs[2], 2) + pow(q_norm -  q_obs[3], 2);
-    return eps2;
-}
-
-
-float calc_chi2(float thresh, float *q_obs) {
-    /*
-     * The function to be minimized to find the optimal quantization threshold
-     *
-     * Inputs:
-     * thresh: theshold for the quantization like:
-     *         -inf, thresh, 0, thresh, +inf
-     * q_obs[5]: array of four quantiles of the experimental (observation) data
-     *          from M5B files in its 0th to 3rd elements and the number of
-     *          data in one frame, nfdat_fl, in the 4th element. 
-     *
-     * Returns:
-     * chi2: sum of squares of the differences between 4 quantiles of 
-     *       the standard Gaussian PDF (mean=0, std=1) and 4 quantiles
-     *       of a stream from M5B file observation data divided by the
-     *       observation data quantiles:
-     *       chi^2 = sum_{i=1}^4((q_norm_i - q_obs_i)/q_obs_i)
-     */
-
-    /* q_norm:  quantile of Gaussian in [-inf .. thresh]  [thresh .. +inf] : */
-    /* q_norm0: quantile of Gaussian in [thresh .. 0] and [0 .. thresh] : */
-    /* float q_norm = f_normcdf(-thresh); // Inline f_normcdf(-thresh):   */
-    float nfdat_fl = q_obs[4];  /* Data sample size */
-    float q_norm = 0.5*(1.0 + erf(-thresh/sqrt2));
-    float q_norm0 = nfdat_fl*(0.5 - q_norm);  /* Theoretical frequency */
-    q_norm =        nfdat_fl*q_norm;          /* Theoretical frequency */
-    /* float chi2 = pow(q_norm -  q_obs[0], 2)/q_obs[0] + \ */
-    /*              pow(q_norm0 - q_obs[1], 2)/q_obs[1] + \ */
-    /*              pow(q_norm0 - q_obs[2], 2)/q_obs[2] + \ */
-    /*              pow(q_norm -  q_obs[3], 2)/q_obs[3]; */
-    float chi2 = pow(q_norm -  q_obs[0], 2)/q_norm + \
-                 pow(q_norm0 - q_obs[1], 2)/q_norm0 + \
-                 pow(q_norm0 - q_obs[2], 2)/q_norm0 + \
-                 pow(q_norm -  q_obs[3], 2)/q_norm;
-   return chi2;
+    float chi2 = pow(q_norm -  q_exprm[0], 2) + pow(q_norm0 - q_exprm[1], 2) +
+                 pow(q_norm0 - q_exprm[2], 2) + pow(q_norm -  q_exprm[3], 2);
+    return chi2;
 }
 
 
 // prg.m5b_gauss_test(queue, (Nproc,), (Nwitem,), buf_dat, buf_quantl,
-//              buf_chi2, buf_thresh, buf_flag, buf_niter, nfrm)
+//              buf_residl, buf_thresh, buf_flag, buf_niter, nfrm)
         
 
 __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
-                             __global float *quantl, __global float *chi2,
+                             __global float *quantl, __global float *residl,
                              __global float *thresh, __global ushort *flag,
                              __global ushort *niter, uint nfrm) {
 
@@ -145,7 +107,7 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
     /* 
      * ch_mask[16]:       Channel 2-bit masks
      * quantl[nfrm,16,4]: Quantiles
-     * chi2[nfrm,16]:   Residuals
+     * residl[nfrm,16]:   Residuals
      * thresh[nfrm,16]:   Thresholds
      * flag[nfrm,16]:     Flags
      * niter[nfrm,16]:    Number of fminbnd() iterations
@@ -155,12 +117,12 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
 //  int  idt, ich, ifrmdat, iqua, ixfrm, i, iseq; (cpu)
     uint idt, ich, ifrmdat, iqua, ixfrm, iseq;
     // float (*quantl)[16][4]; /* 4 quantiles of  data for 16 channels */
-    float q_obs[5] = {0., 0., 0., 0., 0.}; 
+    float q_exprm[4]; /* Holds normalized quantiles, sum(q_exprm) = 1 */
     
     // __global uint *ptim1 = NULL, *ptim2 = NULL;
     __global uint *pfrm = NULL, *pdat = NULL;
     __global float *pqua = NULL, *pqua_ch = NULL;
-    __global float *pchi2 = NULL, *pthresh = NULL;
+    __global float *presidl = NULL, *pthresh = NULL;
     __global ushort *pniter = NULL,  *pflag = NULL;
     
     int nitr = 0;    /* Number of calls to the optimized function residual() */
@@ -170,7 +132,6 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
     int good_frame = 0;     /* Boolean */
 
     float nfdat_fl = (float) nfdat;
-    q_obs[4] = nfdat_fl;  /* number of data in one frame (sample size) */
 
     ixfrm = ifrm*frmwords;
 
@@ -191,7 +152,8 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
                    (pfrm[2] == fill_pattern) && (pfrm[3] == fill_pattern));
 
     /* Set pointer to the start of data block in the frame */
-    pdat = pfrm + 4;
+    /* pdat = pfrm + 4; */
+    pdat = pfrm + nfhead;
         
     /* 
      * Zeroize the quantiles for current frame: all channels. 
@@ -204,7 +166,7 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
     /* To work with the arrays of results, set pointers
      * to the starts of current frame's result data */ 
     ix_nch = ifrm*nch;  /* Index at the 16-ch section of the 1D arrays */
-    pchi2 = chi2 + ix_nch;
+    presidl = residl + ix_nch;
     pthresh = thresh + ix_nch;
     pniter = niter + ix_nch;
     pflag =  flag + ix_nch;
@@ -218,8 +180,8 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
          * Sum up the quantiles from the 2500 data words for all 16 channels
          *
          * In the following loop over the 2500 words of current frame
-         * data block, for each of 16 streams the 4 unnormalized quantiles
-         * are counted as numbers of occurrencies of the the binary values 
+         * data block. For each of 16 streams the 4 unnormalized quantiles
+         * are counted as numbers of occurrencies of the binary values 
          * 00, 01, 10, 11. 
          *
          */
@@ -228,7 +190,6 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
             for (ich=0; ich<nch; ich++) {
                 /* 2-bit-stream value */
                 ch_bits = pdat[idt] & ch_mask[ich];  /* Channel bits */
-
                 /* Move the 2-bit-stream of the ich-th channel to the
                  * rightmost position in the 32-bit word  chbits
                  * to get the quantile index iqua from 0,1,2,3 */
@@ -243,25 +204,29 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
         }
 
         /* 
-         * Finding optimal quantization thresholds and chi^2-s
+         * Finding optimal quantization thresholds and residuals
          * in current frame for all the 16 channels
          * using the accumulated quantiles' frequencies in quantl[ifrm][16][4]
          */
         for (ich=0; ich<nch; ich++) {
-
-            /* 1D array pqua_ch[i] == quantl[ifrm][ich][i] */
+            /*
+             * Normalize the quantiles dividing them by the frame size
+             * so that their sum be 1: sum(q_exprm) == 1.
+             *
+             * 1D array pqua_ch[i] == quantl[ifrm][ich][i]
+             */
             pqua_ch = quantl + (ix_nch + ich)*nqua; 
             
-            q_obs[0] = *pqua_ch++;
-            q_obs[1] = *pqua_ch++;
-            q_obs[2] = *pqua_ch++;
-            q_obs[3] = *pqua_ch++;
+            q_exprm[0] = *pqua_ch++ / nfdat_fl;
+            q_exprm[1] = *pqua_ch++ / nfdat_fl;
+            q_exprm[2] = *pqua_ch++ / nfdat_fl;
+            q_exprm[3] = *pqua_ch++ / nfdat_fl;
 
             /* The same in the array-index notation: */
-            // q_obs[0] = (quantl[ifrm][ich][0]);
-            // q_obs[1] = (quantl[ifrm][ich][1]);
-            // q_obs[2] = (quantl[ifrm][ich][2]);
-            // q_obs[3] = (quantl[ifrm][ich][3]);
+            // q_exprm[0] = (quantl[ifrm][ich][0]) / nfdat_fl;
+            // q_exprm[1] = (quantl[ifrm][ich][1]) / nfdat_fl;
+            // q_exprm[2] = (quantl[ifrm][ich][2]) / nfdat_fl;
+            // q_exprm[3] = (quantl[ifrm][ich][3]) / nfdat_fl;
 
 
             /*
@@ -270,27 +235,22 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
              * used find the optimal value of the signal rms (i.e. STD), 
              * which provides the minimum residual between quantiles of 
              * the Gaussian PDF and those of the 2-bit streams 
-             * from M5B files.
-             *
-             * The results are the optimal quantization threshold, th0,
-             * and the corresponding to th0 chi^2 value in res.
+             * from M5B files. 
              */
 #ifdef __amd
-            /* On AMD GPU functions as arguments are NOT allowed */ 
-            th0 = fminbndf_amd(0.5, 1.5, q_obs, xatol, maxiter,
+            th0 = fminbndf_amd(0.5, 1.5, q_exprm, xatol, maxiter,
                            &res, &nitr, &flg, 0);
 #else
-            /* On Nvidia GPU functions as arguments are allowed */ 
-            th0 = fminbndf(*calc_chi2, 0.5, 1.5, q_obs, xatol, maxiter,
+            th0 = fminbndf(*residual, 0.5, 1.5, q_exprm, xatol, maxiter,
                            &res, &nitr, &flg, 0);
 #endif
-            pchi2[ich] = res;
+            presidl[ich] = res;
             pthresh[ich] = th0;
             pniter[ich] = nitr;
             pflag[ich] = flg;
             
             /* OR (which is much clearer): */
-            // chi2[ifrm][ich] = res;
+            // residl[ifrm][ich] = res;
             // thresh[ifrm][ich] = th0;
             // niter[ifrm][ich] = nitr;
             // flag[ifrm][ich] = flg;
@@ -306,7 +266,7 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
              * with zeros to indicate absence of results.
              * The flags are set to all-ones.
              */
-            pchi2[ich] = 0.0;
+            presidl[ich] = 0.0;
             pthresh[ich] = 0.0;
             pniter[ich] = 0;
             pflag[ich] = 1;

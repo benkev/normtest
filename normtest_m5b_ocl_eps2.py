@@ -1,14 +1,14 @@
 help_text = \
 '''
 #
-#   normtest_m5b_ocl.py
+#   normtest_m5b_ocl_eps2.py
 # 
 # Normality (Gaussianity) test for M5B files on GPU
 # using PyOpenCL package.
 # Single precision floats.
 #
 # Requires:
-# ker_m5b_gauss_test.cl, OpenCL kernel.
+# ker_m5b_gauss_test_eps2.cl, OpenCL kernel.
 #
 # Usage: 
 # $ python normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]
@@ -235,7 +235,7 @@ buf_niter = cl.Buffer(ctx,  mf.WRITE_ONLY, niter.nbytes)
 #
 # Read the kernel code from file into the string "ker"
 #
-kernel = "ker_m5b_gauss_test.cl"
+kernel = "ker_m5b_gauss_test_eps2.cl"
 
 with open (kernel) as fh: ker = fh.read()
 
