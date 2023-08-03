@@ -168,7 +168,8 @@ for ich in range(16):
     Fthr = Fnorm(-thr)
     qnor = 1.9*np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])
     
-    barloc = np.array([-2.5, -thr/2, thr/2, 2.5])
+    barloc = np.array([-2.0, -thr/2, thr/2, 2.0])
+
     pl.plot(xrul, f_pdf, 'orange')
     pl.fill_between(xrul, f_pdf, where=(-10<xrul)&(xrul<=-thr), color='b')
     pl.fill_between(xrul, f_pdf, where=(-thr<xrul)&(xrul<=0), color='m');
@@ -181,6 +182,7 @@ for ich in range(16):
     # pl.plot([thr,thr], [0,0.6], 'k--', lw=0.7)     # Vert. line +threshold
     pl.plot([-thr,-thr], [0,0.75], 'k--', lw=0.7)   # Vert. line -threshold
     pl.plot([thr,thr], [0,0.75], 'k--', lw=0.7)     # Vert. line +threshold
+    pl.plot([0,0], [0,0.75], 'k--', lw=0.7)     # Vert. line 0
     pl.xticks([-2,0,2], ["$-2\sigma$", "$0$", "$2\sigma$"], fontsize=9)
     pl.yticks([])
     # pl.text(-thr-0.7, 0.65, r"$-\theta$")
@@ -195,7 +197,11 @@ for ich in range(16):
     pl.ylim(-0.03, 1.0)
     # pl.ylim(-0.05, 0.85)
     pl.text(xl[0], 0.9, r"$\theta=\pm%4.2f$;" % thr, fontsize=8)
-    pl.text(-0.6, 0.9, r"$\chi^2=%4.1f$;" % c2_obs[ich], fontsize=8)
+    if c2_obs[ich] > chi2cr:
+        pl.text(-0.6, 0.9, r"$\chi^2=%4.1f$;" % c2_obs[ich], fontsize=8,
+                color="r") # Print in RED, if chi^2 is over the critical value 
+    else:
+        pl.text(-0.6, 0.9, r"$\chi^2=%4.1f$;" % c2_obs[ich], fontsize=8)
     pl.text(xl[1]-1.1, 0.9, "ch %2d" % ich, fontsize=8)
     #pl.grid(1)
 
@@ -203,8 +209,13 @@ for ich in range(16):
 # pl.figtext(0.5, 0.05, r"* Quantization Thresholds $\pm\theta$: " \
 #            r"MUST be $|\theta|\, > 0.6745 \, \sigma$", \
 #            fontsize=20, ha='center')
-pl.figtext(0.5, 0.005, r"File: %s; Start frame %d, frames %d" %
-           (fm5b, frm0, n_frms), fontsize=13, ha='center')
+if n_frms > 1:
+    pl.figtext(0.5, 0.005, r"File: %s;  Start frame: %d, total of %d frames" %
+               (fm5b, frm0, n_frms), fontsize=13, ha='center')
+else:
+    pl.figtext(0.5, 0.005, r"File: %s;  Frame: %d" %
+               (fm5b, frm0), fontsize=13, ha='center')
+    
 
 pl.subplots_adjust(top=0.935, bottom=0.055, left=0.035, right=0.965,
                    hspace=0.2, wspace=0.2)
