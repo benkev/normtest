@@ -8,24 +8,42 @@ package or a GPU using PyOpenCL package. Single precision floats.
 This module provides "transparent" access to the GPU independent of the
 software framework used, CUDA or OpenCL.
 
-The module contains class normtest. It is not intended to create multiple
+The module contains class Normtest. It is not intended to create multiple
 class instances (althoug it is surely possible). When imported, it 
 probes the system to find what GPU frameworks are installed. It chooses
 automatically between PyCUDA and OpenCL and initializes the relevant 
 data structures. In case both frameworks are installed, it prefers
-PyCUDA since it is ~1.5 times faster than PyOpenCL.
+PyCUDA since it is ~1.5 times faster than PyOpenCL. 
+
+--------- FUTURE WORK --------------------------- FUTURE WORK ----------------
+However, it is possible to overwrite the framework using the class method
+
+Normtest.set_fw(fw="").
+
+Parameter:
+    fw: framework to use. It can be "cuda", "opencl", or None.
+        If fw="", nothing changes. 
+--------- FUTURE WORK --------------------------- FUTURE WORK ----------------
+
+    Class method Normtest.do_m5b(m5b_filename [, nthreads=8])
 
 The normtest class provides a "class method" do_m5b(m5b_filename),
 which runs the normality test on the available GPU and the software
 framework selected. If the M5B file is large and it does not fit into either
 system RAM or the GPU ram, it is processed in chunks. The results are saved 
-in binary files. 
-   
+in binary files.
+Parameter:
+    nthreads: number of threads per block (in CUDA terminology), and, 
+              which is the same, number of work items per work group 
+              (in OpenCL terms).
+
 The do_m5b(m5b_filename) method uploads the M5B file chunk into the GPU memory
 and launches one of the kernels, ker_m5b_gauss_test.cu or 
 ker_m5b_gauss_test.cl, dependent on the framework type. The results are saved
-in the binary files. The file have the following names: 
+in the binary files. The file have the following names:
+
     nt_<data>_<framework>_<m5b_basename>_<timestamp>.bin,
+
 where <data> is the result types:
 
 quantl: dtype=np.float32, shape=(n_frames,16,4), 4 quantiles for 16 channels;
@@ -79,7 +97,7 @@ class Normtest:
     #quota_dat = 0.95  # Quota of dat array in overall GPU data (approx)
     #quota_dat = 0.90  # Quota of dat array in overall GPU data (approx)
     #quota_dat = 0.85  # Quota of dat array in overall GPU data (approx)
-    quota_dat = 0.93    # Works on Nvidia
+    quota_dat = 0.93    # Works on Nvidia GPUs
     quota_dat = 0.80    # ??????????????
     
     #
@@ -90,10 +108,7 @@ class Normtest:
 
     #
     # In case both are installed, prefer PyCUDA since it is ~1.5 times faster
-    #
-    # use_pycyda = False
-    # use_pyopencl = False
-    
+    #    
     gpu_framework = ""
     if pycuda_installed:
         gpu_framework = "cuda"     # Use PyCUDA even if PyOpenCL installed
@@ -203,10 +218,9 @@ class Normtest:
         m5b_gauss_test_ocl = prog_opencl.m5b_gauss_test
 
 
-    # ##########@classmethod
-    # def do_m5b_cuda(cls):
-    #     print("\n\nCUDA")
-
+    @classmethod
+    def set_fw(cls, fw=""): # Set GPU framework to use, "cuda" or "opencl"
+        pass
 
         
     @classmethod

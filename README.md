@@ -20,11 +20,38 @@ automatically between PyCUDA and OpenCL and initializes the relevant
 data structures. In case both frameworks are installed, it prefers
 PyCUDA since it is ~1.5 times faster than PyOpenCL.
 
+
+--------- FUTURE WORK --------------------------- FUTURE WORK ----------------
+However, it is possible to overwrite the framework using the class method
+
+Normtest.set_fw(fw="").
+
+Parameter:
+    fw: framework to use. It can be "cuda", "opencl", or None.
+        If fw="", nothing changes. 
+--------- FUTURE WORK --------------------------- FUTURE WORK ----------------
+
+    Class method Normtest.do_m5b(m5b_filename [, nthreads=8])
+
 The normtest class provides a "class method" do_m5b(m5b_filename),
 which runs the normality test on the available GPU and the software
 framework selected. If the M5B file is large and it does not fit into either
 system RAM or the GPU ram, it is processed in chunks. The results are saved 
-in binary files. 
+in binary files.  The file have the following names:
+
+    nt_<data>_<framework>_<m5b_basename>_<timestamp>.bin,
+
+where <data> is the result types:
+
+quantl: dtype=np.float32, shape=(n_frames,16,4), 4 quantiles for 16 channels;
+chi2:   dtype=np.float32, shape=(n_frames,16), chi^2 for 16 channels;
+thresh: dtype=np.float32, shape=(n_frames,16), quantization thresholds found
+        for 16 channels;
+flag:   dtype=np.uint16, shape=(n_frames,16), flags for 16 channels; 
+niter:  dtype=np.uint16, shape=(n_frames,16), number of iterations of Brent's
+        optimization method used to find the optimal quantization threshold
+        for 16 channels;
+
    
 Example:
    
@@ -156,8 +183,20 @@ to compare.
 
 Running:
 %run test_m5b.py <m5b_filename>
- 
-6. inspect_nt.py
+
+
+6. plot_m5b_hist.py
+
+Plots two histograms of the results from gpu_m5b.py for the whole 
+M5B (or M5A) file: 
+6.1. Distribution of chi^2 and a red marker showing position of the critical
+     chi^2 value (7.81), as well as the percent of chi^2 exceeding it.
+6.2. Distribution of the optimal quantization thresholds and a red marker
+     showing position of the critical threshold value (0.6745 rms), as well as
+     the percent of the thresholds that failed to reach it.
+
+
+7. inspect_nt.py
 
 This script creates 4x4 plots of 16 histograms for each of the 16 channels.
 The plots are for one or several (averaged) frames. The histograms are compared
@@ -167,15 +206,16 @@ quantiles the observation data are drawn. For each plot the chi^2 is printed.
 The data are read from the *.bin files created with the gpu_m5b_chi2.py.
 
 Running:
+
 %run inspect_nt.py <m5b_filename> <timestamp> <start_frame_#> <#_of_frames> 
 
 Some interesting frames:
-6.1. These plots show that the Pearson's chi^2 cannot be used. The histograms 
+7.1. These plots show that the Pearson's chi^2 cannot be used. The histograms 
 are very far from the normal distributions, but most of the chi^2 values
 are very small and signal "normality"
 %run inspect_nt.py rd1903_ft_100-0950.m5b 025 97737 1
 
-6.2. These plots are definitely from the uniform distributions, and yet, most
+7.2. These plots are definitely from the uniform distributions, and yet, most
 of the chi^2 values are very small and signal "normality". The pearson's
 criterion also does not work.
 %run inspect_nt.py rd1903_ft_100-0950.m5b 025 4 1
@@ -183,7 +223,7 @@ criterion also does not work.
 %run inspect_nt.py rd1903_ft_100-0950.m5b 025 389930 1
 %run inspect_nt.py rd1903_ft_100-0950.m5b 025 6832715 1
 
-6.3. These plots show close to normal histograms with good chi^2 values, i.e.
+7.3. These plots show close to normal histograms with good chi^2 values, i.e.
 < 7.81.
 %run inspect_nt.py rd1910_wz_268-1811.m5b 970 200 1
 %run inspect_nt.py rd1910_ny_269-1404.m5a 395 7139 1

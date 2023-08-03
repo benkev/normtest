@@ -1,6 +1,15 @@
-#
-# plot_m5b_hist.py
-#
+help_text = \
+'''
+plot_m5b_hist.py
+
+Plots two histograms of the results from gpu_m5b.py for the whole 
+M5B (or M5A) file: 
+1. Distribution of chi^2 and a red marker showing position of the critical
+     chi^2 value (7.81), as well as the percent of chi^2 exceeding it.
+2. Distribution of the optimal quantization thresholds and a red marker
+     showing position of the critical threshold value (0.6745 rms), as well as
+     the percent of the thresholds that failed to reach it.
+'''
 
 import sys, os
 import numpy as np
