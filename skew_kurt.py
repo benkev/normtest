@@ -54,6 +54,14 @@ sk = np.sqrt(N)*(mu[0]**3*(qu[:,2]**3 - qu[:,1]**3) +       \
                  (mu[0]**2*(qu[:,1]**2 + qu[:,2]**2) +       \
                   mu[1]**2*(qu[:,0]**2 + qu[:,3]**2))**1.5
 
+sig2 = (mu[0]**2*(qu[:,1]**2 + qu[:,2]**2) +       \
+        mu[1]**2*(qu[:,0]**2 + qu[:,3]**2))/N
+
+print("sig2[0..15] =")
+print(sig2)
+
+print("sig[0..15] =")
+print(np.sqrt(sig2))
 
 print("sk[0..15] =")
 print(sk)
@@ -61,5 +69,15 @@ print(sk)
 
 
 
+
+def interval_mean(a, b, mu=0, sigma=1):
+    # Define the weighted function (x * PDF)
+    f = lambda x: x*npdf(x, mu, sigma)
+    
+    # Integrate the weighted function and the PDF over the interval
+    integral_f = integrate.quad(f, a, b)[0]
+    integral_pdf = integrate.quad(lambda x: npdf(x, mu, sigma), a, b)[0]
+    
+    return integral_f / integral_pdf
 
 
