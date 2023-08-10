@@ -64,7 +64,6 @@ fchi2_name = fchi2s[0]
 #
 # Find file offsets to read the data from
 #
-
 cnt_q = 16*4*n_frms          # float32 words for quantiles
 offs_qdat = 16*4*4*frm0      # Offset bytes for quantiles  
 
