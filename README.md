@@ -229,5 +229,22 @@ criterion also does not work.
 %run inspect_nt.py rd1910_ny_269-1404.m5a 395 7139 1
 
 
+8. plot_25pc_npdf_expectations.py
+
+Plots the normal curve N(0,1) divided vertically into 4 equal areas under the 
+curve (25%-quantiles). The division lines are at -0.6745, 0, and +0.6745. 
+For each of the areas, the math expectations are computed, they are at 
+    -1.27, -0.32, 0.32, and 1.27 (in STDs). 
+Thse are the most probable analog signal values before the quantization with
+the *ideal* thresholds -0.6745, 0, and +0.6745, which provide the uniform 
+arrangement of the discrete signal in the 4 bins.  
+
+
+9. skew_kurt.py
+
+Calculates skewness and kurtosis of a frame in M5B or M5A file.
+The data positions (in STDs) are assumed at the 25%-quantile math expectations,
+  mu0 = -1.27, mu1 = -0.32, mu2 = 0.32, and mu3 = 1.27.
+
 
 

@@ -1,3 +1,13 @@
+help_text = '''
+
+skew_kurt.py
+
+Calculate skewness and kurtosis of a frame in M5B or M5A file.
+The data positions (in STDs) are assumed at the 25%-quantile math expectations,
+  mu0 = -1.27, mu1 = -0.32, mu2 = 0.32, and mu3 = 1.27.
+
+'''
+
 import os, sys
 import getopt, glob
 import numpy as np
