@@ -56,14 +56,42 @@ with open(fcode, 'rb') as fc:
 
 #
 # Write the cod contents into the M5B file frames (not touching the frame
-# headers) starting from frm0 frame
+# headers) starting from (frm0+n_frmbytes).
 #
 icod0 = 0
 icod1 = n_frmdatbytes
 
 m5b_offs = frm0*n_frmbytes + 4*n_bytes_uint32
 
+#
+# The frm0 frame is filled with uniformly distributed data
+# in all the 16 channels. The cod contents start from (frm0+n_frmbytes).
+#
+# udata_8b = np.zeros(n_frmdatbytes, dtype=np.uint8)
+# fill_ptrn = np.array([0x00, 0x55, 0xAA, 0xFF], dtype=np.uint8)
+
+udata_8b = np.zeros(n_frmdatwords, dtype=np.uint32)
+fill_ptrn = np.array([0x00000000, 0x55555555, 0xAAAAAAAA, 0xFFFFFFFF],
+                     dtype=np.uint32)
+
+ip = 0
+for iu in range(n_frmdatwords):
+    udata_8b[iu] = fill_ptrn[ip]
+    ip = (ip + 1) % 4              # ip = 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, ...
+
+udata = udata_8b.tobytes()  # Uniformly distributed frame data bypes string
+
+sys.exit("Exit.")
+
 with open(fm5b, 'r+b') as fm:
+
+    # Write the uniformly distributed frame
+    fm.seek(m5b_offs)
+    fm.write(udata)
+    m5b_offs += n_frmbytes
+
+    
+    # Write the cod contents
     for ifrm in range(n_whole_codefrms):
         fm.seek(m5b_offs)
         fm.write(cod[icod0:icod1])
