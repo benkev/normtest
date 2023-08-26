@@ -73,6 +73,9 @@ m5b_offs = frm0*n_frmbytes + 4*n_bytes_uint32
 udata_8b = np.zeros(n_frmdatwords, dtype=np.uint32)
 fill_ptrn = np.array([0x00000000, 0x55555555, 0xAAAAAAAA, 0xFFFFFFFF],
                      dtype=np.uint32)
+# udata_8b = np.zeros(n_frmdatwords, dtype='>u4')                 # Big-endian
+# fill_ptrn = np.array([0x00000000, 0x55555555, 0xAAAAAAAA, 0xFFFFFFFF],
+#                      dtype='>u4')                               # Big-endian
 
 ip = 0
 for iu in range(n_frmdatwords):
@@ -81,7 +84,7 @@ for iu in range(n_frmdatwords):
 
 udata = udata_8b.tobytes()  # Uniformly distributed frame data bypes string
 
-sys.exit("Exit.")
+# sys.exit("Exit.")
 
 with open(fm5b, 'r+b') as fm:
 
