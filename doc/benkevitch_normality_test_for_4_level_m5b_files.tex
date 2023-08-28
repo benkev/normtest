@@ -41,10 +41,7 @@ We offer a solution based on comparing the data statistics with the correspondin
 
 \section{Theory}
 
-An M5B file can be considered as an array of data 10016-byte frames. Each frame consists of 2504 32-bit words (\verb@unsigned int@ or  \verb@uint@ in C/C++). The first 4 words comprise the frame header, so a frame has 2500 words of pure data. Each 32-bit data word is subdivided into 16 2-bit channels, numbered from 0 to 15. 
-
-Consider an analog signal $x(t)$ and the result of its quantization $\hat{x}(t)$ streamed in a single channel. Our aim is obtaining components of the mathematical expectation of the quantizer output $\hat{x}(t)$. Here we follow the reasoning by [Schwab, 2002]. In general case, the quantization function $\hat{x} = q(x)$ is specified by a tuple of $n+1$ input voltage thresholds, 
-$-\infty \equiv v_0 < v_1 < v_2 < \ldots  < v_{n-1} < v_n \equiv +\infty$, and a tuple of $n$ quantizer output levels, $\{ w_1, w_2, \ldots w_n \}$. The quantizer outputs $q(x) = w_k$ whenever $v_{k-1} < x < v_k$.
+The M5B file can be considered as an array of 10016-byte frames. Each frame consists of 2504 32-bit words (\verb@unsigned int@ or  \verb@uint@ in C/C++). The first 4 words comprise the frame header, so a frame has 2500 words of pure data. Each 32-bit data word is subdivided into 16 2-bit channels, numbered from 0 to 15. 
 
 The input voltage $x(t)$ is expected to be sampled from the normal distribution with the mean $\mu$ and the standard deviation $\sigma$, characterized by the probability density function (PDF) 
 
