@@ -1,5 +1,7 @@
 \documentclass[letterpaper,twoside,12pt]{article}
 \usepackage[dvips]{graphicx}
+\usepackage[margin=0.8in]{geometry}
+\usepackage{caption}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage[T1]{fontenc}
@@ -33,78 +35,53 @@ The radio astronomy data from a single dish are recorded in M5B (Mark-5) or VDIF
 
 The problem may be thought about from a security standpoint. Suppose someone (a malicious character) wishes to hack a system and figures an approach would be to embed some malicious code in. Is it possible to detect the embedded (non-Gaussian) data within a frame or multiple frames before the correlator? Also, even though an algorithm can be determined, is it possible to ensure its implementation is fast enough? The data files are large (up to a hundred gigabytes).
 
-At the current stage of work we only consider M5B files. The data in M5B format are streamed in 16 channels, 2-bit width each, resulted from a 4-level quantization. The 2-bit shortness of the integers with the 4 possible values, 0, 1, 2, and 3, makes it difficult to use standard statistical tests for normality, such as the one based on Pearson's $\chi^2$ test.     
- 
-We offer a solution based on comparing the data statistics with the corresponding quantiles of standard normal distribution. The algorithm runs on the GPU (Graphics Processing Unit), which provides high speed computations.
+Our solution is based on Pearson's $\chi^2$ test. The null hypothesis states that the data in file  are consistent with the normal distribution. If the data in a part of the file do not pass the test at the significance level 0.05, the null hypothesis is rejected, and the data fragment is flagged.
+
+The algorithm runs on the GPU (Graphics Processing Unit), which provides high speed computations.
 \end{abstract}
 
 
-\section{Theory}
+\section{Quantization and M5B Data Structure}
 
-The M5B file can be considered as an array of 10016-byte frames. Each frame consists of 2504 32-bit words (\verb@unsigned int@ or  \verb@uint@ in C/C++). The first 4 words comprise the frame header, so a frame has 2500 words of pure data. Each 32-bit data word is subdivided into 16 2-bit channels, numbered from 0 to 15. 
-
-The input voltage $x(t)$ is expected to be sampled from the normal distribution with the mean $\mu$ and the standard deviation $\sigma$, characterized by the probability density function (PDF) 
+The analog signal from a single antenna/dish is supposed to be Gaussian noise $N(\mu,\sigma)$ with the expectation $\mu$ and standard deviation (rms) $\sigma$ distributed according to the normal law with the probability density function (PDF):
 
 \begin{equation}
   \label{normal_pdf}
-  p(x) =  \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{•(x-\mu)^2}{2\sigma^2}}.
+  N(\mu,\sigma) =  \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{•(x-\mu)^2}{2\sigma^2}}.
 \end{equation}
 
-Then the expectation of the quantizer output is
-
-\begin{equation}
-  \label{x_expect}
-  [\hat{x}] = \sum_{i=1}^n \int_{v_{i-1}}^{v_i} w_i \, p(x) \, \ud x =  
-  \sum_{i=1}^n w_i \int_{v_{i-1}}^{v_i} \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{•(x-\mu)^2}{2\sigma^2}} \, \ud x.
-\end{equation}
-
-The latter integrals are called quantiles of the normal distribution,
-
-\begin{equation}
-  \label{quantile}
-  Q(v_{i-1}, v_i) = \frac{1}{\sigma\sqrt{2\pi}} \int_{v_{i-1}}^{v_i} e^{-\frac{•(x-\mu)^2}{2\sigma^2}} \, \ud x,
-\end{equation}
-
-and Eq.~\eqref{x_expect} can be rewritten as
-
-\begin{equation}
-  \label{x_expect_quantile}
-  [\hat{x}] = \sum_{i=1}^n { w_i Q(v_{i-1}, v_i)}.
-\end{equation}
-
-As we can see, a quantile $Q(v_{i-1}, v_i) = Q_i$ is the probability that quantizer output equals $w_i$ when the input voltage falls within the interval $[v_{i-1} \ldots {v_i}]$. Its expectation, $[\hat{x}]$, is not as useful (for a symmetric quantizer and zero-centered Gaussian noise it equals zero anyway) as its components in Eq.~\eqref{x_expect_quantile}.
-
-Suppose a channel data segment has $N$ numbers total, and each quantizer output $w_i$ occurs $N_i$ times, so $N = N_1 + N_2 + \ldots + N_n$. As the real-world data in a channel are sampled from the Gaussian distribution, we should expect that the quantizer outputs $w_i$ occur at the relative frequencies $\hat{Q_i} = N_i / N$, converging to the theoretical Gaussian quantiles $Q_i$ with growing $N$. Hence the measure of normality, i.e. proximity of the empirical data to the Gaussian distribution, can be experssed as
-
-\begin{equation}
-  \label{q_err}
-  \varepsilon^2 = \sum_{i=1}^n {(\hat{Q_i} - Q_i)^2}.
-\end{equation}
-
-The squared error $\varepsilon^2$ is distributed as $\chi^2$
+The signal is centered to ensure zero $\mu$ and its band is filtered into 16 frequency channels each of which is passed through the 4-level quantizer with the characteristic shown in Fig.~\ref{qpat4lvl}.  The quantizer has just three switching thresholds, $-\theta$, 0, and $\theta$, so it is characterized with the only parameter, the adjustable quantization threshold $\pm\theta$. Note that the hardware deals with voltage thresholds, $\pm v_0$, but $\theta$ is expressed in the signal STDs, thus it is dimensionless, $\theta = v_0/\sigma$. The quantizer output only takes four values as in Tab.~\ref{quant_io}. These values are saved in the M5B file.
 
 
+\begin{figure}[h!]
+  \begin{center}
+  \includegraphics[width=25pc]{fig_4_Level_Quantization_Pattern_impr.eps}
+  %\noindent\includegraphics[width=20pc]{fig_4_Level_Quantization_Pattern_impr.eps}
+  %\includegraphics[width=\linewidth]{}
+  \caption{4-level quantization.}
+  \label{qpat4lvl}
+  \end{center}
+\end{figure}
 
 
+\begin{table}[h!]
+  \begin{center}
+    \caption{Quantizer}
+    \label{quant_io}
+    \begin{tabular}{c|c}
+      \textbf{Input} & \textbf{Output} \\
+      \hline
+      $-\infty$ to $-\theta$ & 0 \\
+      $-\theta$ to 0         & 1 \\
+      0 to $\theta$          & 2 \\
+      $\theta$ to $+\infty$  & 3 \\
+    \end{tabular}
+  \end{center}
+\end{table}
 
 
+The M5B file can be considered as an array of 10016-byte frames. Each frame consists of 2504 32-bit words (\verb@unsigned int@ or  \verb@uint@ in C/C++). The first 4 words comprise the frame header, so a frame has 2500 words of pure data. Each 32-bit data word is subdivided into 16 2-bit channels, numbered from 0 to 15. 
 
-
-
-
-
-
-
-
-
-
-
-
-
-.\linebreak[4] \linebreak[4] \linebreak[4]
-
-
-In our case, the quantizer has three threshold voltage levels.
 
 
 
