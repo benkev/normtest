@@ -82,7 +82,8 @@ The signal is centered to ensure zero $\mu$ and its band is filtered into 16 fre
 
 The M5B file can be considered as an array of 10016-byte frames. Each frame consists of 2504 32-bit words (\verb@unsigned int@ or  \verb@uint@ in C/C++). The first 4 words comprise the frame header, so a frame has 2500 words of pure data. Each 32-bit data word is subdivided into 16 2-bit channels, numbered from 0 to 15. 
 
-The 
+
+Hereafter, we call $Q_i$ 
 
 
 
