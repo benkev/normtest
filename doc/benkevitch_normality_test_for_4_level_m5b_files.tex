@@ -47,10 +47,10 @@ The analog signal from a single antenna/dish is supposed to be Gaussian noise $N
 
 \begin{equation}
   \label{normal_pdf}
-  N(\mu,\sigma) =  \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{•(x-\mu)^2}{2\sigma^2}}.
+  N(\mu,\sigma) =  \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}.
 \end{equation}
 
-The signal is centered to ensure zero $\mu$ and its band is filtered into 16 frequency channels each of which is passed through the 4-level quantizer with the characteristic shown in Fig.~\ref{qpat4lvl}.  The quantizer has just three switching thresholds, $-\theta$, 0, and $\theta$, so it is characterized with the only parameter, the adjustable quantization threshold $\pm\theta$. Note that the hardware deals with voltage thresholds, $\pm v_0$, but $\theta$ is expressed in the signal STDs, thus it is dimensionless, $\theta = v_0/\sigma$. The quantizer output only takes four values as in Tab.~\ref{quant_io}. These values are saved in the M5B file.
+The signal is centered to ensure zero $\mu$ and its band is filtered into 16 frequency channels each of which is passed through the 4-level quantizer with the characteristic shown in Fig.~\ref{quant4lvl}.  The quantizer has just three switching thresholds, $-\theta$, 0, and $\theta$, so it is characterized with the only parameter, the adjustable quantization threshold $\pm\theta$. Note that the hardware deals with voltage thresholds, $\pm v_0$, but $\theta$ is expressed in the signal STDs, thus it is dimensionless, $\theta = v_0/\sigma$. The quantizer output only takes four values as in Tab.~\ref{quant_io}. These values are saved in the M5B file.
 
 
 \begin{figure}[h!]
@@ -59,7 +59,7 @@ The signal is centered to ensure zero $\mu$ and its band is filtered into 16 fre
   %\noindent\includegraphics[width=20pc]{fig_4_Level_Quantization_Pattern_impr.eps}
   %\includegraphics[width=\linewidth]{}
   \caption{4-level quantization.}
-  \label{qpat4lvl}
+  \label{quant4lvl}
   \end{center}
 \end{figure}
 
@@ -81,6 +81,12 @@ The signal is centered to ensure zero $\mu$ and its band is filtered into 16 fre
 
 
 The M5B file can be considered as an array of 10016-byte frames. Each frame consists of 2504 32-bit words (\verb@unsigned int@ or  \verb@uint@ in C/C++). The first 4 words comprise the frame header, so a frame has 2500 words of pure data. Each 32-bit data word is subdivided into 16 2-bit channels, numbered from 0 to 15. 
+
+The 
+
+
+
+\section{ Data }
 
 
 
