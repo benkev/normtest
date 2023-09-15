@@ -59,7 +59,7 @@ c2n = np.sum((qobs - N*qnor)**2 / N*qnor, axis=2)
 # Therefore, the number of degrees of freedom for chi^2 distribution
 # is 2 = 4 - 2.
 #
-df = 2
+df = 3
 
 c2r = c2/df   # Reduced chi^2
 
