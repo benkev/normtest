@@ -1,7 +1,7 @@
 /*
  * fminbndf.cu
  *
- * Single precision version
+ * Single precision version of the Brent's linear minimization method.
  */
 
 #define sign(x) ((x) > 0.0) ? 1.0 : (((x) < 0.0) ? -1.0 : 0.0)

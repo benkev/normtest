@@ -14,28 +14,6 @@ import matplotlib.pyplot as pl
 
 F = lambda x: 0.5*(1 + math.erf(x/math.sqrt(2)))
 
-def calc_hserr(xt, thr, prres=False):
-    """
-    Calculate error between the normal quantile histograms of the experimental
-    signal data xt and the corresponding quantiles of the normal distribution.
-    The quantiles are for [-inf..-thr], [-thr..0], [0..thr] [thr..+inf].
-    """
-    Fthr = F(-thr)
-    # hsnor = np.array([F(-thr), F(0)-F(-thr), F(thr) - F(0), 1 - F(0.92)])
-    hsnor = np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])  # Normal quantiles
-
-    hs, be = np.histogram(xt, bins=[-2, -1, 0, 1, 2])
-    hsrel = hs/ndat
-
-    chi2 = sum((hsnor - hsrel)**2)
-
-    if prres:
-        print('Normal:       %5.3f  %5.3f  %5.3f  %5.3f' % tuple(hsnor))
-        print('Experimental: %5.3f  %5.3f  %5.3f  %5.3f' % tuple(hsrel))
-        print('Chi2: %8f' % chi2)
-    return chi2, hsnor, hsrel
-
-
 def calc_chi2(xt, thr):
     """
     Calculate error between the normal quantile histograms of the experimental
@@ -102,14 +80,13 @@ pl.plot(thr_opt, chi2_opt, 'ro')
 yl = pl.ylim()
 ytxt = yl[0] + (yl[1] - yl[0])/2
 
-# pl.title(r'Error b/w M5B Data and Normal Quantiles ' \
-#          'for Tresholds [0.4 .. 1.5] ', fontsize=16)
-pl.figtext(0.5, 0.93, r'Error b/w M5B Data and Normal Quantiles ' \
-           'for Tresholds [0.4 .. 1.5] ', ha='center', fontsize=15)
-pl.xlabel(r'$\theta=$ (quantization threshold)/$\sigma$', fontsize=14)
-pl.ylabel(r'Error, $\epsilon^2$', fontsize=14)
+# pl.figtext(0.5, 0.93, r'Error $X^2$ b/w Observed and Normal Frequencies ' \
+#            'for Tresholds $[0.4 \mathinner{\ldotp\ldotp}1.5]$', \
+#            ha='center', fontsize=13)
+pl.xlabel(r'$\theta=$ (quantization threshold $v_0$)/$\sigma$', fontsize=14)
+pl.ylabel(r'$X^2$', fontsize=14)
 
 pl.text(0.7, ytxt, r'Optimum:', fontsize=16)
-pl.text(0.57, ytxt-150, r'$\theta=%5.3f, \, \chi^2=%8.6f$' % \
+pl.text(0.57, ytxt-150, r'$\theta=%5.3f, \, X^2=%8.6f$' % \
                         (thr_opt, chi2_opt), fontsize=16)
 pl.show()
