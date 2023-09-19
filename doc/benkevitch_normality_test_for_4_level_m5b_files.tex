@@ -99,7 +99,9 @@ For each data frame the value of the test-statistic is calculated as
 \end{equation}
 
 
-The $X^2$ test-statistic asymptotically approaches the $\chi^2_{k=3}$ distribution, where $k = n - 1 = 3$ is the number of degrees of freedom. The $\chi^2_{k=3}$ PDF is shown in Fig.~\ref{chi2_pdf}. The statistic $X^2$ is a random value showing how close are the observation frequencies $B_i$ to the perfect, theoretical frequencies $E_i$. The $\chi^2_{k=3}$ PDF has maximum at $X^2=1$ and the mean at $X^2=k=3$. This means that if $X^2$ is distributed as $\chi^2_{k=3}$ its most probable random values will be concentrated somewhere near the mean 3 and not much further. The area under the curve in Fig.~\ref{chi2_pdf} over an interval $[a,b]$ equals to the probability that the random value will appear within this interval.
+The $X^2$ test-statistic asymptotically approaches the $\chi^2_{k=3}$ distribution, where $k = n - 1 = 3$ is the number of degrees of freedom. The $\chi^2_{k=3}$ PDF is shown in Fig.~\ref{chi2_pdf}. The statistic $X^2$ is a random value showing how close are the observation frequencies $B_i$ to the perfect, theoretical frequencies $E_i$. The $\chi^2_{k=3}$ PDF has maximum at $X^2=1$ and the mean at $X^2=k=3$. This means that if $X^2$ is distributed as $\chi^2_{k=3}$ its most probable random values will be concentrated somewhere around the mean 3 and not much further. But how much further? The area under the $\chi^2_{k=3}$ PDF curve in Fig.~\ref{chi2_pdf} over an interval $[a,b]$ equals to the probability that the random value will appear within this interval. If we want to be 95\% confident that the data is distributed normally, $X^2$ cannot exceed the critical value $\chi^2_{cr}$ such that the probability for $X^2$ to appear within the interval $[0 .. \chi^2_{cr}]$ is $p=0.95$. The critical $\chi^2_{k=3}$ value can be calculated as the value of $\chi^2$ Probability Point Function or PPF, the inverse of the Cumulative Distribution Function or CDF. In Python this is done as $\verb@scipy.stats.chi2.ppf(1-alpha, k)@$, where $\alpha = 0.05$ is the level of significance. In our case $\chi^2_{cr} = 7.81$. 
+
+Thus, our algorithm flags a channel data in frame as non-Gaussian if its $X^2 > 7.81$, the probability of incorrectly rejecting the null hypothesis being $\alpha = 0.05$. 
 
 \begin{figure}[h!]
   \begin{center}
@@ -113,7 +115,9 @@ The $X^2$ test-statistic asymptotically approaches the $\chi^2_{k=3}$ distributi
 
 
 
-The level of significance 0.05 means that 
+\section{Estimation of Quantization Threshold Using Linear Search}
+
+
 
 \end{document}
 
