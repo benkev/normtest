@@ -166,6 +166,10 @@ We have used a fast-converging Brent's algorithm for one-dimensional search. It 
 \end{figure}
 
 
+\section{Using Graphics Processing Units (GPU)}
+
+
+
 %=====================================================================================
 
 \section{NormTest Software}
@@ -175,7 +179,7 @@ files (m5b files) before the correlator. The 2-bit data streams in the m5b files
 can be considered correct if they are samples from the Gaussian (normal)
 distribution. We call such tests "testing for normality".
 
-\subsection{gpu\_m5b.py}:
+\subsection{gpu\_m5b.py}
 
 Normality (Gaussianity) test for M5B files on either an Nvidia GPU using PyCUDA
 package or a GPU using PyOpenCL package. Single precision floats.
@@ -188,7 +192,7 @@ class instances (althoug it is surely possible). When imported, it
 probes the system to find what GPU frameworks are installed. It chooses
 automatically between PyCUDA and OpenCL and initializes the relevant 
 data structures. In case both frameworks are installed, it prefers
-PyCUDA since it is ~1.5 times faster than PyOpenCL.
+PyCUDA since it is ~1.5 times faster than PyOpenCL. \\
 
 
 \text{--------- FUTURE WORK --------------------------- FUTURE WORK ----------------} \\
