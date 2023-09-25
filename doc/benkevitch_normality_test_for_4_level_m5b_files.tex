@@ -7,6 +7,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{natbib}
 \usepackage{authblk}
+\usepackage{natbib}
 \bibliographystyle{agu08}
 
 \newcommand{\ud}{\mathrm d}
@@ -71,7 +72,7 @@ The signal is centered to ensure zero $\mu$ and its band is filtered into 16 fre
     \caption{Quantizer}
     \label{quant_io}
     \begin{tabular}{c|c}
-      \textbf{Input} & \textbf{Output} \\
+      \textbf{Input, $x$} & \textbf{Output, $\hat{x}$} \\
       \hline
       $-\infty$ to $-\theta$ & 0 \\
       $-\theta$ to 0         & 1 \\
@@ -84,7 +85,7 @@ The signal is centered to ensure zero $\mu$ and its band is filtered into 16 fre
 
 The M5B file can be considered as an array of 10016-byte frames. Each frame consists of 2504 32-bit words (\verb@unsigned int@ or  \verb@uint@ in C/C++). The first 4 words comprise the frame header, so a frame has 2500 words of pure data. Each 32-bit data word is subdivided into 16 2-bit channels, numbered from 0 to 15. The header contains the sync word \verb@0xdec0de5c@, 23-bit long frame number within second (reset to zero each new second), one flag bit to tag the frame invalid, 8-bit long channel ID, BCD Time Code Word 1 (‘JJJSSSSS’), BCD Time Code Word 2 (‘.SSSS’), and  16-bit CRCC.
 
-Unfortunately, the header does \emph{not} contain the quantization threshold value $\theta = v_0/\sigma$, which is necessary for the statistical testing. In order to estimate $\theta$, the algorithm has to spend precious time on its linear search as will be described further. 
+Unfortunately, the header does \emph{not} contain the quantization threshold value $\theta = v_0/\sigma$, which is necessary for the statistical testing. In order to estimate $\theta$, the algorithm has to spend precious time on its 1D search as will be described further. 
 
 
 
@@ -117,9 +118,9 @@ Thus, our algorithm flags a channel data in frame as non-Gaussian if its $X^2 > 
 
 
 
-\section{Estimation of Quantization Threshold Using Linear Search}
+\section{Estimation of Quantization Threshold Using 1D Search}
 
-As mentioned, the M5B files do not contain the values of quantization threshold $\theta$, which is continuously being adjusted and can differ from one frame to the next. Assuming the data are sampled from the normally distributed population we can hypothesize that the $\theta_{\text{opt}}$ value that provides the best fit of the observed frequencies $B_i$ to the normal frequencies $E_i$ can be a good estimate of the actual $\theta$ established at the quantization time.
+As mentioned, the M5B files do not provide the values of quantization threshold $\theta$, which is continuously being adjusted and can differ from one frame to the next. Assuming the data are sampled from the normally distributed population we can hypothesize that the $\theta_{\text{opt}}$ value that provides the best fit of the observed frequencies $B_i$ to the normal frequencies $E_i$ can be a good estimate of the actual $\theta$ established at the quantization time.
 
 One can notice that the $X^2$ statistics in Eq.~\eqref{x2_calc} is a function of a single variable $\theta$: 
 
@@ -168,7 +169,7 @@ We have used a fast-converging Brent's algorithm for one-dimensional search. It 
 
 \section{Using Graphics Processing Units (GPU)}
 
-The Graphics Processing Units with their hundreds and thousands of processors (CPUs) and multiple memory channels allow 1-3 orders of magnitude speed-up of the common algorithms due to.
+The Graphics Processing Units with their hundreds and thousands of processor cores and multiple memory channels allow 1 to 3 orders of magnitude speed-up of the common algorithms. 
 
 %=====================================================================================
 
@@ -195,232 +196,277 @@ data structures. In case both frameworks are installed, it prefers
 PyCUDA since it is ~1.5 times faster than PyOpenCL. \\
 
 
-\text{--------- FUTURE WORK --------------------------- FUTURE WORK ----------------} \\
-However, it is possible to overwrite the framework using the class method
-
-Normtest.set_fw(fw="").
-
-Parameter:
-    fw: framework to use. It can be "cuda", "opencl", or None.
-        If fw="", nothing changes. \\
-\text{--------- FUTURE WORK --------------------------- FUTURE WORK ----------------}\\
-
-    Class method Normtest.do_m5b(m5b_filename [, nthreads=8])
-
-The normtest class provides a "class method" do_m5b(m5b_filename),
-which runs the normality test on the available GPU and the software
-framework selected. If the M5B file is large and it does not fit into either
-system RAM or the GPU ram, it is processed in chunks. The results are saved 
-in binary files.  The file have the following names:
-
-    nt_<data>_<framework>_<m5b_basename>_<timestamp>.bin,
-
-where <data> is the result types:
-
-quantl: dtype=np.float32, shape=(n_frames,16,4), 4 quantiles for 16 channels;
-chi2:   dtype=np.float32, shape=(n_frames,16), chi^2 for 16 channels;
-thresh: dtype=np.float32, shape=(n_frames,16), quantization thresholds found
-        for 16 channels;
-flag:   dtype=np.uint16, shape=(n_frames,16), flags for 16 channels; 
-niter:  dtype=np.uint16, shape=(n_frames,16), number of iterations of Brent's
-        optimization method used to find the optimal quantization threshold
-        for 16 channels;
-
-   
-Example:
-   
-from gpu_m5b import Normtest as nt
-nt.do_m5b("rd1910_wz_268-1811.m5b")
-
-Empirically, it has been found that the best performance is achieved 
-with 8 threads per block (in CUDA terminology), and, which is the same, 
-8 work items per work group (in OpenCL terms). However, this number can 
-be changed using the nthreads parameter. For example:
-
-nt.do_m5b("rd1910_wz_268-1811.m5b", nthreads=64)
-
-
----------------------------
-
-This directory also contains two older versions ofthe Python scripts for
-normality testing using the GPUs. One of them, normtest_m5b_cuda.py, uses
-PyCuda and can be only run on Nvidia GPUs with CUDA and PyCuda installed.
-The other one uses PyOpenCL and can be run on both AMD and Nvidia GPUs as
-long as OpenCL and PyOpenCL are installed. Note that CUDA works ~1.5 times
-faster than OpenCL.
-
-Both scripts cannot process M5B files in chunks, and therefore they are unable
-to process large M5B files.
-
-Currently, the scripts use positional command line parameters.
-
-2. normtest_m5b_cuda.py:
-
-Normality (Gaussianity) test for M5B files on Nvidia GPU using PyCUDA package.
-Single precision floats.
-
-Requires:
-
-ker_m5b_gauss_test.cu, CUDA kernel.
-fminbndf.cu, 1D optimization code.
-
-Usage:
-
-\$ python normtest_m5b_cuda.py <m5b-file-name> [<of threads per block>] [-s]
-
-Or, from IPython:
-
-\$ ipython --pylab
-
-%run normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]
-
-If <# of threads> is not specified, the optimal (appearingly) 8 is used.
-
-If "-s" is present at the end of command line the results are saved in text
-files in the subdirectory result/ with the names:
-   thresholds_*.txt
-   residuals_*.txt
-   n_iterations_*.txt
-   flags_*.txt
-   quantiles_*.txt
-
-Examples:
-
-\$ python normtest_m5b_cuda.py rd1910_wz_268-1811.m5b
-\$ python normtest_m5b_cuda.py rd1910_wz_268-1811.m5b 8
-\$ python normtest_m5b_cuda.py rd1910_wz_268-1811.m5b 8 -s
-
-Note that saving the result files may take long time.
-
-
-
-
-3. normtest_m5b_ocl.py:
-
-Normality (Gaussianity) test for M5B files on a GPU using PyOpenCL package.
-Single precision floats.
-
-Requires:
-ker_m5b_gauss_test.cl, OpenCL kernel.
-fminbndf.cl, 1D optimization code for Nvidia GPUs.
-fminbndf_amd.cl, 1D optimization code for AMD GPUs.
-
-Usage: 
-
-\$ python normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]
-
-Or, from IPython:
-
-\$ ipython --pylab
-
-%run normtest_m5b_ocl_.py <m5b-file-name> [<of threads per block>] [-s]
-
-If <# of threads> is not specified, the optimal (appearingly) 8 is used.
-
-If "-s" is present at the end of command line the results are saved in text
-files in the subdirectory result/ with the names:
-   thresholds_*.txt
-   residuals_*.txt
-   n_iterations_*.txt
-   flags_*.txt
-   quantiles_*.txt
-
-Examples:
-")
-\$ python normtest_m5b_ocl.py rd1910_wz_268-1811.m5b
-\$ python normtest_m5b_ocl.py rd1910_wz_268-1811.m5b 8
-\$ python normtest_m5b_ocl.py rd1910_wz_268-1811.m5b 8 -s
-
-Note that saving the result files may take long time.
-
-
-----------------------------
-
-Ancillary scripts:
-
-4. plot_m5b_thrange.py
-
-Plots squared error (the residual) between M5B Data and four quantiles of the
-standard normal distribution over the range [0.4 .. 1.5] of input sample
-thresholds. The plot obviously has its minimum at the threshold +-0.817/STD
-marked with the red dot.
-
-
-5. test_m5b.py
-
-Calculates the observed Chi^2 and compares it with the Chi^2 critical value at
-the significance level 0.05 for the degrees of freedom 3 (we have 4 quantiles,
-so df = 4 - 1 = 3).
-
-Plots histograms of the observed data and the theoretical normal distribution
-to compare.
-
-Running:
-%run test_m5b.py <m5b_filename>
-
-
-6. plot_m5b_hist.py
-
-Plots two histograms of the results from gpu_m5b.py for the whole 
-M5B (or M5A) file: 
-6.1. Distribution of chi^2 and a red marker showing position of the critical
-     chi^2 value (7.81), as well as the percent of chi^2 exceeding it.
-6.2. Distribution of the optimal quantization thresholds and a red marker
-     showing position of the critical threshold value (0.6745 rms), as well as
-     the percent of the thresholds that failed to reach it.
-
-
-7. inspect_nt.py
-
-This script creates 4x4 plots of 16 histograms for each of the 16 channels.
-The plots are for one or several (averaged) frames. The histograms are compared
-with the normal distribution curves showing approximately from what size
-quantiles the observation data are drawn. For each plot the chi^2 is printed.
-
-The data are read from the *.bin files created with the gpu_m5b_chi2.py.
-
-Running:
-
-%run inspect_nt.py <m5b_filename> <timestamp> <start_frame_#> <#_of_frames> 
-
-Some interesting frames:
-7.1. These plots show that the Pearson's chi^2 cannot be used. The histograms 
-are very far from the normal distributions, but most of the chi^2 values
-are very small and signal "normality"
-%run inspect_nt.py rd1903_ft_100-0950.m5b 025 97737 1
-
-7.2. These plots are definitely from the uniform distributions, and yet, most
-of the chi^2 values are very small and signal "normality". The pearson's
-criterion also does not work.
-%run inspect_nt.py rd1903_ft_100-0950.m5b 025 4 1
-%run inspect_nt.py rd1903_ft_100-0950.m5b 025 170578 1
-%run inspect_nt.py rd1903_ft_100-0950.m5b 025 389930 1
-%run inspect_nt.py rd1903_ft_100-0950.m5b 025 6832715 1
-
-7.3. These plots show close to normal histograms with good chi^2 values, i.e.
-< 7.81.
-%run inspect_nt.py rd1910_wz_268-1811.m5b 970 200 1
-%run inspect_nt.py rd1910_ny_269-1404.m5a 395 7139 1
-
-
-8. plot_25pc_npdf_expectations.py
-
-Plots the normal curve N(0,1) divided vertically into 4 equal areas under the 
-curve (25%-quantiles). The division lines are at -0.6745, 0, and +0.6745. 
-For each of the areas, the math expectations are computed, they are at 
-    -1.27, -0.32, 0.32, and 1.27 (in STDs). 
-Thse are the most probable analog signal values before the quantization with
-the *ideal* thresholds -0.6745, 0, and +0.6745, which provide the uniform 
-arrangement of the discrete signal in the 4 bins.  
-
-
-9. skew_kurt.py
-
-Calculates skewness and kurtosis of a frame in M5B or M5A file.
-The data positions (in STDs) are assumed at the 25%-quantile math expectations,
-  mu0 = -1.27, mu1 = -0.32, mu2 = 0.32, and mu3 = 1.27.
-
-
+%\text{--------- FUTURE WORK --------------------------- FUTURE WORK ----------------} \\
+%However, it is possible to overwrite the framework using the class method
+%
+%Normtest.set_fw(fw="").
+%
+%Parameter:
+%    fw: framework to use. It can be "cuda", "opencl", or None.
+%        If fw="", nothing changes. \\
+%\text{--------- FUTURE WORK --------------------------- FUTURE WORK ----------------}\\
+%
+%    Class method Normtest.do_m5b(m5b_filename [, nthreads=8])
+%
+%The normtest class provides a "class method" do_m5b(m5b_filename),
+%which runs the normality test on the available GPU and the software
+%framework selected. If the M5B file is large and it does not fit into either
+%system RAM or the GPU ram, it is processed in chunks. The results are saved 
+%in binary files.  The file have the following names:
+%
+%    nt_<data>_<framework>_<m5b_basename>_<timestamp>.bin,
+%
+%where <data> is the result types:
+%
+%quantl: dtype=np.float32, shape=(n_frames,16,4), 4 quantiles for 16 channels;
+%chi2:   dtype=np.float32, shape=(n_frames,16), chi^2 for 16 channels;
+%thresh: dtype=np.float32, shape=(n_frames,16), quantization thresholds found
+%        for 16 channels;
+%flag:   dtype=np.uint16, shape=(n_frames,16), flags for 16 channels; 
+%niter:  dtype=np.uint16, shape=(n_frames,16), number of iterations of Brent's
+%        optimization method used to find the optimal quantization threshold
+%        for 16 channels;
+%
+%   
+%Example:
+%   
+%from gpu_m5b import Normtest as nt
+%nt.do_m5b("rd1910_wz_268-1811.m5b")
+%
+%Empirically, it has been found that the best performance is achieved 
+%with 8 threads per block (in CUDA terminology), and, which is the same, 
+%8 work items per work group (in OpenCL terms). However, this number can 
+%be changed using the nthreads parameter. For example:
+%
+%nt.do_m5b("rd1910_wz_268-1811.m5b", nthreads=64)
+%
+%
+%---------------------------
+%
+%This directory also contains two older versions ofthe Python scripts for
+%normality testing using the GPUs. One of them, normtest_m5b_cuda.py, uses
+%PyCuda and can be only run on Nvidia GPUs with CUDA and PyCuda installed.
+%The other one uses PyOpenCL and can be run on both AMD and Nvidia GPUs as
+%long as OpenCL and PyOpenCL are installed. Note that CUDA works ~1.5 times
+%faster than OpenCL.
+%
+%Both scripts cannot process M5B files in chunks, and therefore they are unable
+%to process large M5B files.
+%
+%Currently, the scripts use positional command line parameters.
+%
+%2. normtest_m5b_cuda.py:
+%
+%Normality (Gaussianity) test for M5B files on Nvidia GPU using PyCUDA package.
+%Single precision floats.
+%
+%Requires:
+%
+%ker_m5b_gauss_test.cu, CUDA kernel.
+%fminbndf.cu, 1D optimization code.
+%
+%Usage:
+%
+%\$ python normtest_m5b_cuda.py <m5b-file-name> [<of threads per block>] [-s]
+%
+%Or, from IPython:
+%
+%\$ ipython --pylab
+%
+%%run normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]
+%
+%If <# of threads> is not specified, the optimal (appearingly) 8 is used.
+%
+%If "-s" is present at the end of command line the results are saved in text
+%files in the subdirectory result/ with the names:
+%   thresholds_*.txt
+%   residuals_*.txt
+%   n_iterations_*.txt
+%   flags_*.txt
+%   quantiles_*.txt
+%
+%Examples:
+%
+%\$ python normtest_m5b_cuda.py rd1910_wz_268-1811.m5b
+%\$ python normtest_m5b_cuda.py rd1910_wz_268-1811.m5b 8
+%\$ python normtest_m5b_cuda.py rd1910_wz_268-1811.m5b 8 -s
+%
+%Note that saving the result files may take long time.
+%
+%
+%
+%
+%3. normtest_m5b_ocl.py:
+%
+%Normality (Gaussianity) test for M5B files on a GPU using PyOpenCL package.
+%Single precision floats.
+%
+%Requires:
+%ker_m5b_gauss_test.cl, OpenCL kernel.
+%fminbndf.cl, 1D optimization code for Nvidia GPUs.
+%fminbndf_amd.cl, 1D optimization code for AMD GPUs.
+%
+%Usage: 
+%
+%\$ python normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]
+%
+%Or, from IPython:
+%
+%\$ ipython --pylab
+%
+%%run normtest_m5b_ocl_.py <m5b-file-name> [<of threads per block>] [-s]
+%
+%If <# of threads> is not specified, the optimal (appearingly) 8 is used.
+%
+%If "-s" is present at the end of command line the results are saved in text
+%files in the subdirectory result/ with the names:
+%   thresholds_*.txt
+%   residuals_*.txt
+%   n_iterations_*.txt
+%   flags_*.txt
+%   quantiles_*.txt
+%
+%Examples:
+%")
+%\$ python normtest_m5b_ocl.py rd1910_wz_268-1811.m5b
+%\$ python normtest_m5b_ocl.py rd1910_wz_268-1811.m5b 8
+%\$ python normtest_m5b_ocl.py rd1910_wz_268-1811.m5b 8 -s
+%
+%Note that saving the result files may take long time.
+%
+%
+%----------------------------
+%
+%Ancillary scripts:
+%
+%4. plot_m5b_thrange.py
+%
+%Plots squared error (the residual) between M5B Data and four quantiles of the
+%standard normal distribution over the range [0.4 .. 1.5] of input sample
+%thresholds. The plot obviously has its minimum at the threshold +-0.817/STD
+%marked with the red dot.
+%
+%
+%5. test_m5b.py
+%
+%Calculates the observed Chi^2 and compares it with the Chi^2 critical value at
+%the significance level 0.05 for the degrees of freedom 3 (we have 4 quantiles,
+%so df = 4 - 1 = 3).
+%
+%Plots histograms of the observed data and the theoretical normal distribution
+%to compare.
+%
+%Running:
+%%run test_m5b.py <m5b_filename>
+%
+%
+%6. plot_m5b_hist.py
+%
+%Plots two histograms of the results from gpu_m5b.py for the whole 
+%M5B (or M5A) file: 
+%6.1. Distribution of chi^2 and a red marker showing position of the critical
+%     chi^2 value (7.81), as well as the percent of chi^2 exceeding it.
+%6.2. Distribution of the optimal quantization thresholds and a red marker
+%     showing position of the critical threshold value (0.6745 rms), as well as
+%     the percent of the thresholds that failed to reach it.
+%
+%
+%7. inspect_nt.py
+%
+%This script creates 4x4 plots of 16 histograms for each of the 16 channels.
+%The plots are for one or several (averaged) frames. The histograms are compared
+%with the normal distribution curves showing approximately from what size
+%quantiles the observation data are drawn. For each plot the chi^2 is printed.
+%
+%The data are read from the *.bin files created with the gpu_m5b_chi2.py.
+%
+%Running:
+%
+%%run inspect_nt.py <m5b_filename> <timestamp> <start_frame_#> <#_of_frames> 
+%
+%Some interesting frames:
+%7.1. These plots show that the Pearson's chi^2 cannot be used. The histograms 
+%are very far from the normal distributions, but most of the chi^2 values
+%are very small and signal "normality"
+%%run inspect_nt.py rd1903_ft_100-0950.m5b 025 97737 1
+%
+%7.2. These plots are definitely from the uniform distributions, and yet, most
+%of the chi^2 values are very small and signal "normality". The pearson's
+%criterion also does not work.
+%%run inspect_nt.py rd1903_ft_100-0950.m5b 025 4 1
+%%run inspect_nt.py rd1903_ft_100-0950.m5b 025 170578 1
+%%run inspect_nt.py rd1903_ft_100-0950.m5b 025 389930 1
+%%run inspect_nt.py rd1903_ft_100-0950.m5b 025 6832715 1
+%
+%7.3. These plots show close to normal histograms with good chi^2 values, i.e.
+%< 7.81.
+%%run inspect_nt.py rd1910_wz_268-1811.m5b 970 200 1
+%%run inspect_nt.py rd1910_ny_269-1404.m5a 395 7139 1
+%
+%
+%8. plot_25pc_npdf_expectations.py
+%
+%Plots the normal curve N(0,1) divided vertically into 4 equal areas under the 
+%curve (25%-quantiles). The division lines are at -0.6745, 0, and +0.6745. 
+%For each of the areas, the math expectations are computed, they are at 
+%    -1.27, -0.32, 0.32, and 1.27 (in STDs). 
+%Thse are the most probable analog signal values before the quantization with
+%the *ideal* thresholds -0.6745, 0, and +0.6745, which provide the uniform 
+%arrangement of the discrete signal in the 4 bins.  
+%
+%
+%9. skew_kurt.py
+%
+%Calculates skewness and kurtosis of a frame in M5B or M5A file.
+%The data positions (in STDs) are assumed at the 25%-quantile math expectations,
+%  mu0 = -1.27, mu1 = -0.32, mu2 = 0.32, and mu3 = 1.27.
+
+\begin{thebibliography}{99}
+
+\bibitem[{\textit{Kiefer}(1953)}]{Kiefer1953} 
+{Kiefer}, J.~L. (1953), {Sequential minimax search for a maximum}, \textit{Proceedings of the American Mathematical Society}, \textit{4}, (3), 502-–506, DOI:10.1109/TIT.1967.1053965.
+
+\bibitem[{\textit{{Brown}}(1967)}]{Brown1967}
+{Brown}, J.~L. (1967), {A Generalized Form of Price's Theorem and Its Converse}, \textit{IEEE Transactions on Information Theory}, \textit{13}, 27--30, \doi{10.1109/TIT.1967.1053965}.
+
+\bibitem[{\textit{{Cooper}}(1970)}]{Cooper1970}
+{Cooper}, B.~F.~C. (1970), {Correlators with two-bit quantization},
+  \textit{Australian Journal of Physics}, \textit{23}, 521--527.
+
+\bibitem[{\textit{{Greisen}}(2003)}]{Greisen2003}
+{Greisen}, E.~W. (2003), {AIPS, the VLA, and the VLBA}, \textit{Information
+  Handling in Astronomy - Historical Vistas}, \textit{285}, 109,
+  \doi{10.1007/0-306-48080-8\_7}.
+
+\bibitem[{\textit{{Hagen} and {Farley}}(1973)}]{Hagen1973}
+{Hagen}, J.~B., and D.~T. {Farley} (1973), {Digital-correlation techniques in
+  radio science.}, \textit{Radio Science}, \textit{8}, 775--784,
+  \doi{10.1029/RS008i008p00775}.
+
+\bibitem[{\textit{{Johnson} et~al.}(2013)\textit{{Johnson}, {Chou}, and
+  {Gwinn}}}]{Johnson2013}
+{Johnson}, M.~D., H.~H. {Chou}, and C.~R. {Gwinn} (2013), {Optimal Correlation
+  Estimators for Quantized Signals}, \textit{Astrophysical Journal},
+  \textit{765}, 135, \doi{10.1088/0004-637X/765/2/135}.
+
+\bibitem[{\textit{{Kulkarni} and {Heiles}}(1980)}]{Kulkarni1980}
+{Kulkarni}, S.~R., and C.~{Heiles} (1980), {How to obtain the true correlation
+  from a 3-level digital correlator}, \textit{Astronomical Journal},
+  \textit{85}, 1413--1420, \doi{10.1086/112815}.
+
+
+
+\bibitem[{\textit{Bracewell}(1986)}]{Bracewell1986}
+Bracewell, R.~N. (1986), \textit{{The Fourier Transform and Its Applications}},
+  2nd, revised ed., 474 pp., WCB/McGraw-Hill, Boston, Massachusetts.
+
+\bibitem[{\textit{Bracewell}(1986)}]{Bracewell1986}
+Bracewell, R.~N. (1986), \textit{{The Fourier Transform and Its Applications}},
+  2nd, revised ed., 474 pp., WCB/McGraw-Hill, Boston, Massachusetts.
+
+
+
+\end{thebibliography}
 
 
 
