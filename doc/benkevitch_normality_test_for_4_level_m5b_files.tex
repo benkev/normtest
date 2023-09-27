@@ -169,7 +169,9 @@ We have used a fast-converging Brent's algorithm for one-dimensional search. It 
 
 \section{Using Graphics Processing Units (GPU)}
 
-The Graphics Processing Units with their hundreds and thousands of processor cores and multiple memory channels allow 1 to 3 orders of magnitude speed-up of the common algorithms. 
+The Graphics Processing Units with their hundreds and thousands of processor cores and multiple memory channels allow 1 to 3 orders of magnitude speed-up of the common algorithms. There are two major software frameworks, CUDA and OpenCL. CUDA is developed specifically for the Nvidia GPUs. OpenCL can be used on many parallel architectures. OpenCL is the only option for the AMD GPUs.
+
+In both frameworks, the application code consists of two parts. One part is executed on the PC CPU. The other part of code is uploaded to the GPU memory and is executed in parallel on the multiple GPU cores. The programs executed on the GPU are called kernels.
 
 %=====================================================================================
 
