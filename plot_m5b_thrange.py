@@ -84,7 +84,7 @@ ytxt = yl[0] + (yl[1] - yl[0])/2
 #            'for Tresholds $[0.4 \mathinner{\ldotp\ldotp}1.5]$', \
 #            ha='center', fontsize=13)
 pl.xlabel(r'$\theta=$ (quantization threshold $v_0$)/$\sigma$', fontsize=14)
-pl.ylabel(r'$X^2$', fontsize=14)
+pl.ylabel(r'$X^2(\theta)$', fontsize=14)
 
 pl.text(0.7, ytxt, r'Optimum:', fontsize=16)
 pl.text(0.57, ytxt-150, r'$\theta=%5.3f, \, X^2=%8.6f$' % \
