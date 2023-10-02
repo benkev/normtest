@@ -161,7 +161,7 @@ We have used a fast-converging Brent's algorithm for one-dimensional search. It 
 \begin{figure}[ht!]
   \begin{center}
   \includegraphics[width=25pc]{fig_optimal_quantization_threshold.eps}
-  \caption{\small Graph of $X^2(\theta)$ from Eq.~\eqref{x2_func_of_theta} as the measure of error between the observed, $B_i$, and normal, $E_i$ frequencies for the range of quantization tresholds $\theta\in[0.4 \mathinner{\ldotp\ldotp}1.5]$. The curve has minimum at $\theta = 0.7988$, which can be used as an estimate for the actual threshold used in the analog signal quantization.}
+  \caption{\small $X^2(\theta)$ from Eq.~\eqref{x2_func_of_theta} as the measure of error between the observed, $B_i$, and normal, $E_i$ frequencies for the range of quantization tresholds $[0.4 \mathinner{\ldotp\ldotp}1.5]$. The curve has minimum at $\theta = 0.7988$, which can be used as an estimate for the actual threshold used in the analog signal quantization.}
   \label{optimum_theta}
   \end{center}
 \end{figure}
@@ -171,63 +171,32 @@ We have used a fast-converging Brent's algorithm for one-dimensional search. It 
 
 The Graphics Processing Units with their hundreds and thousands of processor cores and multiple memory channels allow 1 to 3 orders of magnitude speed-up of the common algorithms. There are two major software frameworks, CUDA and OpenCL. CUDA is developed specifically for the Nvidia GPUs. OpenCL can be used on many parallel architectures. OpenCL is the only option for the AMD GPUs.
 
-In both frameworks, the application code consists of two parts. One part is executed on the PC CPU. The other part of code is uploaded to the GPU memory and is executed in parallel on the multiple GPU cores. The programs executed on the GPU are called kernels.
+In both frameworks, the application code consists of two parts. One part is executed on the host PC. It reads the M5B files, prepares the GPU, uploads there the codes and the M5B data, starts the computations on the GPU, downloads the results from the GPU to the host memory, and saves them to the disk. The other part of code is executed in parallel on the multiple GPU cores. The programs executed on the GPU are called kernels. 
 
-%=====================================================================================
+In both frameworks we use single precision floating point arithmetics, which provides the fastest computations.
+
+In the both frameworks, the kernels are written in the C language subsets with some extensions. The host code uses CUDA or OpenCL API. It can be written in C/C++ and some other languages. However, Python is always preferred to make life easier. We use Python wrappers for the both frameworks: PyCUDA and PyOpenCL, and the host part of the NormTest software is written in Python. 
+
 
 \section{NormTest Software}
 
-This software is intended for fast testing for correctness of the Mark 5B output
-files (m5b files) before the correlator. The 2-bit data streams in the m5b files
-can be considered correct if they are sampled from the Gaussian (normal)
-distribution. We call such tests "testing for normality".
-
 \subsection{gpu\_m5b.py}
 
-Normality (Gaussianity) test for M5B files on either an Nvidia GPU using PyCUDA
-package or a GPU using PyOpenCL package. Single precision floats.
+The \verb@gpu_m5b.py@ module defines the only class \verb@Normtest@ that integrates in itself all the normality testing mechanisms. When imported from the \verb@gpu_m5b@ module, \verb@Normtest@ class probes the hardware and automatically determines which framework to use. If it detects an AMD GPU, it uses OpenCL. If an Nvidia GPU is detected, the software uses CUDA. In case both frameworks are installed, it prefers CUDA since it is ~1.5 times faster than OpenCL. Thus this class provides "transparent" access to the GPU independent of the software framework used. Current version of the software can use only one GPU, however, in future it is possible to employ multiple GPUs on the same motherboard, even using different frameworks. 
 
-This module provides "transparent" access to the GPU independent of the
-software framework used, CUDA or OpenCL.
+The \verb@Normtest@ class is not intended to create multiple class instances (although it is surely possible). It provides a "class method" \verb@do_m5b()@ with one argument, a string with M5B filename. It runs the normality test on the available GPU using the software framework selected. If the M5B file is large and it does not fit into either system RAM or the GPU RAM, it is processed in chunks. The results are saved in 5 binary files.  The files have the following names: \\
+    \verb@nt_<data>_<framework>_<m5b_basename>_<timestamp>.bin@, \\
+where \verb@<data>@ is the result types: \\
 
-The module contains class normtest. It is not intended to create multiple
-class instances (althoug it is surely possible). When imported, it 
-probes the system to find what GPU frameworks are installed. It chooses
-automatically between PyCUDA and OpenCL and initializes the relevant 
-data structures. In case both frameworks are installed, it prefers
-PyCUDA since it is ~1.5 times faster than PyOpenCL. \\
-
-
-%\text{--------- FUTURE WORK --------------------------- FUTURE WORK ----------------} \\
-%However, it is possible to overwrite the framework using the class method
-%
-%Normtest.set_fw(fw="").
-%
-%Parameter:
-%    fw: framework to use. It can be "cuda", "opencl", or None.
-%        If fw="", nothing changes. \\
-%\text{--------- FUTURE WORK --------------------------- FUTURE WORK ----------------}\\
-%
-%    Class method Normtest.do_m5b(m5b_filename [, nthreads=8])
-%
-%The normtest class provides a "class method" do_m5b(m5b_filename),
-%which runs the normality test on the available GPU and the software
-%framework selected. If the M5B file is large and it does not fit into either
-%system RAM or the GPU ram, it is processed in chunks. The results are saved 
-%in binary files.  The file have the following names:
-%
-%    nt_<data>_<framework>_<m5b_basename>_<timestamp>.bin,
-%
-%where <data> is the result types:
-%
-%quantl: dtype=np.float32, shape=(n_frames,16,4), 4 quantiles for 16 channels;
-%chi2:   dtype=np.float32, shape=(n_frames,16), chi^2 for 16 channels;
-%thresh: dtype=np.float32, shape=(n_frames,16), quantization thresholds found
-%        for 16 channels;
-%flag:   dtype=np.uint16, shape=(n_frames,16), flags for 16 channels; 
-%niter:  dtype=np.uint16, shape=(n_frames,16), number of iterations of Brent's
-%        optimization method used to find the optimal quantization threshold
-%        for 16 channels;
+\verb@quantl: dtype=np.float32, shape=(n_frames,16,4)@, 4 quantiles for 16 channels; \\
+chi2:   dtype=np.float32, shape=(n_frames,16), chi^2 for 16 channels;
+thresh: dtype=np.float32, shape=(n_frames,16), quantization thresholds found
+        for 16 channels;
+flag:   dtype=np.uint16, shape=(n_frames,16), flags for 16 channels; 
+niter:  dtype=np.uint16, shape=(n_frames,16), number of iterations of Brent's
+        optimization method used to find the optimal quantization threshold
+        for 16 channels;
+@
 %
 %   
 %Example:

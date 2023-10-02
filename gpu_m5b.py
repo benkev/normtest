@@ -478,9 +478,13 @@ class Normtest:
                                   offset=n_bytes_chunk_offs)
            
             toc = time.time()
-            print("M5B file chunk has been read. Time: %7.3f s.\n" % (toc-tic))
-            print("Chunk #%d, chunk size, words: %d, chunk offset, words: %d" %
-                  (i_chunk, n_words_chunk, n_words_chunk_offs))
+            #print("M5B file chunk has been read. Time: %7.3f s.\n" % (toc-tic))
+            #print("Chunk #%d, chunk size, words: %d, chunk offset, words: %d" %
+            #      (i_chunk, n_words_chunk, n_words_chunk_offs))
+            print()
+            print("Chunk #%d, read time %7.3f s. \n" \
+                  "chunk size: %d words, chunk offset: %d words" %
+                  (i_chunk, (toc-tic), n_words_chunk, n_words_chunk_offs))
 
             #
             # Find how many CUDA blocks and CUDA threads per block needed
@@ -693,9 +697,11 @@ class Normtest:
 
             toc = time.time()
             
-            print("M5B file chunk has been read. Time: %7.3f s.\n" % (toc-tic))
-            print("Chunk #%d, chunk size, words: %d, chunk offset, words: %d" %
-                  (i_chunk, n_words_chunk, n_words_chunk_offs))
+            #print("M5B file chunk has been read. Time: %7.3f s.\n" % (toc-tic))
+            print()
+            print("Chunk #%d, read time %7.3f s. \n" \
+                  "chunk size: %d words, chunk offset: %d words," %
+                  (i_chunk, (toc-tic), n_words_chunk, n_words_chunk_offs))
 
             #
             # Find how many Global Work Items, global_size (i.e. total number
