@@ -7,7 +7,9 @@
 \usepackage[T1]{fontenc}
 \usepackage{natbib}
 \usepackage{authblk}
-\usepackage{natbib}
+%\usepackage{url}
+%\usepackage{times}
+\usepackage{textcomp}
 \bibliographystyle{agu08}
 
 \newcommand{\ud}{\mathrm d}
@@ -20,6 +22,7 @@
 \newcommand{\varss}{\varsigma_1\varsigma_2}
 \newcommand{\hvarss}{\hat{\varsigma}_1 \hat{\varsigma}_2}
 \newcommand{\twodots}{\mathinner {\ldotp \ldotp}}
+\newcommand{\midtilde}{\raisebox{0.5ex}{\texttildelow}}
 
 \DeclareMathOperator\erf{erf}
 
@@ -182,7 +185,7 @@ In the both frameworks, the kernels are written in the C language subsets with s
 
 \subsection{gpu\_m5b.py}
 
-The \verb@gpu_m5b.py@ module defines the only class \verb@Normtest@ that integrates in itself all the normality testing mechanisms. When imported from the \verb@gpu_m5b@ module, \verb@Normtest@ class probes the hardware and automatically determines which framework to use. If it detects an AMD GPU, it uses OpenCL. If an Nvidia GPU is detected, the software uses CUDA. In case both frameworks are installed, it prefers CUDA since it is ~1.5 times faster than OpenCL. Thus this class provides "transparent" access to the GPU independent of the software framework used. Current version of the software can use only one GPU, however, in future it is possible to employ multiple GPUs on the same motherboard, even using different frameworks. 
+The \verb@gpu_m5b.py@ module defines the only class \verb@Normtest@ that integrates in itself all the normality testing mechanisms. When imported from the \verb@gpu_m5b@ module, \verb@Normtest@ class probes the hardware and automatically determines which framework to use. If it detects an AMD GPU, it uses OpenCL. If an Nvidia GPU is detected, the software uses CUDA. In case both frameworks are installed, it prefers CUDA since it is \midtilde 1.5  times faster than OpenCL. Thus this class provides "transparent" access to the GPU independent of the software framework used. Current version of the software can use only one GPU, however, in future it is possible to employ multiple GPUs on the same motherboard, even using different frameworks. 
 
 The \verb@Normtest@ class is not intended to create multiple class instances (although it is surely possible). It provides a "class method" \verb@do_m5b()@ with one argument, a string with M5B filename. It runs the normality test on the available GPU using the software framework selected. If the M5B file is large and it does not fit into either system RAM or the GPU RAM, it is processed in chunks. The results are saved in 5 binary files.  The files have the following names: \\
     \verb@nt_<data>_<framework>_<m5b_basename>_<timestamp>.bin@, \\
