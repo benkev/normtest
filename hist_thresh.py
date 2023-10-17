@@ -22,11 +22,11 @@ fm5b_base = os.path.basename(fm5b)
 fm5b_base = os.path.splitext(fm5b_base)[0]
 
 if ftst:
-    fquantls = glob.glob("nt_quantl_*" + fm5b_base + "*" + ftst +".bin")
+    fquantls = glob.glob("nt_bin_*" + fm5b_base + "*" + ftst +".bin")
     fthreshs = glob.glob("nt_thresh_*" + fm5b_base + "*" + ftst +".bin")
     fresidls = glob.glob("nt_residl_*" + fm5b_base + "*" + ftst +".bin")
 else:
-    fquantls = glob.glob("nt_quantl_*" + fm5b_base + "*.bin")
+    fquantls = glob.glob("nt_bin_*" + fm5b_base + "*.bin")
     fthreshs = glob.glob("nt_thresh_*" + fm5b_base + "*.bin")
     fresidls = glob.glob("nt_residl_*" + fm5b_base + "*.bin")
     

@@ -29,7 +29,7 @@ Fnorm = lambda x: 0.5*(1 + erf(x/np.sqrt(2)))               # Normal CDF (0,1)
 # q0 = np.fromfile(fbase + "quantl.bin",dtype=np.float32,offset=offq, count=cnq)
 # t0 = np.fromfile(fbase + "thresh.bin",dtype=np.float32,offset=offt, count=cnt)
 
-q0 = np.fromfile("bin_leonid2/nt_quantl_cuda_" + fbase +
+q0 = np.fromfile("bin_leonid2/nt_bin_cuda_" + fbase +
                  "_20221115_155722.652.bin",
                  dtype=np.float32, offset=offq, count=cnq)
 t0 = np.fromfile("bin_leonid2/nt_thresh_cuda_" + fbase +

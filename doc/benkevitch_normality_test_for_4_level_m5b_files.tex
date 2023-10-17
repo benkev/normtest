@@ -7,6 +7,8 @@
 \usepackage[T1]{fontenc}
 \usepackage{natbib}
 \usepackage{authblk}
+\usepackage{fancyvrb}
+\usepackage{lmodern}
 %\usepackage{url}
 %\usepackage{times}
 \usepackage{textcomp}
@@ -180,41 +182,73 @@ In both frameworks we use single precision floating point arithmetics, which pro
 
 In the both frameworks, the kernels are written in the C language subsets with some extensions. The host code uses CUDA or OpenCL API. It can be written in C/C++ and some other languages. However, Python is always preferred to make life easier. We use Python wrappers for the both frameworks: PyCUDA and PyOpenCL, and the host part of the NormTest software is written in Python. 
 
+The Python module for normality testing, \verb@gpu_m5b.py@, described in the next section, transfers control to the C kernel previously transferred to the GPU. The kernels are different for different frameworks used. In any individual test only two C files are used. Their names start with the following strings: \verb@ker_m5b_gauss_test@ and \verb@fminbndf@. \\
 
-\section{NormTest Software}
+\noindent \verb@ker_m5b_gauss_test*@ defines the test kernel \verb@m5b_gauss_test()@ and the minimized function  \\
+\hangindent=0.7cm \verb@calc_chi2()@, which calculates $\chi^2$ between the four bins of standard normal distribution and the four bins with the observation data counts. \\
 
-\subsection{gpu\_m5b.py}
+\noindent \verb@fminbndf*@ implements one-dimensional search for the optimal quantization threshold $\theta_\text{opt}$  \\
+\hangindent=0.7cm based on Brent's algorithm. It calls the \verb@calc_chi2()@ function. The search is performed within the bounds $\theta \in [0.5\sigma \twodots 1.5\sigma]$ with the absolute precision \verb@atol@ $=10^{-4}$. Also, the number of iterations is limited to  \verb@maxiter = 20@. \\
+
+
+In the CUDA framework just the two C files are used: \\
+
+\noindent \verb@ker_m5b_gauss_test.cu@  - test kernel for CUDA; \\
+\noindent \verb@fminbndf.cu@ - Brent's algorithm for CUDA. \\
+
+The OpenCL framework requires more options because of the different implementations of OpenCL for different hardware platforms, AMD and Nvidia. Unfortunately, according to OpenCL Specifications, pointers to functions are not allowed, while CUDA does not have this restriction. So, in the OpenCL code for AMD GPU, instead of using this convenient mechanism to pass to the \verb@fminbndf()@ optimizer the pointer to an arbitrary minimized function as its parameter, we have to call \verb@calc_chi2()@ from inside \verb@fminbndf()@. This makes \verb@fminbndf()@ less universal. On the contrary, Nvidia's OpenCL implementation (probably) has an extension allowing this feature. Therefore, there are four OpenCL C files: \\
+
+\noindent \verb@ker_m5b_gauss_test.cl@ - test kernel for Nvidia OpenCL; \\
+\noindent \verb@fminbndf.cl@ - Brent's algorithm for Nvidia OpenCL, \\
+
+\noindent and \\
+
+\noindent \verb@ker_m5b_gauss_test_amd.cl@ - test kernel for AMD OpenCL; \\
+\noindent \verb@fminbndf_amd.cl@ - Brent's algorithm for AMD OpenCL. \\
+
+
+
+\section{Python Module for Normality Testing}
 
 The \verb@gpu_m5b.py@ module defines the only class \verb@Normtest@ that integrates in itself all the normality testing mechanisms. When imported from the \verb@gpu_m5b@ module, \verb@Normtest@ class probes the hardware and automatically determines which framework to use. If it detects an AMD GPU, it uses OpenCL. If an Nvidia GPU is detected, the software uses CUDA. In case both frameworks are installed, it prefers CUDA since it is \midtilde 1.5  times faster than OpenCL. Thus this class provides "transparent" access to the GPU independent of the software framework used. Current version of the software can use only one GPU, however, in future it is possible to employ multiple GPUs on the same motherboard, even using different frameworks. 
 
-The \verb@Normtest@ class is not intended to create multiple class instances (although it is surely possible). It provides a "class method" \verb@do_m5b()@ with one argument, a string with M5B filename. It runs the normality test on the available GPU using the software framework selected. If the M5B file is large and it does not fit into either system RAM or the GPU RAM, it is processed in chunks. The results are saved in 5 binary files.  The files have the following names: \\
-    \verb@nt_<data>_<framework>_<m5b_basename>_<timestamp>.bin@, \\
-where \verb@<data>@ is the result types: \\
+The \verb@Normtest@ class provides a "class method" \verb@do_m5b()@ with one argument, a string with M5B filename. It runs the normality test on the available GPU using the software framework selected. If the M5B file is large and it does not fit into either the system RAM or the GPU RAM, it is processed in chunks. The \verb@Normtest@ class is not intended to create multiple class instances (although it is surely possible). Instead, the method \verb@do_m5b()@ is called directly with the class name or its alias. Below is an example procedure of normality tests on several M5B or M5A files: \\
 
-\verb@quantl: dtype=np.float32, shape=(n_frames,16,4)@, 4 quantiles for 16 channels; \\
-chi2:   dtype=np.float32, shape=(n_frames,16), chi^2 for 16 channels;
-thresh: dtype=np.float32, shape=(n_frames,16), quantization thresholds found
-        for 16 channels;
-flag:   dtype=np.uint16, shape=(n_frames,16), flags for 16 channels; 
-niter:  dtype=np.uint16, shape=(n_frames,16), number of iterations of Brent's
+\noindent
+\verb@from gpu_m5b import Normtest as nt@  \\
+\verb@nt.do_m5b("rd1910_wz_268-1811.m5b")@ \\
+\verb@nt.do_m5b("rd1910_ny_269-1413.m5a")@ \\
+\verb@nt.do_m5b("rd1910_ny_269-1404.m5a")@ \\
+\verb@nt.do_m5b("rd1903_ft_100-0950.m5b")@ \\
+
+The results are saved in 5 binary files. The files have the following names: \\\\
+\verb@nt_<data>_<framework>_<m5b_basename>_<timestamp>.bin@, \\\\
+\noindent where
+
+\noindent \verb@<data>@ is one of the result types: \\
+\indent \verb@bin: dtype=np.float32, shape=(n_frames,16,4)@, 4 histogram bins for 16 channels; \\
+\indent \verb@chi2:   dtype=np.float32, shape=(n_frames,16)@, $\chi^2$ for 16 channels; \\
+\indent \verb@thresh: dtype=np.float32, shape=(n_frames,16)@, quantization thresholds found
+        for 16 channels; \\
+\indent \verb@flag:   dtype=np.uint16, shape=(n_frames,16)@, flags for 16 channels; \\
+\indent \verb@niter:  dtype=np.uint16, shape=(n_frames,16)@, number of iterations of Brent's
         optimization method used to find the optimal quantization threshold
         for 16 channels;
-@
-%
-%   
-%Example:
-%   
-%from gpu_m5b import Normtest as nt
-%nt.do_m5b("rd1910_wz_268-1811.m5b")
-%
-%Empirically, it has been found that the best performance is achieved 
-%with 8 threads per block (in CUDA terminology), and, which is the same, 
-%8 work items per work group (in OpenCL terms). However, this number can 
-%be changed using the nthreads parameter. For example:
-%
-%nt.do_m5b("rd1910_wz_268-1811.m5b", nthreads=64)
-%
-%
+
+\noindent \verb@<framework>@ is \verb@cuda@ or \verb@opencl@. \\
+\noindent \verb@<m5b_basename>@ is the M5B or M5A file name without extension; \\
+\noindent \verb@<timestamp>@ is \verb@YYYYMMDD_HHMMSS@ followed by milliseconds, like \verb@20231015_113649.078@. The timestamp is intended to make the result filename reasonably unique. \\
+
+Empirically, it has been found that the best performance is achieved 
+with 8 threads per block (in CUDA terminology), or, which is the same, 
+8 work items per work group (in OpenCL terms). However, this number can 
+be changed using the \verb@nthreads@ parameter. An example of setting 64 threads per block: \\
+
+\noindent \verb@nt.do_m5b("rd1910_wz_268-1811.m5b", nthreads=64)@ \\
+
+
+\section{Python Scripts for Analysis of Results}
+
 %---------------------------
 %
 %This directory also contains two older versions ofthe Python scripts for
