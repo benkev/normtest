@@ -259,6 +259,17 @@ This script creates 4x4 plots of 16 histograms for each of the 16 channels. The 
 
 The \verb@<timestamp>@ can be any rightmost part of the timestamp before the file extension, \verb@.bin@. The timestamp is present in order to distinguish the \verb@*.bin@ files generated for the same M5B file at different runs. In most cases, providing the last 3 digis (i.e. milliseconds) is enough as long as they refer to the unique group of binary files with normality test results. \\
 
+These plots show close to normal histograms with good $\chi^2$ values, i.e.
+< 7.81. \\
+
+\noindent \verb@%run inspect_nt.py rd1910_wz_268-1811.m5b 970 200 1@
+\noindent \verb@%run inspect_nt.py rd1910_ny_269-1404.m5a 395 7139 1@ \\
+
+
+
+
+
+
 \noindent Some interesting frames: \\
 
 The histograms are very far from the normal distributions, but most of the $\chi^2$ values
@@ -274,13 +285,6 @@ criterion also does not work. \\
 \noindent \verb@%run inspect_nt.py rd1903_ft_100-0950.m5b 025 170578 1@
 \noindent \verb@%run inspect_nt.py rd1903_ft_100-0950.m5b 025 389930 1@
 \noindent \verb@%run inspect_nt.py rd1903_ft_100-0950.m5b 025 6832715 1@ \\
-
-These plots show close to normal histograms with good $\chi^2$ values, i.e.
-< 7.81. \\
-
-\noindent \verb@%run inspect_nt.py rd1910_wz_268-1811.m5b 970 200 1@
-\noindent \verb@%run inspect_nt.py rd1910_ny_269-1404.m5a 395 7139 1@ \\
-
 
 %8. plot_25pc_npdf_expectations.py
 %
