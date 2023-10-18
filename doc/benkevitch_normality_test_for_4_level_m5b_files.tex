@@ -7,8 +7,8 @@
 \usepackage[T1]{fontenc}
 \usepackage{natbib}
 \usepackage{authblk}
-\usepackage{fancyvrb}
-\usepackage{lmodern}
+%\usepackage{fancyvrb}
+%\usepackage{lmodern}
 %\usepackage{url}
 %\usepackage{times}
 \usepackage{textcomp}
@@ -182,7 +182,7 @@ In both frameworks we use single precision floating point arithmetics, which pro
 
 In the both frameworks, the kernels are written in the C language subsets with some extensions. The host code uses CUDA or OpenCL API. It can be written in C/C++ and some other languages. However, Python is always preferred to make life easier. We use Python wrappers for the both frameworks: PyCUDA and PyOpenCL, and the host part of the NormTest software is written in Python. 
 
-The Python module for normality testing, \verb@gpu_m5b.py@, described in the next section, transfers control to the C kernel previously transferred to the GPU. The kernels are different for different frameworks used. In any individual test only two C files are used. Their names start with the following strings: \verb@ker_m5b_gauss_test@ and \verb@fminbndf@. \\
+The Python module for normality testing, \verb@gpu_m5b.py@, described in the next section, transfers control to the C kernel previously transferred to the GPU. The kernels are different for different frameworks used. In any individual normality test only two C files are used. Their names start with the following strings: \verb@ker_m5b_gauss_test@ and \verb@fminbndf@. \\
 
 \noindent \verb@ker_m5b_gauss_test*@ defines the test kernel \verb@m5b_gauss_test()@ and the minimized function  \\
 \hangindent=0.7cm \verb@calc_chi2()@, which calculates $\chi^2$ between the four bins of standard normal distribution and the four bins with the observation data counts. \\
@@ -249,107 +249,52 @@ be changed using the \verb@nthreads@ parameter. An example of setting 64 threads
 
 \section{Python Scripts for Analysis of Results}
 
-%---------------------------
+\subsection{inspect\_nt.py}
+
+This script creates 4x4 plots of 16 histograms for each of the 16 channels. The plots are for one or several (averaged) frames. The histograms are compared with the normal distribution curves showing the vertical borders of the bins at the positions of quantisation threshold estimates, $\pm\theta$. In each subplot both $\theta$ and $\chi^2$ values are printed. The $\chi^2$ values exceeding $\chi^2_{cr} = 7.81$ are printed in red. The data are read from the \verb@*.bin@ files created with the \verb@gpu_m5b_chi2.py@. \\
+
+\noindent Running:
+
+\noindent \verb@%run inspect_nt.py <m5b_filename> <timestamp> <start_frame_#> <#_of_frames> @
+
+The \verb@<timestamp>@ can be any rightmost part of the timestamp before the file extension, \verb@.bin@. The timestamp is present in order to distinguish the \verb@*.bin@ files generated for the same M5B file at different runs. In most cases, providing the last 3 digis (i.e. milliseconds) is enough as long as they refer to the unique group of binary files with normality test results. \\
+
+\noindent Some interesting frames: \\
+
+The histograms are very far from the normal distributions, but most of the $\chi^2$ values
+are very small and signal "normality": \\
+
+\noindent \verb@%run inspect_nt.py rd1903_ft_100-0950.m5b 025 97737 1@ \\
+
+These plots are definitely from the uniform distributions, and yet, most
+of the $\chi^2$ values are very small and signal "normality". The pearson's
+criterion also does not work. \\
+
+\noindent \verb@%run inspect_nt.py rd1903_ft_100-0950.m5b 025 4 1@
+\noindent \verb@%run inspect_nt.py rd1903_ft_100-0950.m5b 025 170578 1@
+\noindent \verb@%run inspect_nt.py rd1903_ft_100-0950.m5b 025 389930 1@
+\noindent \verb@%run inspect_nt.py rd1903_ft_100-0950.m5b 025 6832715 1@ \\
+
+These plots show close to normal histograms with good $\chi^2$ values, i.e.
+< 7.81. \\
+
+\noindent \verb@%run inspect_nt.py rd1910_wz_268-1811.m5b 970 200 1@
+\noindent \verb@%run inspect_nt.py rd1910_ny_269-1404.m5a 395 7139 1@ \\
+
+
+%8. plot_25pc_npdf_expectations.py
 %
-%This directory also contains two older versions ofthe Python scripts for
-%normality testing using the GPUs. One of them, normtest_m5b_cuda.py, uses
-%PyCuda and can be only run on Nvidia GPUs with CUDA and PyCuda installed.
-%The other one uses PyOpenCL and can be run on both AMD and Nvidia GPUs as
-%long as OpenCL and PyOpenCL are installed. Note that CUDA works ~1.5 times
-%faster than OpenCL.
-%
-%Both scripts cannot process M5B files in chunks, and therefore they are unable
-%to process large M5B files.
-%
-%Currently, the scripts use positional command line parameters.
-%
-%2. normtest_m5b_cuda.py:
-%
-%Normality (Gaussianity) test for M5B files on Nvidia GPU using PyCUDA package.
-%Single precision floats.
-%
-%Requires:
-%
-%ker_m5b_gauss_test.cu, CUDA kernel.
-%fminbndf.cu, 1D optimization code.
-%
-%Usage:
-%
-%\$ python normtest_m5b_cuda.py <m5b-file-name> [<of threads per block>] [-s]
-%
-%Or, from IPython:
-%
-%\$ ipython --pylab
-%
-%%run normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]
-%
-%If <# of threads> is not specified, the optimal (appearingly) 8 is used.
-%
-%If "-s" is present at the end of command line the results are saved in text
-%files in the subdirectory result/ with the names:
-%   thresholds_*.txt
-%   residuals_*.txt
-%   n_iterations_*.txt
-%   flags_*.txt
-%   quantiles_*.txt
-%
-%Examples:
-%
-%\$ python normtest_m5b_cuda.py rd1910_wz_268-1811.m5b
-%\$ python normtest_m5b_cuda.py rd1910_wz_268-1811.m5b 8
-%\$ python normtest_m5b_cuda.py rd1910_wz_268-1811.m5b 8 -s
-%
-%Note that saving the result files may take long time.
-%
-%
-%
-%
-%3. normtest_m5b_ocl.py:
-%
-%Normality (Gaussianity) test for M5B files on a GPU using PyOpenCL package.
-%Single precision floats.
-%
-%Requires:
-%ker_m5b_gauss_test.cl, OpenCL kernel.
-%fminbndf.cl, 1D optimization code for Nvidia GPUs.
-%fminbndf_amd.cl, 1D optimization code for AMD GPUs.
-%
-%Usage: 
-%
-%\$ python normtest_m5b_cuda.py <m5b-file-name> [<# of threads per block>] [-s]
-%
-%Or, from IPython:
-%
-%\$ ipython --pylab
-%
-%%run normtest_m5b_ocl_.py <m5b-file-name> [<of threads per block>] [-s]
-%
-%If <# of threads> is not specified, the optimal (appearingly) 8 is used.
-%
-%If "-s" is present at the end of command line the results are saved in text
-%files in the subdirectory result/ with the names:
-%   thresholds_*.txt
-%   residuals_*.txt
-%   n_iterations_*.txt
-%   flags_*.txt
-%   quantiles_*.txt
-%
-%Examples:
-%")
-%\$ python normtest_m5b_ocl.py rd1910_wz_268-1811.m5b
-%\$ python normtest_m5b_ocl.py rd1910_wz_268-1811.m5b 8
-%\$ python normtest_m5b_ocl.py rd1910_wz_268-1811.m5b 8 -s
-%
-%Note that saving the result files may take long time.
-%
-%
-%----------------------------
-%
-%Ancillary scripts:
-%
+%Plots the normal curve N(0,1) divided vertically into 4 equal areas under the 
+%curve (25%-bins). The division lines are at -0.6745, 0, and +0.6745. 
+%For each of the areas, the math expectations are computed, they are at 
+%    -1.27, -0.32, 0.32, and 1.27 (in STDs). 
+%Thse are the most probable analog signal values before the quantization with
+%the *ideal* thresholds -0.6745, 0, and +0.6745, which provide the uniform 
+%arrangement of the discrete signal in the 4 bins.  
+%%
 %4. plot_m5b_thrange.py
 %
-%Plots squared error (the residual) between M5B Data and four quantiles of the
+%Plots squared error (the residual) between M5B Data and four bins of the
 %standard normal distribution over the range [0.4 .. 1.5] of input sample
 %thresholds. The plot obviously has its minimum at the threshold +-0.817/STD
 %marked with the red dot.
@@ -357,8 +302,8 @@ be changed using the \verb@nthreads@ parameter. An example of setting 64 threads
 %
 %5. test_m5b.py
 %
-%Calculates the observed Chi^2 and compares it with the Chi^2 critical value at
-%the significance level 0.05 for the degrees of freedom 3 (we have 4 quantiles,
+%Calculates the observed $\chi^2$ and compares it with the $\chi^2$ critical value at
+%the significance level 0.05 for the degrees of freedom 3 (we have 4 bins,
 %so df = 4 - 1 = 3).
 %
 %Plots histograms of the observed data and the theoretical normal distribution
@@ -372,61 +317,20 @@ be changed using the \verb@nthreads@ parameter. An example of setting 64 threads
 %
 %Plots two histograms of the results from gpu_m5b.py for the whole 
 %M5B (or M5A) file: 
-%6.1. Distribution of chi^2 and a red marker showing position of the critical
-%     chi^2 value (7.81), as well as the percent of chi^2 exceeding it.
+%6.1. Distribution of $\chi^2$ and a red marker showing position of the critical
+%     $\chi^2$ value (7.81), as well as the percent of $\chi^2$ exceeding it.
 %6.2. Distribution of the optimal quantization thresholds and a red marker
 %     showing position of the critical threshold value (0.6745 rms), as well as
 %     the percent of the thresholds that failed to reach it.
 %
 %
-%7. inspect_nt.py
-%
-%This script creates 4x4 plots of 16 histograms for each of the 16 channels.
-%The plots are for one or several (averaged) frames. The histograms are compared
-%with the normal distribution curves showing approximately from what size
-%quantiles the observation data are drawn. For each plot the chi^2 is printed.
-%
-%The data are read from the *.bin files created with the gpu_m5b_chi2.py.
-%
-%Running:
-%
-%%run inspect_nt.py <m5b_filename> <timestamp> <start_frame_#> <#_of_frames> 
-%
-%Some interesting frames:
-%7.1. These plots show that the Pearson's chi^2 cannot be used. The histograms 
-%are very far from the normal distributions, but most of the chi^2 values
-%are very small and signal "normality"
-%%run inspect_nt.py rd1903_ft_100-0950.m5b 025 97737 1
-%
-%7.2. These plots are definitely from the uniform distributions, and yet, most
-%of the chi^2 values are very small and signal "normality". The pearson's
-%criterion also does not work.
-%%run inspect_nt.py rd1903_ft_100-0950.m5b 025 4 1
-%%run inspect_nt.py rd1903_ft_100-0950.m5b 025 170578 1
-%%run inspect_nt.py rd1903_ft_100-0950.m5b 025 389930 1
-%%run inspect_nt.py rd1903_ft_100-0950.m5b 025 6832715 1
-%
-%7.3. These plots show close to normal histograms with good chi^2 values, i.e.
-%< 7.81.
-%%run inspect_nt.py rd1910_wz_268-1811.m5b 970 200 1
-%%run inspect_nt.py rd1910_ny_269-1404.m5a 395 7139 1
-%
-%
-%8. plot_25pc_npdf_expectations.py
-%
-%Plots the normal curve N(0,1) divided vertically into 4 equal areas under the 
-%curve (25%-quantiles). The division lines are at -0.6745, 0, and +0.6745. 
-%For each of the areas, the math expectations are computed, they are at 
-%    -1.27, -0.32, 0.32, and 1.27 (in STDs). 
-%Thse are the most probable analog signal values before the quantization with
-%the *ideal* thresholds -0.6745, 0, and +0.6745, which provide the uniform 
-%arrangement of the discrete signal in the 4 bins.  
+
 %
 %
 %9. skew_kurt.py
 %
 %Calculates skewness and kurtosis of a frame in M5B or M5A file.
-%The data positions (in STDs) are assumed at the 25%-quantile math expectations,
+%The data positions (in STDs) are assumed at the 25%-bin math expectations,
 %  mu0 = -1.27, mu1 = -0.32, mu2 = 0.32, and mu3 = 1.27.
 
 \begin{thebibliography}{99}
