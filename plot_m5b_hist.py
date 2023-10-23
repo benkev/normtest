@@ -34,27 +34,27 @@ fm5b_size = ";   size %.2f GiB" % fm5b_size
 fm5b_base = os.path.basename(fm5b)
 fm5b_base = os.path.splitext(fm5b_base)[0]
 
-fquantls = glob.glob("nt_bin_*" + fm5b_base + "*" + ftst +".bin")
+fhists = glob.glob("nt_hist_*" + fm5b_base + "*" + ftst +".bin")
 fthreshs = glob.glob("nt_thresh_*" + fm5b_base + "*" + ftst +".bin")
 fchi2s = glob.glob("nt_chi2_*" + fm5b_base + "*" + ftst +".bin")
 
-if len(fquantls) == 0 or len(fthreshs) == 0 or len(fchi2s) == 0:
+if len(fhists) == 0 or len(fthreshs) == 0 or len(fchi2s) == 0:
     print("Files *%s*.bin with the timestamp \"%s\" not found." % \
           (fm5b_base, ftst))
     raise SystemExit
 
-if len(fquantls) > 1 or len(fthreshs) > 1 or len(fchi2s) > 1:
+if len(fhists) > 1 or len(fthreshs) > 1 or len(fchi2s) > 1:
     print("Ambiguous timestamp \"%s\". Give more detail." % ftst)
     raise SystemExit
 
-fquantl_name = fquantls[0]
+fhist_name = fhists[0]
 fthresh_name = fthreshs[0]
 fchi2_name = fchi2s[0]
 
 
 c2 = np.fromfile(fchi2_name, dtype=np.float32)
 th = np.fromfile(fthresh_name, dtype=np.float32)
-qu = np.fromfile(fquantl_name, dtype=np.float32)
+qu = np.fromfile(fhist_name, dtype=np.float32)
 
 #
 # Chi^2 critical value at significance

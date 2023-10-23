@@ -38,7 +38,7 @@ niter:  dtype=np.uint16, shape=(n_frames,16), number of iterations of Brent's
         for 16 channels;
 
 An example of the result file name: 
-    nt_bin_cuda_rd1903_ft_100-0950_20230726_225857.829.bin
+    nt_hist_cuda_rd1903_ft_100-0950_20230726_225857.829.bin
 
    
 Usage example:
@@ -418,7 +418,7 @@ class Normtest:
         basefn, t_stamp = cls.form_fout_name(cls.fname_m5b)
         basefn = basefn + "_" + t_stamp + ".bin"
 
-        f_quantl = open("nt_bin_cuda_" + basefn, "wb")
+        f_quantl = open("nt_hist_cuda_" + basefn, "wb")
         f_residl = open("nt_residl_cuda_" + basefn, "wb")
         f_thresh = open("nt_thresh_cuda_" + basefn, "wb")
         f_flag =   open("nt_flag_cuda_"  + basefn, "wb")
@@ -632,7 +632,7 @@ class Normtest:
         basefn, t_stamp = cls.form_fout_name(cls.fname_m5b)
         basefn = basefn + "_" + t_stamp + ".bin"
 
-        f_quantl = open("nt_bin_opencl_" + basefn, "wb")
+        f_quantl = open("nt_hist_opencl_" + basefn, "wb")
         f_residl = open("nt_residl_opencl_" + basefn, "wb")
         f_thresh = open("nt_thresh_opencl_" + basefn, "wb")
         f_flag =   open("nt_flag_opencl_"  + basefn, "wb")

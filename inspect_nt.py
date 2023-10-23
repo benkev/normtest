@@ -1,21 +1,32 @@
-#
-# inspect_nt.py
-#
-# This script creates 4x4 plots of 16 histograms for each of the 16 channels.
-# The plots are for one or several (averaged) frames. The histograms are
-# compared with the normal distribution curves showing approximately from what
-# size quantiles the observation data are drawn. For each plot, the chi^2 is
-# printed, as well as the quantization threshold.
-#
-# The data are read from the *.bin files created with the gpu_m5b_chi2.py.
-#
-# Running:
-# %run inspect_nt.py <m5b_filename> <timestamp> <start_frame_#> <#_of_frames>
-# or
-# python inspect_nt.py <m5b_filename> <nt_file_timestamp> <start_frame#> \
-#          [<n_frames>]         
-#
+help_text = '''
 
+inspect_nt.py
+
+This script creates 4x4 plots of 16 histograms for each of the 16 channels.
+The plots are for one or several (averaged) frames. The histograms are
+compared with the normal distribution curves showing approximately the
+histogram bin sizes to where the observation data are drawn. For each plot,
+the chi^2 is printed, as well as the quantization threshold.
+#
+The data are read from the *.bin files created with the gpu_m5b_chi2.py.
+#
+Running:
+%run inspect_nt.py <m5b_filename> <timestamp> <start_frame_#> <#_of_frames>
+or
+python inspect_nt.py <m5b_filename> <nt_file_timestamp> <start_frame#> \
+         [<n_frames>]         
+
+Here <nt_file_timestamp> is any unambiguous part of the timestamp at the end
+the *.bin file name. Usually, the three digits of millisecond is enough.
+
+Example:
+If the *.bin files have the pattern
+
+    nt_*_rd1910_wz_268-1811_20231023_140256.575.bin, one can run
+
+%run inspect_nt.py rd1910_wz_268-1811.m5b 575 1000 1
+
+'''
 
 import sys, os
 import numpy as np
@@ -42,44 +53,44 @@ else:
 fm5b_base = os.path.basename(fm5b)
 fm5b_base = os.path.splitext(fm5b_base)[0]
 
-fquantls = glob.glob("nt_bin_*" + fm5b_base + "*" + ftst +".bin")
+fhists = glob.glob("nt_hist_*" + fm5b_base + "*" + ftst +".bin")
 fthreshs = glob.glob("nt_thresh_*" + fm5b_base + "*" + ftst +".bin")
 fchi2s = glob.glob("nt_chi2_*" + fm5b_base + "*" + ftst +".bin")
 
-if len(fquantls) == 0 or len(fthreshs) == 0 or len(fchi2s) == 0:
+if len(fhists) == 0 or len(fthreshs) == 0 or len(fchi2s) == 0:
     print("Files *%s*.bin with the timestamp \"%s\" not found." % \
           (fm5b_base, ftst))
     raise SystemExit
 
-if len(fquantls) > 1 or len(fthreshs) > 1 or len(fchi2s) > 1:
+if len(fhists) > 1 or len(fthreshs) > 1 or len(fchi2s) > 1:
     print("Ambiguous timestamp \"%s\". Give more detail." % ftst)
     raise SystemExit
 
 #raise SystemExit
 
-fquantl_name = fquantls[0]
+fhist_name = fhists[0]
 fthresh_name = fthreshs[0]
 fchi2_name = fchi2s[0]
 
 #
 # Find file offsets to read the data from
 #
-cnt_q = 16*4*n_frms          # float32 words for quantiles
-offs_qdat = 16*4*4*frm0      # Offset bytes for quantiles  
+cnt_q = 16*4*n_frms          # float32 words for histogram bins
+offs_qdat = 16*4*4*frm0      # Offset bytes for histogram bins
 
 cnt_t = 16*n_frms            # float32 words for thresholds
 cnt_r = cnt_t                # float32 words for residuals
 offs_tdat = 16*4*frm0        # Bytes for thresholds
 offs_rdat = offs_tdat        # Bytes for residuals
 
-quantl = np.fromfile(fquantl_name, dtype=np.float32, \
+hist = np.fromfile(fhist_name, dtype=np.float32, \
                       offset=offs_qdat, count=cnt_q)
 thresh = np.fromfile(fthresh_name, dtype=np.float32, \
                       offset=offs_tdat, count=cnt_t)
 chi2 = np.fromfile(fchi2_name, dtype=np.float32, \
                       offset=offs_rdat, count=cnt_t)
 
-quantl = quantl.reshape((n_frms, 16, 4))
+hist = hist.reshape((n_frms, 16, 4))
 thresh = thresh.reshape((n_frms, 16))
 chi2 = chi2.reshape((n_frms, 16))
 
@@ -87,7 +98,7 @@ chi2 = chi2.reshape((n_frms, 16))
 # Average the observed frequencies, thresholds, and chi2 over n_frms frames
 # in each of the 16 channels
 #
-q_obs = quantl.mean(axis=0)  # q_obs.shape=(16,4)
+q_obs = hist.mean(axis=0)    # q_obs.shape=(16,4)
 th_obs = thresh.mean(axis=0) # th_obs.shape=(16,)
 c2_obs = chi2.mean(axis=0)   # c2_obs.shape = (16,)
 
@@ -95,7 +106,8 @@ c2_obs = chi2.mean(axis=0)   # c2_obs.shape = (16,)
 F = lambda x: 0.5*(1 + erf(x/np.sqrt(2)))  # Normal CDF
 
 #
-# Find 4 quantiles of the Normal PDF over 4 intervals separated by thresholds
+# Find 4 histogram bins of the Normal PDF over 4 intervals separated with
+# the quantization thresholds
 # 
 F_thr = F(-thresh) # Area under the Normal PDF curve over ]-Inf .. -thre]
 
@@ -106,7 +118,7 @@ F_thr = F(-thresh) # Area under the Normal PDF curve over ]-Inf .. -thre]
 # eps2 = np.zeros(16, dtype=np.float32)
     
 # for ich in range(16):
-#     eps2[ich] = np.sum((q_nor[ich,:] - quantl[ich,:])**2)
+#     eps2[ich] = np.sum((q_nor[ich,:] - hist[ich,:])**2)
 
 #
 # alpha: level of significance
@@ -128,7 +140,7 @@ pl.ion()  # Interactive mode; pl.ioff() - revert to non-interactive.
 print("pl.isinteractive() -> ", pl.isinteractive())
 
 # Fthr = F(-thr)
-# q_nor = np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])    # Normal quantilles
+# q_nor = np.array([Fthr, 0.5-Fthr, 0.5-Fthr, Fthr])   # Normal histogram bins
 
 # xrul = np.linspace(-3., 3., 51)
 # fnorm = 1/(2*np.pi)*np.exp(-xrul**2/2)
@@ -138,7 +150,7 @@ print("pl.isinteractive() -> ", pl.isinteractive())
 # pl.figure()
 # pl.plot(xrul, 1.5*fnorm, 'b-.', lw=0.5)
 # pl.bar(xloc, q_nor, width=0.5) # , color='b') # , alpha=0.9)
-# pl.bar(xloc, quantl[0,:], width=0.2, color='orange')
+# pl.bar(xloc, hist[0,:], width=0.2, color='orange')
 
 
 fnorm = lambda x: (1/np.sqrt(2*np.pi))*(np.exp(-0.5*x**2))  # Normal PDF (0,1)
@@ -154,7 +166,7 @@ f_pdf = (1/np.sqrt(2*np.pi))*(np.exp(-0.5*xrul**2))  # Normal PDF (0,1)
 f_pdf = (hsep-0.02)*f_pdf/f_pdf.max() # Make curve just under separation line
 
 pl.figure(figsize=(8,8))
-pl.figtext(0.5, 0.96, r"Observed \& Normal PDF Quantiles Separated by " \
+pl.figtext(0.5, 0.96, r"Observed \& Normal PDF Histogram Bins Separated by " \
            r"$-\infty, -\theta, \, 0, +\theta, +\infty$",
            fontsize=16, ha='center')
 

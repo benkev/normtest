@@ -25,7 +25,7 @@ n_frms = 1
 fm5b_base = os.path.basename(fm5b)
 fm5b_base = os.path.splitext(fm5b_base)[0]
 
-fquantls = glob.glob("nt_bin_*" + fm5b_base + "*" + ftst +".bin")
+fquantls = glob.glob("nt_hist_*" + fm5b_base + "*" + ftst +".bin")
 
 if len(fquantls) == 0: # or len(fthreshs) == 0 or len(fchi2s) == 0:
     print("Files *%s*.bin with the timestamp \"%s\" not found." % \
