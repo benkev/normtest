@@ -254,7 +254,10 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
             presidl[ich] = res;
             pthresh[ich] = th0;
             pniter[ich] = nitr;
-            pflag[ich] = flg;
+            
+            pflag[ich] = 0;
+            if (flg == 1) pflag[ich] = 2;      /* maxiter exceeded */
+            if (res > chi2_cr) pflag[ich] = 3; /* chi2 above critical value */
             
             /* OR (which is much clearer): */
             // residl[ifrm][ich] = res;

@@ -174,7 +174,7 @@ __device__ float fminbndf(float (*func)(float x, float *args), float a, float b,
         tol2 = 2.0*tol1;
 
         if (num >= maxiter) {
-            *flag = 1;
+            *flag = 1;                         /* maxiter exceeded */
             break;
         }
     }   /* while(fabs(xf - xm) ... */

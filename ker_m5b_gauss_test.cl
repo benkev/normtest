@@ -36,6 +36,7 @@ __constant int nchqua = 64;    /* = nch*nqua, total of quantiles for 16 chans */
 /* Optimization function parameters */
 __constant float xatol = 1e-4; /* Absolute error */
 __constant int maxiter = 20;   /* Maximum number of iterations */
+__constant float chi2_cr = 7.81; /* Chi^2 critical value at confidence 0.05 */
 
 
 #ifdef __amd
@@ -287,13 +288,16 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
             pchi2[ich] = res;
             pthresh[ich] = th0;
             pniter[ich] = nitr;
-            pflag[ich] = flg;
-            
+
+            pflag[ich] = 0;
+            if (flg == 1) pflag[ich] = 2;      /* maxiter exceeded */
+            if (res > chi2_cr) pflag[ich] = 3; /* chi2 above critical value */
+                        
             /* OR (which is much clearer): */
             // chi2[ifrm][ich] = res;
             // thresh[ifrm][ich] = th0;
             // niter[ifrm][ich] = nitr;
-            // flag[ifrm][ich] = flg;
+            // flag[ifrm][ich] = 0;
         
         } /* for (ich=0; ... */
         
@@ -309,7 +313,7 @@ __kernel void m5b_gauss_test(__global uint *dat, __global uint *ch_mask,
             pchi2[ich] = 0.0;
             pthresh[ich] = 0.0;
             pniter[ich] = 0;
-            pflag[ich] = 1;
+            pflag[ich] = 1;                    /* Bad frame */
         }  /* for (ich=0; ...  */
     }      /* if the frame is bad */
      

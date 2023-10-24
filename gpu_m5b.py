@@ -46,7 +46,7 @@ in the binary files. The file have the following names:
 
 where <data> is the result types:
 
-quantl: dtype=np.float32, shape=(n_frames,16,4), 4 quantiles for 16 channels;
+hist: dtype=np.float32, shape=(n_frames,16,4), 4 bins for each of 16 channels;
 chi2:   dtype=np.float32, shape=(n_frames,16), chi^2 for 16 channels;
 thresh: dtype=np.float32, shape=(n_frames,16), quantization thresholds found
         for 16 channels;
@@ -420,7 +420,7 @@ class Normtest:
         n_frms_chunk = cls.n_frms_chunk
         
         gpuarray = cls.gpuarray
-        quantl_gpu = gpuarray.empty((n_frms_chunk*16*4,), np.float32)
+        hist_gpu = gpuarray.empty((n_frms_chunk*16*4,), np.float32)
         chi2_gpu = gpuarray.empty((n_frms_chunk*16,), np.float32)
         thresh_gpu = gpuarray.empty((n_frms_chunk*16,), np.float32)
         flag_gpu =   gpuarray.empty((n_frms_chunk*16,), np.uint16)
@@ -432,7 +432,7 @@ class Normtest:
         basefn, t_stamp = cls.form_fout_name(cls.fname_m5b)
         basefn = basefn + "_" + t_stamp + ".bin"
 
-        f_quantl = open("nt_hist_cuda_" + basefn, "wb")
+        f_hist =   open("nt_hist_cuda_" + basefn, "wb")
         f_chi2 =   open("nt_chi2_cuda_" + basefn, "wb")
         f_thresh = open("nt_thresh_cuda_" + basefn, "wb")
         f_flag =   open("nt_flag_cuda_"  + basefn, "wb")
@@ -524,7 +524,7 @@ class Normtest:
             #
             if incompleteChunk:
                 n_frms = np.uint32(cls.n_frms_last_chunk)
-                quantl_gpu = gpuarray.empty((n_frms*16*4,), np.float32)
+                hist_gpu =   gpuarray.empty((n_frms*16*4,), np.float32)
                 chi2_gpu =   gpuarray.empty((n_frms*16,), np.float32)
                 thresh_gpu = gpuarray.empty((n_frms*16,), np.float32)
                 flag_gpu =   gpuarray.empty((n_frms*16,), np.uint16)
@@ -535,14 +535,14 @@ class Normtest:
             #
 
             cls.m5b_gauss_test_cuda(dat_gpu, ch_mask_gpu,
-                            quantl_gpu, chi2_gpu, thresh_gpu, flag_gpu,
+                            hist_gpu, chi2_gpu, thresh_gpu, flag_gpu,
                             niter_gpu, n_frms,
                             block = (n_threads, 1, 1), grid = (n_blocks, 1))
 
             #
             # Move the results from GPU memory to CPU RAM
             #
-            quantl = quantl_gpu.get()
+            hist =   hist_gpu.get()
             chi2 =   chi2_gpu.get()
             thresh = thresh_gpu.get()
             flag =   flag_gpu.get()
@@ -550,7 +550,7 @@ class Normtest:
 
             del dat_gpu  # It occupies ~96% of the total array memory
             
-            # del quantl_gpu
+            # del hist_gpu
             # del chi2_gpu
             # del thresh_gpu
             # del flag_gpu
@@ -568,7 +568,7 @@ class Normtest:
             #
             tic = time.time()
 
-            quantl.tofile(f_quantl)
+            hist.tofile(f_hist)
             chi2.tofile(f_chi2)
             thresh.tofile(f_thresh)
             flag.tofile(f_flag)
@@ -577,7 +577,7 @@ class Normtest:
             toc = time.time()
             print('Saving a chunk of results in files: %.3f s.' % (toc-tic))
 
-        f_quantl.close()
+        f_hist.close()
         f_chi2.close()
         f_thresh.close()
         f_flag.close()
@@ -586,7 +586,7 @@ class Normtest:
         #
         # Release GPU memory allocated to the large arrays -- needed, really??
         #
-        del quantl_gpu
+        del hist_gpu
         del chi2_gpu
         del thresh_gpu
         del flag_gpu
@@ -624,7 +624,7 @@ class Normtest:
         #
         # Create output buffers in the CPU memory.
         #
-        quantl = np.zeros((n_frms*16*4), dtype=np.float32) # Quantiles
+        hist =   np.zeros((n_frms*16*4), dtype=np.float32) # Hist bins
         chi2 =   np.zeros((n_frms*16), dtype=np.float32)     # Chi^2
         thresh = np.zeros((n_frms*16), dtype=np.float32)   # Thresholds
         flag =   np.zeros((n_frms*16), dtype=np.uint16)    # Flags
@@ -637,7 +637,7 @@ class Normtest:
         #
         buf_ch_mask = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
                                 hostbuf=cls.ch_mask)
-        buf_quantl = cl.Buffer(ctx, mf.WRITE_ONLY, quantl.nbytes)
+        buf_hist = cl.Buffer(ctx, mf.WRITE_ONLY, hist.nbytes)
         buf_chi2 = cl.Buffer(ctx, mf.WRITE_ONLY, chi2.nbytes)
         buf_thresh = cl.Buffer(ctx, mf.WRITE_ONLY, thresh.nbytes)
         buf_flag = cl.Buffer(ctx,   mf.WRITE_ONLY, flag.nbytes)
@@ -650,7 +650,7 @@ class Normtest:
         basefn, t_stamp = cls.form_fout_name(cls.fname_m5b)
         basefn = basefn + "_" + t_stamp + ".bin"
 
-        f_quantl = open("nt_hist_opencl_" + basefn, "wb")
+        f_hist = open("nt_hist_opencl_" + basefn, "wb")
         f_chi2 =   open("nt_chi2_opencl_" + basefn, "wb")
         f_thresh = open("nt_thresh_opencl_" + basefn, "wb")
         f_flag =   open("nt_flag_opencl_"  + basefn, "wb")
@@ -742,13 +742,13 @@ class Normtest:
             if incompleteChunk:
                 n_frms = np.uint32(cls.n_frms_last_chunk)
                 
-                quantl = np.zeros((n_frms*16*4), dtype=np.float32) # Quantiles
+                hist = np.zeros((n_frms*16*4), dtype=np.float32)   # Hist bins
                 chi2 = np.zeros((n_frms*16), dtype=np.float32)     # Chi^2
                 thresh = np.zeros((n_frms*16), dtype=np.float32)   # Thresholds
                 flag =   np.zeros((n_frms*16), dtype=np.uint16)    # Flags
                 niter =  np.zeros((n_frms*16), dtype=np.uint16)    # Iterations
                 
-                buf_quantl = cl.Buffer(ctx, mf.WRITE_ONLY, quantl.nbytes)
+                buf_hist = cl.Buffer(ctx, mf.WRITE_ONLY, hist.nbytes)
                 buf_chi2 = cl.Buffer(ctx, mf.WRITE_ONLY, chi2.nbytes)
                 buf_thresh = cl.Buffer(ctx, mf.WRITE_ONLY, thresh.nbytes)
                 buf_flag = cl.Buffer(ctx,   mf.WRITE_ONLY, flag.nbytes)
@@ -759,13 +759,13 @@ class Normtest:
             #
 
             cls.m5b_gauss_test_ocl(queue, (global_size,), (local_size,),
-                             buf_dat, buf_ch_mask,  buf_quantl, buf_chi2, 
+                             buf_dat, buf_ch_mask,  buf_hist, buf_chi2, 
                              buf_thresh,  buf_flag, buf_niter,  n_frms).wait()
 
             #
             # Move the results from GPU memory to CPU RAM
             #
-            cl.enqueue_copy(queue, quantl, buf_quantl)
+            cl.enqueue_copy(queue, hist, buf_hist)
             cl.enqueue_copy(queue, chi2, buf_chi2)
             cl.enqueue_copy(queue, thresh, buf_thresh)
             cl.enqueue_copy(queue, flag, buf_flag)
@@ -783,7 +783,7 @@ class Normtest:
             #
             tic = time.time()
 
-            quantl.tofile(f_quantl)
+            hist.tofile(f_hist)
             chi2.tofile(f_chi2)
             thresh.tofile(f_thresh)
             flag.tofile(f_flag)
@@ -798,7 +798,7 @@ class Normtest:
 
         buf_ch_mask.release()
         # buf_dat.release()
-        buf_quantl.release()
+        buf_hist.release()
         buf_chi2.release()
         buf_thresh.release()
         buf_flag.release()

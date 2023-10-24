@@ -176,7 +176,7 @@ float fminbndf_amd(float a, float b, float *args, float xatol, int maxiter,
         tol2 = 2.0*tol1;
 
         if (num >= maxiter) {
-            *flag = 1;
+            *flag = 1;                         /* maxiter exceeded */
             break;
         }
     }   /* while(fabs(xf - xm) ... */
