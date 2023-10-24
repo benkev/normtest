@@ -1,6 +1,6 @@
 help_text = \
 '''
-plot_m5b_hist.py
+plot_m5b_hist.py <M5B file name> <timestamp>
 
 Plots two histograms of the results from gpu_m5b.py for the whole 
 M5B (or M5A) file: 
@@ -9,6 +9,9 @@ M5B (or M5A) file:
 2. Distribution of the optimal quantization thresholds and a red marker
      showing position of the critical threshold value (0.6745 rms), as well as
      the percent of the thresholds that failed to reach it.
+
+Example:
+    %run plot_m5b_hist.py rd1910_wz_268-1811.m5b 793
 '''
 
 import sys, os
@@ -17,9 +20,14 @@ import scipy.stats
 import matplotlib.pyplot as pl
 import getopt, glob
 
+pl.ion()  # Interactive mode; pl.ioff() - revert to non-interactive.
 pl.rcParams['text.usetex'] = True # Use LaTeX in Matplotlib text
 
 opts, args = getopt.gnu_getopt(sys.argv[1:], '')
+
+if len(args) < 2:
+    print(help_text)
+    sys.exit(0)
 
 fm5b = args[0]
 ftst = args[1]
