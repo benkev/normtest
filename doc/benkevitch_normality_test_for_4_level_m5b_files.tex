@@ -206,6 +206,10 @@ The OpenCL framework requires more options because of the different implementati
 \noindent \verb@ker_m5b_gauss_test_amd.cl@ - test kernel for AMD OpenCL; \\
 \noindent \verb@fminbndf_amd.cl@ - Brent's algorithm for AMD OpenCL. \\
 
+The parallel processing in kernels is organized framewise. As many frames as possible are uploaded and stored un the GPU RAM, and each one data frame is processed in one CUDA thread or in one OpenCL work item in parallel. The frames are independent of one another, so no thread synchronization is required. Within one thread/work item, though, the frame and its 16 channels are processed sequentially. The kernel finds the counts of channel data in each of the four bins, runs the 1D Brent's search for the optimal quantization threshold, calculates $\chi^2$ against the standard normal distribution, and saves the results in the output arrays. This is repeated until all the file chunks are processed.
+
+
+
 
 
 \section{Python Module for Normality Testing}
@@ -394,7 +398,46 @@ The latter normality tests produced binary files of the results including the bi
 \noindent \verb@%run inspect_nt.py rd1910_wz_268-1811_text.m5b 056  5006 1@. \\
 
 
-The 4x4, 16-channel histogram plots are given in Fig.~\ref{hists_text_4x4} for the inserted text and in Fig.~\ref{hists_bin_code_4x4} for the inserted binary code. Obviously, the histograms do not show anything close to the normal distribution. In both Fig.~\ref{hists_text_4x4} and Fig.~\ref{hists_bin_code_4x4} the $\chi^2$ values are in the range of hundreds, which is orders of magnitude above the critical value of $\chi^2_{cr} = 7.81$ at the level of significance 0.05.  
+The 4x4, 16-channel histogram plots are given in Fig.~\ref{hists_text_4x4} for the inserted text and in Fig.~\ref{hists_bin_code_4x4} for the inserted binary code. Obviously, the histograms do not show anything close to the normal distribution. In both Fig.~\ref{hists_text_4x4} and Fig.~\ref{hists_bin_code_4x4} the $\chi^2$ values are in the range of hundreds, which is orders of magnitude above the critical value of $\chi^2_{cr} = 7.81$ at the level of significance 0.05. 
+
+
+
+\section{Benchmarks}
+
+In order to give a general idea of the time required for the normality tests on different M5A/M5B files, we have made testing on the files available using the PC with the following parameters: \\
+
+\indent Host CPU: Intel(R) Core(TM) i7 CPU X 980 @ 3.33GHz \\
+\indent Host RAM: 16GB \\
+\indent GPU: NVIDIA GeForce GTX 1060 3GB RAM \\
+\indent GPU CUDA Cores: 1152
+\indent GPU Memory Interface: 192-bit \\
+\indent GPU Graphics Clock: 2.0GHz \\
+\indent GPU Memory Transfer Rate: 8.0GHz \\
+\indent GPU Interface: PCI Express x16 Gen2 \\
+\indent PCIe Link Speed: 5.0GT/s \\
+\indent Disk: Samsung SSD 870 EVO 2TB \\
+\indent OS: Ubuntu 23.04 \\
+
+With the 3GB GPU RAM, only 201,989 frames fits it at once, so the M5B file chunk size is about 2 GB. This data amount requires 2.3 - 2.4 s to be processed on GPU. However, readig of one file chunk into memory takes 7 - 8 s. Saving the results on disk takes 0.075 - 0.080 s per one chunk. The benchmark results are given in Tab.~\ref{timings}.
+
+\begin{table}[ht!]
+  \begin{center}
+    \caption{Normality Test Timings}
+    \label{timings}
+    \begin{tabular}{l|c|c|c}
+      \textbf{File name} & \textbf{File Size} & \textbf{Chunks} & \textbf{Total Time} \\
+      \hline
+      rd1910\_wz\_268-1811.m5b & 1.3 GB & 1 &  4.4 s \\
+      rd1910\_ny\_269-1402b.m5a & 4.6 GB & 3 & 27.9 s \\
+      rd1910\_ny\_269-1413.m5a & 5.7 GB & 3 & 30.4 s \\
+      rd1910\_ny\_269-1404.m5a & 54 GB & 29 & 4 m 55 s \\
+      rd1903\_ft\_100-0950.m5b & 72 GB & 38 & 6 m 39 s\\
+    \end{tabular}
+  \end{center}
+\end{table}
+
+The hardware used is rather outdated. We expect better performance on modern systems. 
+ 
 
 \section{Conclusion}
 

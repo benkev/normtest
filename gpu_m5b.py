@@ -94,6 +94,10 @@ class Normtest:
     n_frmbytes = 2504*n_bytes_uint32  # Bytes in a frame
     n_frmdatwords = 2500 # 32-bit words of data in one frame
 
+    n_m5bbytes = 0      # Assigned at Normtest.do_m5b(m5b_filename)
+    n_m5bwords = 0      # Assigned at Normtest.do_m5b(m5b_filename)
+
+
     #quota_dat = 0.95  # Quota of dat array in overall GPU data (approx)
     #quota_dat = 0.90  # Quota of dat array in overall GPU data (approx)
     #quota_dat = 0.85  # Quota of dat array in overall GPU data (approx)
@@ -244,6 +248,9 @@ class Normtest:
         n_whole_frm_bytes = cls.n_frmbytes*n_whole_frms
         n_last_frmbytes = n_m5bbytes % cls.n_frmbytes
         n_last_frmwords = n_last_frmbytes // 4
+
+        cls.n_m5bbytes = n_m5bbytes
+        cls.n_m5bwords = n_m5bwords
         #
         # Select processing mode dependent on relation sz_m5b ~ sz_cpu ~ sz_gpu
         
@@ -282,7 +289,7 @@ class Normtest:
         # chunks and what are the read offsetts sizes in uint32 words.
         #
         # Assume the file chunk to read into dat array can be ~95% of available
-        # GPU memory (quota_dat = .95). The rest, ~5%, will contain the work
+        # GPU memory (quota_dat = .80). The rest, ~20%, will contain the work
         # variables and the result arrays.
         #
         # Maximum dat array size (bytes) to fit GPU along with other arrays 
@@ -343,6 +350,8 @@ class Normtest:
         cls.n_bytes_whole_chunk = n_bytes_whole_chunk
         cls.n_words_last_chunk = n_words_last_chunk
         cls.n_bytes_last_chunk = n_bytes_last_chunk
+
+        cls.pc = 0.  # Percent of the M5B file chunks processed
         
         # Number of frames in a whole file chunk and in dat array
         # n_frms_whole = np.uint32(n_words_whole_chunk // cls.n_frmwords)
@@ -442,7 +451,6 @@ class Normtest:
         #
         # Main loop  CUDA  ======================================
         #
-
         for i_chunk in range(cls.n_m5b_chunks):
 
             tic = time.time()
@@ -461,11 +469,14 @@ class Normtest:
             n_words_last_chunk = cls.n_words_last_chunk
         
             n_frms = np.uint32(cls.n_frms_chunk)
+            
+            cls.pc = 100*(i_chunk+1)*n_bytes_chunk/cls.n_m5bbytes # % processed
 
             # However, the last chunk can be incomplete
             if incompleteChunk:
                 n_words_chunk = n_words_last_chunk
                 n_frms = np.uint32(cls.n_frms_last_chunk)
+                cls.pc = 100.      # 100% processed at the last chunk
 
             n_words_chunk_offs = i_chunk * cls.n_words_whole_chunk
             n_bytes_chunk_offs = i_chunk * cls.n_bytes_whole_chunk
@@ -478,13 +489,12 @@ class Normtest:
                                   offset=n_bytes_chunk_offs)
            
             toc = time.time()
-            #print("M5B file chunk has been read. Time: %7.3f s.\n" % (toc-tic))
-            #print("Chunk #%d, chunk size, words: %d, chunk offset, words: %d" %
-            #      (i_chunk, n_words_chunk, n_words_chunk_offs))
+           
             print()
-            print("Chunk #%d, read time %7.3f s. \n" \
+            print("%.1f%% : chunk #%d, read time %7.3f s. \n" \
                   "chunk size: %d words, chunk offset: %d words" %
-                  (i_chunk, (toc-tic), n_words_chunk, n_words_chunk_offs))
+                  (cls.pc, i_chunk, (toc-tic), n_words_chunk, \
+                   n_words_chunk_offs))
 
             #
             # Find how many CUDA blocks and CUDA threads per block needed
@@ -660,7 +670,6 @@ class Normtest:
         #
         # Main loop OpenCL =========================================
         #
-
         for i_chunk in range(cls.n_m5b_chunks):
 
             tic = time.time()
@@ -680,10 +689,14 @@ class Normtest:
         
             n_frms = np.uint32(cls.n_frms_chunk)
 
+            cls.pc = 100*(i_chunk+1)*n_bytes_chunk/cls.n_m5bbytes # % processed
+
+
             # However, the last chunk can be incomplete
             if incompleteChunk:
                 n_words_chunk = n_words_last_chunk
                 n_frms = np.uint32(cls.n_frms_last_chunk)
+                cls.pc = 100.     # 100% processed at the last chunk
 
             n_words_chunk_offs = i_chunk * cls.n_words_whole_chunk
             n_bytes_chunk_offs = i_chunk * cls.n_bytes_whole_chunk
@@ -699,9 +712,10 @@ class Normtest:
             
             #print("M5B file chunk has been read. Time: %7.3f s.\n" % (toc-tic))
             print()
-            print("Chunk #%d, read time %7.3f s. \n" \
+            print("%.1f%% : chunk #%d, read time %7.3f s. \n" \
                   "chunk size: %d words, chunk offset: %d words," %
-                  (i_chunk, (toc-tic), n_words_chunk, n_words_chunk_offs))
+                  (cls.pc, i_chunk, (toc-tic), n_words_chunk, \
+                   n_words_chunk_offs))
 
             #
             # Find how many Global Work Items, global_size (i.e. total number
