@@ -367,6 +367,14 @@ We can see frame 10, as many others, is damaged. Inspect it: \\
 
 It pops up the 4x4-subplot picture quite similar to those shown in Fig.~\ref{hists_text_4x4} and Fig.~\ref{hists_bin_code_4x4}, where the histograms of the observed data have nothing in common with the normal distributions. 
 
+
+\subsection{Miscellaneous}
+
+\verb@plot_chi2.py@: Plots the graph in Fig.~\ref{chi2_pdf}. \\
+\verb@plot_m5b_thrange.py@: Plots the graph in Fig.~\ref{optimum_theta}. \\
+
+
+
 \section{Insertion of Extraneous Data into M5B File to Test the Algorithm}
 
 In order to see the effectiveness of our normality testing software we replaced some parts of the native data in the \verb@rd1910_wz_268-1811.m5b@ file with two types of extraneous data. One piece was an executable code, and the other piece was a UTF-8 coded text, actually, Part 1 of Leo Tolstoy's novel War and Peace in Russian. This insertions were made with the Python script \verb@insert_code_in_m5b.py@ on the copies of M5B files:\\
