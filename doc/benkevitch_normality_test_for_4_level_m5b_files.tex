@@ -49,6 +49,8 @@ The algorithm runs on the GPU (Graphics Processing Unit), which provides high sp
 \end{abstract}
 
 
+\tableofcontents
+
 \section{Quantization and M5B Data Structure}
 
 The analog signal from a single antenna/dish is supposed to be Gaussian noise $N(\mu,\sigma)$ with the expectation $\mu$ and standard deviation (rms) $\sigma$ distributed according to the normal law with the probability density function (PDF):
@@ -66,7 +68,7 @@ The signal is centered to ensure zero $\mu$ and its band is filtered into 16 fre
   \includegraphics[width=25pc]{fig_4_Level_Quantization_Pattern_impr.eps}
   %\noindent\includegraphics[width=20pc]{fig_4_Level_Quantization_Pattern_impr.eps}
   %\includegraphics[width=\linewidth]{}
-  \caption{\small 4-level quantization.}
+  \caption{\small The 4-level quantizer characteristic is shown as a black polygonal line. The input analog signal $x$, distributed normally, can take any value in $(-\infty \twodots +\infty)$. In response to $x$, the quantizer outputs $\hat{x}$ with only four values, 0, 1, 2, and 3, according to Tab.~\ref{quant_io}. The normal probability density function (PDF) of $x$ is shown as a green line.}
   \label{quant4lvl}
   \end{center}
 \end{figure}
@@ -74,7 +76,7 @@ The signal is centered to ensure zero $\mu$ and its band is filtered into 16 fre
 
 \begin{table}[ht!]
   \begin{center}
-    \caption{Quantizer}
+    \caption{Quantizer Characteristic}
     \label{quant_io}
     \begin{tabular}{c|c}
       \textbf{Input, $x$} & \textbf{Output, $\hat{x}$} \\
@@ -107,14 +109,14 @@ For each data frame the value of the test-statistic is calculated as
 \end{equation}
 
 
-The $X^2$ test-statistic asymptotically approaches the $\chi^2_{k=3}$ distribution, where $k = n - 1 = 3$ is the number of degrees of freedom. The $\chi^2_{k=3}$ PDF is shown in Fig.~\ref{chi2_pdf}. The statistic $X^2$ is a random value showing how close are the observation frequencies $B_i$ to the perfect, theoretical frequencies $E_i$. The $\chi^2_{k=3}$ PDF has maximum at $X^2=1$ and the mean at $X^2=k=3$. This means that if $X^2$ is distributed as $\chi^2_{k=3}$ its most probable random values will be concentrated somewhere around the mean 3 and not much further. But how much further? The area under the $\chi^2_{k=3}$ PDF curve in Fig.~\ref{chi2_pdf} over an interval $[a,b]$ equals to the probability that the random value will appear within this interval. If we want to be 95\% confident that the data is distributed normally, $X^2$ cannot exceed the critical value $\chi^2_{cr}$ such that the probability for $X^2$ to appear within the interval $[0 \twodots \chi^2_{cr}]$ is $p=0.95$. The critical $\chi^2_{k=3}$ value can be calculated as the value of $\chi^2$ Probability Point Function or PPF, the inverse of the $\chi^2$ Cumulative Distribution Function or CDF. In Python this is done as $\verb@scipy.stats.chi2.ppf(1-alpha, k)@$, where $\alpha = 0.05$ is the level of significance. In our case $\chi^2_{cr} = 7.81$. 
+The $X^2$ test statistic asymptotically approaches the $\chi^2_{k=3}$ distribution, where $k = n - 1 = 3$ is the number of degrees of freedom. The $\chi^2_{k=3}$ PDF is shown in Fig.~\ref{chi2_pdf}. The statistic $X^2$ is a random value showing how close are the observation frequencies $B_i$ to the perfect, theoretical frequencies $E_i$. The $\chi^2_{k=3}$ PDF has maximum at $X^2=1$ and the mean at $X^2=k=3$. This means that if $X^2$ is distributed as $\chi^2_{k=3}$ its most probable random values will be concentrated somewhere around the mean 3 and not much further. But how much further? The area under the $\chi^2_{k=3}$ PDF curve in Fig.~\ref{chi2_pdf} over an interval $[a,b]$ equals to the probability that the random value will appear within this interval. If we want to be 95\% confident that the data is distributed normally, $X^2$ cannot exceed the critical value $\chi^2_{cr}$ such that the probability for $X^2$ to appear within the interval $[0 \twodots \chi^2_{cr}]$ is $p=0.95$. The critical $\chi^2_{k=3}$ value can be calculated as the value of $\chi^2$ Probability Point Function or PPF, the inverse of the $\chi^2$ Cumulative Distribution Function or CDF. In Python this is done as $\verb@scipy.stats.chi2.ppf(1-alpha, k)@$, where $\alpha = 0.05$ is the level of significance. In our case $\chi^2_{cr} = 7.81$. 
 
 \begin{figure}[ht!]
   \begin{center}
   \includegraphics[width=25pc]{fig_chi2_pdf.eps}
   %\noindent\includegraphics[width=20pc]{fig_4_Level_Quantization_Pattern_impr.eps}
   %\includegraphics[width=\linewidth]{}
-  \caption{\small Chi-squared distribution function.}
+  \caption{\small Chi-squared probability density function (PDF). The red area under the curve to the left of $\chi^2_{cr} = 7.81$ equals the probability $p=0.05$. This is the probability that the $X^2$ statistic (Eq.~\eqref{x2_calc}) for normal $B_i$ exceeds 7.81.}
   \label{chi2_pdf}
   \end{center}
 \end{figure}
@@ -134,7 +136,7 @@ One can notice that the $X^2$ statistics in Eq.~\eqref{x2_calc} is a function of
   X^2(\theta) = \sum_{i=0}^3 \frac{(B_i - E_i(\theta))^2}{E_i(\theta)},
 \end{equation}
 
-where the normal frequencies $E_i$ are dependent on the quantization thresholds positions:
+\noindent where the normal frequencies $E_i$ are dependent on the quantization thresholds positions:
 
 \begin{equation*}
   \label{norm_freq}
@@ -142,7 +144,7 @@ where the normal frequencies $E_i$ are dependent on the quantization thresholds 
                              \frac{1}{2}-\Phi(-\theta), \; \Phi(-\theta) \right],
 \end{equation*}
 
-as shown in Fig.~\ref{npdf_areas}, and $\Phi(x)$ is the normal CDF with $\mu=0$ and $\sigma=1$:
+\noindent as shown in Fig.~\ref{npdf_areas}, and $\Phi(x)$ is the normal CDF with $\mu=0$ and $\sigma=1$:
 
 \begin{equation}
   \label{ncdf}
@@ -153,7 +155,7 @@ as shown in Fig.~\ref{npdf_areas}, and $\Phi(x)$ is the normal CDF with $\mu=0$ 
 \begin{figure}[ht!]
   \begin{center}
   \includegraphics[width=25pc]{fig_npdf_areas.eps}
-  \caption{\small  $\theta = 0.7988$, which can be used as an estimate for the actual threshold used in the analog signal quantization.}
+  \caption{\small The normal frequencies $E_i$ are dependent on the quantization thresholds $\pm\theta$. They are calculated with the use of normal cumulative distribution function (CDF) given in Eq.~\eqref{ncdf}.}
   \label{npdf_areas}
   \end{center}
 \end{figure}
@@ -182,7 +184,7 @@ In both frameworks we use single precision floating point arithmetics, which pro
 
 In the both frameworks, the kernels are written in the C language subsets with some extensions. The host code uses CUDA or OpenCL API. It can be written in C/C++ and some other languages. However, Python is always preferred to make life easier. We use Python wrappers for the both frameworks: PyCUDA and PyOpenCL, and the host part of the NormTest software is written in Python. 
 
-The Python module for normality testing, \verb@gpu_m5b.py@, described in the next section, transfers control to the C kernel previously transferred to the GPU. The kernels are different for different frameworks used. In any individual normality test only two C files are used. Their names start with the following strings: \verb@ker_m5b_gauss_test@ and \verb@fminbndf@. \\
+The Python module for normality testing, \verb@gpu_m5b.py@, described in the next section, transfers control to the C kernel previously transferred to the GPU. The kernels are different for different frameworks used. In any individual normality test only two C files are used. Their names start with the strings \verb@"ker_m5b_gauss_test"@ and \verb@"fminbndf"@: \\
 
 \noindent \verb@ker_m5b_gauss_test*@ defines the test kernel \verb@m5b_gauss_test()@ and the minimized function  \\
 \hangindent=0.7cm \verb@calc_chi2()@, which calculates $\chi^2$ between the four bins of standard normal distribution and the four bins with the observation data counts. \\
@@ -257,8 +259,7 @@ be changed using the \verb@nthreads@ parameter. An example of setting 64 threads
 
 \section{Data Flagging}
 
-The binary files \verb@nt_flag*.bin@ contain flags. They are actually arrays of C/C++ \verb@unsigned short int@ or Python \verb@dtype=np.uint16@ with the dinensions \verb@[n_frames,16]@.
- with the following values: \\
+The binary files \verb@nt_flag*.bin@ contain flags. They are actually arrays of C/C++ \verb@unsigned short int@ or Python \verb@dtype=np.uint16@ with the dimensions \verb@[n_frames,16]@ with the following values: \\
  
 \noindent 0: no errors; \\
 \noindent 1: bad frame signature; flags for all the channels are filled with 1.  \\
@@ -289,7 +290,7 @@ The histograms in Fig.~\ref{hists_good_4x4} are close to the normal histograms w
   \includegraphics[width=35pc]{fig_4x4_Histograms_good.eps}
   %\noindent\includegraphics[width=20pc]{fig_4_Level_Quantization_Pattern_impr.eps}
   %\includegraphics[width=\linewidth]{}
-  \caption{\small Observed \& Normal PDF Histogram Bins Separated by $-\infty, -\theta, \, 0, +\theta, +\infty$.}
+  \caption{\small Observed and normal PDF histogram bins separated by $-\infty, -\theta, \, 0, +\theta, +\infty$. The histograms of observed data from an M5B file frame 1000 are shown as narrow black bars with red dots at the tips. The histograms of normal PDF are wider cyan bars. The normal PDFs with colored areas are given below the histograms. Here the observed distributions are close to the normal.}
   \label{hists_good_4x4}
   \end{center}
 \end{figure}
@@ -444,23 +445,16 @@ The hardware used is rather outdated. We expect better performance on modern sys
 We have designed a highly effective algorithm of finding and locating any extraneous pieces of data in the M5A/M5B files. The algorithm is based on testing the M5B data for normality with the use of Pearson's $\chi^2$ criterion. Our implementation is also highly efficient because it uses the GPU. It is also well automated: before running the normality tests, at the time of importing the class \verb@Normtest@ it checks the hardware and makes a decision which or the GPU frameworks to use: \verb@CUDA@ \verb@OpenCL@, thus allowing usage of both Nvidia and AMG graphics. Several Python scripts are provided to facilitate analysis of the normality test results.
 
 
-
-\begin{thebibliography}{99}
-
-\bibitem[{\textit{Kiefer}(1953)}]{Kiefer1953} 
-{Kiefer}, J.~L. (1953), {Sequential minimax search for a maximum}, \textit{Proceedings of the American Mathematical Society}, \textit{4}, (3), 502-–506, DOI:10.1109/TIT.1967.1053965.
-
-\end{thebibliography}
+\pagebreak
 
 \section*{Addendum}
-
 
 \begin{figure}[ht!]
   \begin{center}
   \includegraphics[width=35pc]{fig_chi2_and_thresh_distr_1.eps}
   %\noindent\includegraphics[width=20pc]{fig_4_Level_Quantization_Pattern_impr.eps}
   %\includegraphics[width=\linewidth]{}
-  \caption{\small Distributions of $\chi^2$ (upper pane) and $\theta$ (lower pane). The plots are based on the results of normality testing the data in file rd1903\_ft\_100-0950.m5b.}
+  \caption{\small Distributions of $\chi^2$ (upper pane) and $\theta$ (lower pane). The plots are based on the results of normality testing the data from file rd1903\_ft\_100-0950.m5b. The vertical red lines show the positions of $\chi^2_{cr}$ and $\theta_{cr}$. }
   \label{chi2_and_thresh_distr_1}
   \end{center}
 \end{figure}
@@ -471,7 +465,7 @@ We have designed a highly effective algorithm of finding and locating any extran
   \includegraphics[width=35pc]{fig_chi2_and_thresh_distr_2.eps}
   %\noindent\includegraphics[width=20pc]{fig_4_Level_Quantization_Pattern_impr.eps}
   %\includegraphics[width=\linewidth]{}
-  \caption{\small Distributions of $\chi^2$ (upper pane) and $\theta$ (lower pane). The plots are based on the results of normality testing the data in file rd1910\_wz\_268-1811.m5b.}
+  \caption{\small Distributions of $\chi^2$ (upper pane) and $\theta$ (lower pane). The plots are based on the results of normality testing the data from file rd1910\_wz\_268-1811.m5b. The vertical red lines show the positions of $\chi^2_{cr}$ and $\theta_{cr}$. }
   \label{chi2_and_thresh_distr_2}
   \end{center}
 \end{figure}
@@ -482,7 +476,7 @@ We have designed a highly effective algorithm of finding and locating any extran
   \includegraphics[width=35pc]{fig_4x4_Histograms_text_inserted.eps}
   %\noindent\includegraphics[width=20pc]{fig_4_Level_Quantization_Pattern_impr.eps}
   %\includegraphics[width=\linewidth]{}
-  \caption{\small Observed \& Normal PDF Histogram Bins Separated by $-\infty, -\theta, \, 0, +\theta, +\infty$.}
+  \caption{\small Observed and normal PDF histogram bins separated by $-\infty, -\theta, \, 0, +\theta, +\infty$. The histograms of observed data from an M5B file frame 5006 are shown as narrow black bars with red dots at the tips. The histograms of normal PDF are wider cyan bars. The normal PDFs with colored areas are given below the histograms. Frame 5006 was filled with some UTF-8-coded text, and one can see its distributions are far from the normal.}
   \label{hists_text_4x4}
   \end{center}
 \end{figure}
@@ -494,7 +488,7 @@ We have designed a highly effective algorithm of finding and locating any extran
   \includegraphics[width=35pc]{fig_4x4_Histograms_bin_code_inserted.eps}
   %\noindent\includegraphics[width=20pc]{fig_4_Level_Quantization_Pattern_impr.eps}
   %\includegraphics[width=\linewidth]{}
-  \caption{\small Observed \& Normal PDF Histogram Bins Separated by $-\infty, -\theta, \, 0, +\theta, +\infty$.}
+  \caption{\small Observed and normal PDF histogram bins separated by $-\infty, -\theta, \, 0, +\theta, +\infty$. The histograms of observed data from an M5B file frame 2000 are shown as narrow black bars with red dots at the tips. The histograms of normal PDF are wider cyan bars. The normal PDFs with colored areas are given below the histograms. Frame 2000 was filled with some binary code (ELF 64-bit LSB executable), and one can see its distributions are far from the normal.}
   \label{hists_bin_code_4x4}
   \end{center}
 \end{figure}
