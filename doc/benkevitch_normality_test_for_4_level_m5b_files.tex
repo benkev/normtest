@@ -12,6 +12,7 @@
 %\usepackage{url}
 %\usepackage{times}
 \usepackage{textcomp}
+%\usepackage{parskip}
 \bibliographystyle{agu08}
 
 \newcommand{\ud}{\mathrm d}
@@ -92,7 +93,7 @@ The signal is centered to ensure zero $\mu$ and its band is filtered into 16 fre
 
 The M5B file can be considered as an array of 10016-byte frames. Each frame consists of 2504 32-bit words (\verb@unsigned int@ or  \verb@uint@ in C/C++). The first 4 words comprise the frame header, so a frame has 2500 words of pure data. Each 32-bit data word is subdivided into 16 2-bit channels, numbered from 0 to 15. The header contains the sync word \verb@0xdec0de5c@, 23-bit long frame number within second (reset to zero each new second), one flag bit to tag the frame invalid, 8-bit long channel ID, BCD Time Code Word 1 (‘JJJSSSSS’), BCD Time Code Word 2 (‘.SSSS’), and  16-bit CRCC.
 
-Unfortunately, the header does \emph{not} contain the quantization threshold value $\theta = v_0/\sigma$, which is necessary for the statistical testing. In order to estimate $\theta$, the algorithm has to spend precious time on its 1D search as will be described further. 
+Unfortunately, the frame headers do \emph{not} contain the quantization threshold values $\theta = v_0/\sigma$ necessary for the statistical testing. In order to estimate $\theta$, the algorithm has to spend precious time on its 1D search as will be described further. 
 
 
 
@@ -254,19 +255,24 @@ with 8 threads per block (in CUDA terminology), or, which is the same,
 8 work items per work group (in OpenCL terms). However, this number can 
 be changed using the \verb@nthreads@ parameter. An example of setting 64 threads per block: \\
 
-\noindent \verb@nt.do_m5b("rd1910_wz_268-1811.m5b", nthreads=64)@ \\
+\noindent \verb@nt.do_m5b("rd1910_wz_268-1811.m5b", nthreads=64)@ 
 
 
 \section{Data Flagging}
 
-The binary files \verb@nt_flag*.bin@ contain flags. They are actually arrays of C/C++ \verb@unsigned short int@ or Python \verb@dtype=np.uint16@ with the dimensions \verb@[n_frames,16]@ with the following values: \\
+The binary files \verb@nt_flag*.bin@ created by \verb@Normtest.do_m5b()@ method contain flags for every channel in every frame. They are actually arrays of C/C++ \verb@unsigned short int@ or Python \verb@dtype=np.uint16@ with the dimensions \verb@[n_frames,16]@. The flags values mean the following conditions:
  
-\noindent 0: no errors; \\
-\noindent 1: bad frame signature; flags for all the channels are filled with 1.  \\
-\noindent 2: 1D search for the optimal quantization threshold did not converge in 20 iterations; \\
-\noindent 3: $\chi^2 > \chi^2_{cr}$.
+\indent 0: no errors; \\
+\indent 1: bad frame signature; flags for all the channels are filled with 1.  \\
+\indent 2: 1D search for the optimal quantization threshold did not converge in 20 iterations; \\
+\indent 3: $\chi^2 > \chi^2_{cr}$.
 
-Thus the flag value 3 can indicate that the frame contains some extraneous data other than the Gaussian data stream from a dish. 
+Thus the flag value 3 can indicate that the frame contains some extraneous data other than the Gaussian data streams from a dish. The flags can be easily read in IPython into an array. For example: \\
+
+\noindent \verb@fl = np.fromfile("nt_flag_cuda_rd1910_wz_268-1811_text_20231024_174438.173.bin", \@ \par
+\noindent \verb@                 dtype=np.uint16)  # Read the flag file into 1D array fl;@ \par
+\noindent \verb@fl = fl.reshape((len(fl)//16,16)) # Convert it into 2D array fl[n_frames,16]@  \par
+
 
 
 \section{Python Scripts for Analysis of Results}
@@ -287,7 +293,7 @@ The histograms in Fig.~\ref{hists_good_4x4} are close to the normal histograms w
 
 \begin{figure}[ht!]
   \begin{center}
-  \includegraphics[width=35pc]{fig_4x4_Histograms_good.eps}
+  \includegraphics[width=40pc]{fig_4x4_Histograms_good.eps}
   %\noindent\includegraphics[width=20pc]{fig_4_Level_Quantization_Pattern_impr.eps}
   %\includegraphics[width=\linewidth]{}
   \caption{\small Observed and normal PDF histogram bins separated by $-\infty, -\theta, \, 0, +\theta, +\infty$. The histograms of observed data from an M5B file frame 1000 are shown as narrow black bars with red dots at the tips. The histograms of normal PDF are wider cyan bars. The normal PDFs with colored areas are given below the histograms. Here the observed distributions are close to the normal.}
@@ -365,13 +371,23 @@ We can see frame 10, as many others, is damaged. Inspect it: \\
 
 \noindent \verb@%run inspect_nt.py rd1910_wz_268-1811_text.m5b 056  10 1@ \\
 
-It pops up the 4x4-subplot picture quite similar to those shown in Fig.~\ref{hists_text_4x4} and Fig.~\ref{hists_bin_code_4x4}, where the histograms of the observed data have nothing in common with the normal distributions. 
+It pops up the 4x4-subplot picture quite similar to those shown in Fig.~\ref{hists_text_4x4} and Fig.~\ref{hists_bin_code_4x4} in Addendum, where the histograms of the observed data have nothing in common with the normal distributions. 
+
 
 
 \subsection{Miscellaneous}
 
-\verb@plot_chi2.py@: Plots the graph in Fig.~\ref{chi2_pdf}. \\
-\verb@plot_m5b_thrange.py@: Plots the graph in Fig.~\ref{optimum_theta}. \\
+\noindent \verb@plot_chi2.py@: Plots the graph in Fig.~\ref{chi2_pdf}. \par
+\noindent \verb@plot_npdf_areas.py@: Plots the graph in Fig.~\ref{npdf_areas}. \par
+\noindent \verb@plot_m5b_thrange.py@: Plots the graph in Fig.~\ref{optimum_theta}. \par
+
+\hangindent=1cm \hangafter=1
+\noindent \verb@plot_25pc_npdf_expectations.py@: Plots the area under normal PDF curve divided into 4 
+equal-area bins by the vertical lines at $-\theta_{cr} = -0.6745$, 0, and $\theta_{cr} = +0.6745$. The mathematical expectations of the bins, $\mu_1=\pm 0.32$ and $\mu_2=\pm 1.27$ are indicated with red dots. \par
+\hangindent=1cm \hangafter=1
+\noindent \verb@plot_various_bins.py@ Plots 3x3 subplots showing the histograms of standard normal distribution for several different quantization thresholds $\pm\theta = $[0.2, 0.3, 0.5, 0.6745, 0.8, 1.0, 1.2, 1.5, 2.0]. The thresholds $\theta = \pm 0.6745 \, \sigma$ produce histogram of the uniform distribution despite the input analog signal is normal. See Fig.~\ref{var_bins_hists}. \par
+\hangindent=1cm \hangafter=1
+\noindent \verb@get_dev_info_cuda.py@, \verb@get_dev_info_opencl.py@, \verb@get_cpu_mem.py@: Information scripts using PyCuda and PyOpenCL for the hardware inquiries. 
 
 
 
@@ -407,7 +423,7 @@ The latter normality tests produced binary files of the results including the bi
 \noindent \verb@%run inspect_nt.py rd1910_wz_268-1811_text.m5b 056  5006 1@. \\
 
 
-The 4x4, 16-channel histogram plots are given in Fig.~\ref{hists_text_4x4} for the inserted text and in Fig.~\ref{hists_bin_code_4x4} for the inserted binary code. Obviously, the histograms do not show anything close to the normal distribution. In both Fig.~\ref{hists_text_4x4} and Fig.~\ref{hists_bin_code_4x4} the $\chi^2$ values are in the range of hundreds, which is orders of magnitude above the critical value of $\chi^2_{cr} = 7.81$ at the level of significance 0.05. 
+The 4x4, 16-channel histogram plots are given in Addendum, in Fig.~\ref{hists_text_4x4} for the inserted text and in Fig.~\ref{hists_bin_code_4x4} for the inserted binary code. Obviously, the histograms do not show anything close to the normal distribution. In both Fig.~\ref{hists_text_4x4} and Fig.~\ref{hists_bin_code_4x4} the $\chi^2$ values are in the range of hundreds, which is orders of magnitude above the critical value of $\chi^2_{cr} = 7.81$ at the level of significance 0.05. 
 
 
 
@@ -427,8 +443,6 @@ In order to give a general idea of the time required for the normality tests on 
 \indent Disk: Samsung SSD 870 EVO 2TB \\
 \indent OS: Ubuntu 23.04 \\
 
-With the 3GB GPU RAM, only 201,989 frames fits it at once, so the M5B file chunk size is about 2 GB. This data amount requires 2.3 - 2.4 s to be processed on GPU. However, readig of one file chunk into memory takes 7 - 8 s. Saving the results on disk takes 0.075 - 0.080 s per one chunk. The benchmark results are given in Tab.~\ref{timings}.
-
 \begin{table}[ht!]
   \begin{center}
     \caption{Normality Test Timings}
@@ -445,6 +459,8 @@ With the 3GB GPU RAM, only 201,989 frames fits it at once, so the M5B file chunk
   \end{center}
 \end{table}
 
+With the 3GB GPU RAM, only 201,989 frames fits it at once, so the M5B file chunk size is about 2 GB. This data amount requires 2.3 - 2.4 s to be processed on GPU. However, readig of one file chunk into memory takes 7 - 8 s. Saving the results on disk takes 0.075 - 0.080 s per one chunk. The benchmark results are given in Tab.~\ref{timings}.
+
 The hardware used is rather outdated. We expect better performance on modern systems. 
  
 
@@ -453,7 +469,8 @@ The hardware used is rather outdated. We expect better performance on modern sys
 We have designed a highly effective algorithm of finding and locating any extraneous pieces of data in the M5A/M5B files. The algorithm is based on testing the M5B data for normality with the use of Pearson's $\chi^2$ criterion. Our implementation is also highly efficient because it uses the GPU. It is also well automated: before running the normality tests, at the time of importing the class \verb@Normtest@ it checks the hardware and makes a decision which or the GPU frameworks to use: \verb@CUDA@ \verb@OpenCL@, thus allowing usage of both Nvidia and AMG graphics. Several Python scripts are provided to facilitate analysis of the normality test results.
 
 
-\pagebreak
+%\pagebreak
+\newpage
 
 \section*{Addendum}
 
@@ -481,7 +498,7 @@ We have designed a highly effective algorithm of finding and locating any extran
 
 \begin{figure}[ht!]
   \begin{center}
-  \includegraphics[width=35pc]{fig_4x4_Histograms_text_inserted.eps}
+  \includegraphics[width=40pc]{fig_4x4_Histograms_text_inserted.eps}
   %\noindent\includegraphics[width=20pc]{fig_4_Level_Quantization_Pattern_impr.eps}
   %\includegraphics[width=\linewidth]{}
   \caption{\small Observed and normal PDF histogram bins separated by $-\infty, -\theta, \, 0, +\theta, +\infty$. The histograms of observed data from an M5B file frame 5006 are shown as narrow black bars with red dots at the tips. The histograms of normal PDF are wider cyan bars. The normal PDFs with colored areas are given below the histograms. Frame 5006 was filled with some UTF-8-coded text, and one can see its distributions are far from the normal.}
@@ -493,11 +510,21 @@ We have designed a highly effective algorithm of finding and locating any extran
 
 \begin{figure}[ht!]
   \begin{center}
-  \includegraphics[width=35pc]{fig_4x4_Histograms_bin_code_inserted.eps}
+  \includegraphics[width=40pc]{fig_4x4_Histograms_bin_code_inserted.eps}
   %\noindent\includegraphics[width=20pc]{fig_4_Level_Quantization_Pattern_impr.eps}
   %\includegraphics[width=\linewidth]{}
   \caption{\small Observed and normal PDF histogram bins separated by $-\infty, -\theta, \, 0, +\theta, +\infty$. The histograms of observed data from an M5B file frame 2000 are shown as narrow black bars with red dots at the tips. The histograms of normal PDF are wider cyan bars. The normal PDFs with colored areas are given below the histograms. Frame 2000 was filled with some binary code (ELF 64-bit LSB executable), and one can see its distributions are far from the normal.}
   \label{hists_bin_code_4x4}
+  \end{center}
+\end{figure}
+
+
+
+\begin{figure}[ht!]
+  \begin{center}
+  \includegraphics[width=40pc]{fig_various_bin_size_histograms.eps}
+  \caption{\small The histograms of standard normal distribution for several different quantization thresholds $\pm\theta = $[0.2, 0.3, 0.5, 0.6745, 0.8, 1.0, 1.2, 1.5, 2.0]. The thresholds $\theta = \pm 0.6745 \, \sigma$ produce histogram of the uniform distribution despite the input analog signal is normal.}
+  \label{var_bins_hists}
   \end{center}
 \end{figure}
 

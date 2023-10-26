@@ -1,7 +1,7 @@
 #
-# plot_quantiles.py
+# plot_various_bins.py
 #
-# Show quantiles for 9 quantization thresholds (+-theta)
+# Show bin sizes and histograms for 9 quantization thresholds (+-theta)
 # [0.2, 0.3, 0.5, 0.6745, 0.8, 1.0, 1.2, 1.5, 2.0].
 # Assumed quantization of data samples drawn from the standard normal
 # distribution.
@@ -27,7 +27,7 @@ f_pdf = (1/np.sqrt(2*np.pi))*(np.exp(-0.5*xrul**2))  # Normal PDF (0,1)
 f_pdf = (hsep-0.05)*f_pdf/f_pdf.max()
 
 pl.figure(figsize=(10,10))
-pl.figtext(0.5, 0.91, r"Normal PDF Quantiles Separated by $-\infty, " \
+pl.figtext(0.5, 0.91, r"Normal PDF Bins Separated by $-\infty, " \
            r"-\theta, \, 0, +\theta, +\infty$", fontsize=20, ha='center')
 for ip in range(9):
     pl.subplot(3, 3, ip+1)
@@ -55,14 +55,14 @@ for ip in range(9):
     bw = 0.15 if thr < 0.4 else 0.25
     pl.bar(barloc, qnor, bw, hsep+0.05, color='red', edgecolor='k')
     pl.ylim(-0.05, 0.85)
-    pl.text(xl[0], 0.78, r"$\theta=\pm%3.1f$" % thr, fontsize=12)
+    pl.text(xl[0], 0.78, r"$\theta=\pm%4.2f$" % thr, fontsize=12)
     #pl.grid(1)
 
-    if ip == 3: pl.text(2.8, 0.77, "*", fontsize=20)
+    if ip == 3: pl.text(2.7, 0.70, "*", fontsize=30)
 
-pl.figtext(0.5, 0.05, r"* Quantization Thresholds $\pm\theta$: " \
-           r"MUST be $|\theta|\, > 0.6745 \, \sigma$", \
-           fontsize=20, ha='center')
+pl.figtext(0.5, 0.05, r"* Quantization Thresholds $\theta = " \
+           "\pm 0.6745 \, \sigma$ produce histogram of  uniform distribution.",\
+           fontsize=16, ha='center')
 
 
 pl.show()
