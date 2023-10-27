@@ -2,8 +2,11 @@ NormTest
 
 This software is intended for fast testing for correctness of the Mark 5B output
 files (m5b files) before the correlator. The 2-bit data streams in the m5b files
-can be considered correct if they are samples from the Gaussian (normal)
+can be considered correct if they are sampled from the Gaussian (normal)
 distribution. We call such tests "testing for normality".
+
+For complete description and documentation please refer to doc/benkevitch_normality_test_for_4_level_m5b_files.pdf. The doc directory also contains the LaTeX file benkevitch_normality_test_for_4_level_m5b_files.tex and the eps images fot the figures therein.
+
 
 1. gpu_m5b.py:
 
