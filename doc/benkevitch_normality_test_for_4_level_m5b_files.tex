@@ -367,11 +367,11 @@ This will print something like
 5100 15 579.6725
 \end{verbatim}
 
-We can see frame 10, as many others, is damaged. Inspect it: \\
+We can see frame 10, as many others, is damaged, because its $\chi^2$ values are very high. Inspect it: \\
 
 \noindent \verb@%run inspect_nt.py rd1910_wz_268-1811_text.m5b 056  10 1@ \\
 
-It pops up the 4x4-subplot picture quite similar to those shown in Fig.~\ref{hists_text_4x4} and Fig.~\ref{hists_bin_code_4x4} in Addendum, where the histograms of the observed data have nothing in common with the normal distributions. 
+It pops up a 4x4-subplot picture quite similar to those shown in Fig.~\ref{hists_text_4x4} and Fig.~\ref{hists_bin_code_4x4} in Addendum, where the histograms of the observed data have nothing in common with the normal distributions. 
 
 
 
@@ -380,12 +380,11 @@ It pops up the 4x4-subplot picture quite similar to those shown in Fig.~\ref{his
 \noindent \verb@plot_chi2.py@: Plots the graph in Fig.~\ref{chi2_pdf}. \par
 \noindent \verb@plot_npdf_areas.py@: Plots the graph in Fig.~\ref{npdf_areas}. \par
 \noindent \verb@plot_m5b_thrange.py@: Plots the graph in Fig.~\ref{optimum_theta}. \par
-
+\hangindent=1cm \hangafter=1
+\noindent \verb@plot_various_bins.py@ Plots 3x3 subplots showing the histograms of standard normal distribution for several different quantization thresholds $\pm\theta = $[0.2, 0.3, 0.5, 0.6745, 0.8, 1.0, 1.2, 1.5, 2.0]. The thresholds $\theta = \pm 0.6745 \, \sigma$ produce histogram of the uniform distribution despite the input analog signal is normal. See Addendum, Fig.~\ref{var_bins_hists}. \par
 \hangindent=1cm \hangafter=1
 \noindent \verb@plot_25pc_npdf_expectations.py@: Plots the area under normal PDF curve divided into 4 
-equal-area bins by the vertical lines at $-\theta_{cr} = -0.6745$, 0, and $\theta_{cr} = +0.6745$. The mathematical expectations of the bins, $\mu_1=\pm 0.32$ and $\mu_2=\pm 1.27$ are indicated with red dots. \par
-\hangindent=1cm \hangafter=1
-\noindent \verb@plot_various_bins.py@ Plots 3x3 subplots showing the histograms of standard normal distribution for several different quantization thresholds $\pm\theta = $[0.2, 0.3, 0.5, 0.6745, 0.8, 1.0, 1.2, 1.5, 2.0]. The thresholds $\theta = \pm 0.6745 \, \sigma$ produce histogram of the uniform distribution despite the input analog signal is normal. See Fig.~\ref{var_bins_hists}. \par
+equal-area bins by the vertical lines at $-\theta_{cr} = -0.6745$, 0, and $\theta_{cr} = +0.6745$. The mathematical expectations of the bins, $\mu_1=\pm 0.32$ and $\mu_2=\pm 1.27$ are indicated with red dots. See Addendum, Fig.~\ref{bins_25_pc}. \par
 \hangindent=1cm \hangafter=1
 \noindent \verb@get_dev_info_cuda.py@, \verb@get_dev_info_opencl.py@, \verb@get_cpu_mem.py@: Information scripts using PyCuda and PyOpenCL for the hardware inquiries. 
 
@@ -525,6 +524,16 @@ We have designed a highly effective algorithm of finding and locating any extran
   \includegraphics[width=40pc]{fig_various_bin_size_histograms.eps}
   \caption{\small The histograms of standard normal distribution for several different quantization thresholds $\pm\theta = $[0.2, 0.3, 0.5, 0.6745, 0.8, 1.0, 1.2, 1.5, 2.0]. The thresholds $\theta = \pm 0.6745 \, \sigma$ produce histogram of the uniform distribution despite the input analog signal is normal.}
   \label{var_bins_hists}
+  \end{center}
+\end{figure}
+
+
+
+\begin{figure}[ht!]
+  \begin{center}
+  \includegraphics[width=35pc]{fig_25_percent_bins_and_expectations.eps}
+  \caption{\small The histograms of standard normal distribution for several different quantization thresholds $\pm\theta = $[0.2, 0.3, 0.5, 0.6745, 0.8, 1.0, 1.2, 1.5, 2.0]. The thresholds $\theta = \pm 0.6745 \, \sigma$ produce histogram of the uniform distribution despite the input analog signal is normal.}
+  \label{bins_25_pc}
   \end{center}
 \end{figure}
 
