@@ -52,9 +52,9 @@ The algorithm runs on the GPU (Graphics Processing Unit), which provides high sp
 
 \tableofcontents
 
-\section{Quantization and M5B Data Structure}
+\section{Signal Quantization and M5B Data Structure}
 
-The analog signal from a single antenna/dish is supposed to be Gaussian noise $N(\mu,\sigma)$ with the expectation $\mu$ and standard deviation (rms) $\sigma$ distributed according to the normal law with the probability density function (PDF):
+The analog signal from a single antenna/dish is supposed to be Gaussian noise with the expectation $\mu$ and standard deviation (rms) $\sigma$ distributed according to the normal law with the probability density function (PDF):
 
 \begin{equation}
   \label{normal_pdf}
@@ -91,7 +91,7 @@ The signal is centered to ensure zero $\mu$ and its band is filtered into 16 fre
 \end{table}
 
 
-The M5B file can be considered as an array of 10016-byte frames. Each frame consists of 2504 32-bit words (\verb@unsigned int@ or  \verb@uint@ in C/C++). The first 4 words comprise the frame header, so a frame has 2500 words of pure data. Each 32-bit data word is subdivided into 16 2-bit channels, numbered from 0 to 15. The header contains the sync word \verb@0xdec0de5c@, 23-bit long frame number within second (reset to zero each new second), one flag bit to tag the frame invalid, 8-bit long channel ID, BCD Time Code Word 1 (‘JJJSSSSS’), BCD Time Code Word 2 (‘.SSSS’), and  16-bit CRCC.
+The M5B file can be considered as an array of 10016-byte frames. Each frame consists of 2504 32-bit words (\verb@unsigned int@ or  \verb@uint@ in C/C++). The first 4 words comprise the frame header, so a frame has 2500 words of pure data. Each 32-bit data word is subdivided into 16 2-bit channels, numbered from 0 to 15. The header contains the sync word \verb@0xABADDEED@, 23-bit long frame number within second (reset to zero each new second), one flag bit to tag the frame invalid, 8-bit long channel ID, BCD Time Code Word 1 (‘JJJSSSSS’), BCD Time Code Word 2 (‘.SSSS’), and  16-bit CRCC.
 
 Unfortunately, the frame headers do \emph{not} contain the quantization threshold values $\theta = v_0/\sigma$ necessary for the statistical testing. In order to estimate $\theta$, the algorithm has to spend precious time on its 1D search as will be described further. 
 
@@ -114,7 +114,7 @@ The $X^2$ test statistic asymptotically approaches the $\chi^2_{k=3}$ distributi
 
 \begin{figure}[ht!]
   \begin{center}
-  \includegraphics[width=25pc]{fig_chi2_pdf.eps}
+  \includegraphics[width=30pc]{fig_chi2_pdf.eps}
   %\noindent\includegraphics[width=20pc]{fig_4_Level_Quantization_Pattern_impr.eps}
   %\includegraphics[width=\linewidth]{}
   \caption{\small Chi-squared probability density function (PDF). The red area under the curve to the left of $\chi^2_{cr} = 7.81$ equals the probability $p=0.05$. This is the probability that the $X^2$ statistic (Eq.~\eqref{x2_calc}) for normal $B_i$ exceeds 7.81.}
@@ -137,12 +137,12 @@ One can notice that the $X^2$ statistics in Eq.~\eqref{x2_calc} is a function of
   X^2(\theta) = \sum_{i=0}^3 \frac{(B_i - E_i(\theta))^2}{E_i(\theta)},
 \end{equation}
 
-\noindent where the normal frequencies $E_i$ are dependent on the quantization thresholds positions:
+\noindent where the normal frequencies $E_i$ are dependent on the positions of quantization thresholds:
 
 \begin{equation*}
   \label{norm_freq}
-  E_{0\twodots3}(\theta) = N \cdot \left[\Phi(-\theta), \; \frac{1}{2}-\Phi(-\theta), \; 
-                             \frac{1}{2}-\Phi(-\theta), \; \Phi(-\theta) \right],
+  E_{0\twodots3}(\theta) = N \cdot \left[\Phi(-\theta); \; \; \; \frac{1}{2}-\Phi(-\theta);  \;\;\; 
+                             \frac{1}{2}-\Phi(-\theta); \; \; \; \Phi(-\theta) \right],
 \end{equation*}
 
 \noindent as shown in Fig.~\ref{npdf_areas}, and $\Phi(x)$ is the normal CDF with $\mu=0$ and $\sigma=1$:
@@ -155,7 +155,7 @@ One can notice that the $X^2$ statistics in Eq.~\eqref{x2_calc} is a function of
 
 \begin{figure}[ht!]
   \begin{center}
-  \includegraphics[width=25pc]{fig_npdf_areas.eps}
+  \includegraphics[width=30pc]{fig_npdf_areas.eps}
   \caption{\small The normal frequencies $E_i$ are dependent on the quantization thresholds $\pm\theta$. They are calculated with the use of normal cumulative distribution function (CDF) given in Eq.~\eqref{ncdf}.}
   \label{npdf_areas}
   \end{center}
@@ -168,7 +168,7 @@ We have used a fast-converging Brent's algorithm for one-dimensional search. It 
 
 \begin{figure}[ht!]
   \begin{center}
-  \includegraphics[width=25pc]{fig_optimal_quantization_threshold.eps}
+  \includegraphics[width=30pc]{fig_optimal_quantization_threshold.eps}
   \caption{\small $X^2(\theta)$ from Eq.~\eqref{x2_func_of_theta} as the measure of error between the observed, $B_i$, and normal, $E_i$ frequencies for the range of quantization tresholds $[0.4 \mathinner{\ldotp\ldotp}1.5]$. The curve has minimum at $\theta = 0.7988$, which can be used as an estimate for the actual threshold used in the analog signal quantization.}
   \label{optimum_theta}
   \end{center}
@@ -215,7 +215,7 @@ The parallel processing in kernels is organized framewise. As many frames as pos
 
 
 
-\section{Python Module for Normality Testing}
+\section{Python Module for Normality Testing gpu\_m5b.py}
 
 The \verb@gpu_m5b.py@ module defines the only class \verb@Normtest@ that integrates in itself all the normality testing mechanisms. When imported from the \verb@gpu_m5b@ module, \verb@Normtest@ class probes the hardware and automatically determines which framework to use. If it detects an AMD GPU, it uses OpenCL. If an Nvidia GPU is detected, the software uses CUDA. In case both frameworks are installed, it prefers CUDA since it is \midtilde 1.5  times faster than OpenCL. Thus this class provides "transparent" access to the GPU independent of the software framework used. Current version of the software can use only one GPU, however, in future it is possible to employ multiple GPUs on the same motherboard, even using different frameworks. 
 
@@ -267,7 +267,7 @@ The binary files \verb@nt_flag*.bin@ created by \verb@Normtest.do_m5b()@ method 
 \indent 2: 1D search for the optimal quantization threshold did not converge in 20 iterations; \\
 \indent 3: $\chi^2 > \chi^2_{cr}$.
 
-Thus the flag value 3 can indicate that the frame contains some extraneous data other than the Gaussian data streams from a dish. The flags can be easily read in IPython into an array. For example: \\
+\noindent Thus the flag value 3 can indicate that the frame contains some extraneous data other than the Gaussian data streams from a dish. The flags can be easily read in IPython into an array. For example: \\
 
 \noindent \verb@fl = np.fromfile("nt_flag_cuda_rd1910_wz_268-1811_text_20231024_174438.173.bin", \@ \par
 \noindent \verb@                 dtype=np.uint16)  # Read the flag file into 1D array fl;@ \par
@@ -384,7 +384,7 @@ It pops up a 4x4-subplot picture quite similar to those shown in Fig.~\ref{hists
 \noindent \verb@plot_various_bins.py@ Plots 3x3 subplots showing the histograms of standard normal distribution for several different quantization thresholds $\pm\theta = $[0.2, 0.3, 0.5, 0.6745, 0.8, 1.0, 1.2, 1.5, 2.0]. The thresholds $\theta = \pm 0.6745 \, \sigma$ produce histogram of the uniform distribution despite the input analog signal is normal. See Addendum, Fig.~\ref{var_bins_hists}. \par
 \hangindent=1cm \hangafter=1
 \noindent \verb@plot_25pc_npdf_expectations.py@: Plots the area under normal PDF curve divided into 4 
-equal-area bins by the vertical lines at $-\theta_{cr} = -0.6745$, 0, and $\theta_{cr} = +0.6745$. The mathematical expectations of the bins, $\mu_1=\pm 0.32$ and $\mu_2=\pm 1.27$ are indicated with red dots. See Addendum, Fig.~\ref{bins_25_pc}. \par
+equal-area bins by the vertical lines at $-\theta_{cr} = -0.6745$, 0, and $\theta_{cr} = +0.6745$. The mathematical expectations of the bins, $\mu_1=\pm 0.32\sigma$ and $\mu_2=\pm 1.27\sigma$ are indicated with red dots. See Addendum, Fig.~\ref{bins_25_pc}.  \par
 \hangindent=1cm \hangafter=1
 \noindent \verb@get_dev_info_cuda.py@, \verb@get_dev_info_opencl.py@, \verb@get_cpu_mem.py@: Information scripts using PyCuda and PyOpenCL for the hardware inquiries. 
 
@@ -433,7 +433,7 @@ In order to give a general idea of the time required for the normality tests on 
 \indent Host CPU: Intel(R) Core(TM) i7 CPU X 980 @ 3.33GHz \\
 \indent Host RAM: 16GB \\
 \indent GPU: NVIDIA GeForce GTX 1060 3GB RAM \\
-\indent GPU CUDA Cores: 1152
+\indent GPU CUDA Cores: 1152 \\
 \indent GPU Memory Interface: 192-bit \\
 \indent GPU Graphics Clock: 2.0GHz \\
 \indent GPU Memory Transfer Rate: 8.0GHz \\
@@ -465,7 +465,7 @@ The hardware used is rather outdated. We expect better performance on modern sys
 
 \section{Conclusion}
 
-We have designed a highly effective algorithm of finding and locating any extraneous pieces of data in the M5A/M5B files. The algorithm is based on testing the M5B data for normality with the use of Pearson's $\chi^2$ criterion. Our implementation is also highly efficient because it uses the GPU. It is also well automated: before running the normality tests, at the time of importing the class \verb@Normtest@ it checks the hardware and makes a decision which or the GPU frameworks to use: \verb@CUDA@ \verb@OpenCL@, thus allowing usage of both Nvidia and AMG graphics. Several Python scripts are provided to facilitate analysis of the normality test results.
+We have designed a highly effective algorithm of finding and locating any extraneous pieces of data in the M5A/M5B files. The algorithm is based on testing the M5B data for normality with the use of Pearson's $\chi^2$ criterion. Our implementation is also highly efficient because it uses the GPU for massive parallelism. It is also well automated: before running the normality tests, at the time of importing the class \verb@Normtest@ it checks the hardware and makes a decision which of the GPU frameworks to use, \verb@CUDA@ or \verb@OpenCL@, thus allowing usage of both Nvidia and AMD GPUs. Several Python scripts are provided to facilitate analysis of the normality test results.
 
 
 %\pagebreak
@@ -521,7 +521,7 @@ We have designed a highly effective algorithm of finding and locating any extran
 
 \begin{figure}[ht!]
   \begin{center}
-  \includegraphics[width=40pc]{fig_various_bin_size_histograms.eps}
+  \includegraphics[width=45pc]{fig_various_bin_size_histograms.eps}
   \caption{\small The histograms of standard normal distribution for several different quantization thresholds $\pm\theta = $[0.2, 0.3, 0.5, 0.6745, 0.8, 1.0, 1.2, 1.5, 2.0]. The thresholds $\theta = \pm 0.6745 \, \sigma$ produce histogram of the uniform distribution despite the input analog signal is normal.}
   \label{var_bins_hists}
   \end{center}
@@ -532,7 +532,7 @@ We have designed a highly effective algorithm of finding and locating any extran
 \begin{figure}[ht!]
   \begin{center}
   \includegraphics[width=35pc]{fig_25_percent_bins_and_expectations.eps}
-  \caption{\small The histograms of standard normal distribution for several different quantization thresholds $\pm\theta = $[0.2, 0.3, 0.5, 0.6745, 0.8, 1.0, 1.2, 1.5, 2.0]. The thresholds $\theta = \pm 0.6745 \, \sigma$ produce histogram of the uniform distribution despite the input analog signal is normal.}
+  \caption{\small The area under normal PDF curve divided into 4 equal-area bins by the vertical lines at $-\theta_{cr} = -0.6745$, 0, and $\theta_{cr} = +0.6745$. The mathematical expectations of the bins, $\mu_1=\pm 0.32\sigma$ and $\mu_2=\pm 1.27\sigma$ are indicated with red dots.}
   \label{bins_25_pc}
   \end{center}
 \end{figure}
