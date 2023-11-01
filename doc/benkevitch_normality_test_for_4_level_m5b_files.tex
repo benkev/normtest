@@ -161,11 +161,6 @@ One can notice that the $X^2$ statistics in Eq.~\eqref{x2_calc} is a function of
   \end{center}
 \end{figure}
 
-Fig.~\ref{optimum_theta} shows that the curve $y = X^2(\theta)$ has the only minimum. Thus, the best fit of the normal frequencies $E_i$ to the observed frequencies $B_i$ can be reached at the single $\theta=\theta_\text{opt}$ value that provides minimum to $X^2(\theta)$. 
-
-We have used a fast-converging Brent's algorithm for one-dimensional search. It is a combination of the golden section search at the beginning and the parabolic interpolation when the process is close enough to the minimum.
-
-
 \begin{figure}[ht!]
   \begin{center}
   \includegraphics[width=30pc]{fig_optimal_quantization_threshold.eps}
@@ -173,6 +168,11 @@ We have used a fast-converging Brent's algorithm for one-dimensional search. It 
   \label{optimum_theta}
   \end{center}
 \end{figure}
+
+
+Fig.~\ref{optimum_theta} shows that the curve $y = X^2(\theta)$ has the only minimum. Thus, the best fit of the normal frequencies $E_i$ to the observed frequencies $B_i$ can be reached at the single $\theta=\theta_\text{opt}$ value that provides minimum to $X^2(\theta)$. 
+
+We have used a fast-converging Brent's algorithm for one-dimensional search. It is a combination of the golden section search at the beginning and the parabolic interpolation when the process is close enough to the minimum.
 
 
 \section{Using Graphics Processing Units (GPU)}
