@@ -1,2 +1,16 @@
 *.bin
 doc/Presentation_Dec_2022_benkevitch
+doc/Extra_drawings/
+doc/*.tgz
+doc/*.txt
+results/
+*.log
+*.png
+*.svg
+*.aux
+*.gz
+*.out
+*.dvi
+*.toc
+*.m5?
+__pycache__/
