@@ -3,7 +3,7 @@ doc/Presentation_Dec_2022_benkevitch
 doc/Extra_drawings/
 doc/*.tgz
 doc/*.txt
-results/
+result/
 *.log
 *.png
 *.svg
